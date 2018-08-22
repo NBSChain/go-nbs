@@ -1,2 +1,2 @@
-# go-nbs
+# nbs-node
 Full node
