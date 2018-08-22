@@ -1,11 +1,13 @@
 package cmdKits
 
 import (
-	"github.com/W-B-S/nbs-node/utils"
-	"github.com/W-B-S/nbs-node/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/storage/application"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"log"
+	"os"
 	"path/filepath"
 )
 
@@ -53,14 +55,20 @@ func shellAddFile(cmd *cobra.Command, args []string) {
 }
 
 func ServiceTaskVersionAddFile(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
-	//app := application.GetInstance()
-	//
-	//file, err := os.Open(fileName)
-	//if err != nil {
-	//	logger.Error("Failed to open file.")
-	//	return
-	//}
-	//
-	//app.AddFile(file)
+
+	logger.Info(req)
+
+	fileName := req.Args[0]
+
+	app := application.GetInstance()
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		logger.Warning("Failed to open file.")
+		return nil, err
+	}
+
+	app.AddFile(file)
+
 	return &pb.CmdResponse{Message: "I want to  " + req.CmdName}, nil
 }

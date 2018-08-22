@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"fmt"
+	"github.com/NBSChain/go-nbs/utils"
 	"os"
 	"sync"
 )
@@ -10,6 +11,8 @@ import (
 type NbsApplication struct {
 	Context context.Context
 }
+
+var logger = utils.GetLogInstance()
 
 var instance *NbsApplication
 var once sync.Once
@@ -38,5 +41,8 @@ func newApplication() (*NbsApplication, error) {
 }
 
 func (*NbsApplication) AddFile(file *os.File) error {
+
+	logger.Info("Application start to Add File", file)
+
 	return nil
 }

@@ -3,7 +3,7 @@ package routing
 import (
 	"context"
 	"fmt"
-	"github.com/W-B-S/nbs-node/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"sync"

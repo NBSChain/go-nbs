@@ -2,8 +2,8 @@ package cmdKits
 
 import (
 	"errors"
-	"github.com/W-B-S/nbs-node/utils"
-	"github.com/W-B-S/nbs-node/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

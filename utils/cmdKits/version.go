@@ -1,8 +1,8 @@
 package cmdKits
 
 import (
-	"github.com/W-B-S/nbs-node/utils"
-	"github.com/W-B-S/nbs-node/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

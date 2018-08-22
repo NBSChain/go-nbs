@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/W-B-S/nbs-node/utils/cmdKits"
+	"github.com/NBSChain/go-nbs/utils/cmdKits"
 )
 
 func main() {
