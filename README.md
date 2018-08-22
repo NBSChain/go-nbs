@@ -1,0 +1,2 @@
+# go-nbs
+Full node
