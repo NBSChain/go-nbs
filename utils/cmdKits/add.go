@@ -35,6 +35,7 @@ func shellAddFile(cmd *cobra.Command, args []string) {
 	fileInfo, ok := utils.FileExists(fileName)
 	if !ok || fileInfo.IsDir() {
 		log.Fatal("File is not available.")
+		//TODO::Going to support directory.
 	}
 
 	fileName, err := filepath.Abs(fileName)
