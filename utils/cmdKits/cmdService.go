@@ -1,18 +1,39 @@
 package cmdKits
 
-import (
-	"errors"
-	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-	"log"
-	"net"
-	"time"
-)
+import "github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+import "golang.org/x/net/context"
+import "google.golang.org/grpc"
+import "google.golang.org/grpc/reflection"
+import "net"
+import "time"
+import "io"
+import "errors"
+import "log"
+import "github.com/NBSChain/go-nbs/utils"
 
 type cmdService struct{}
+
+type File interface {
+	io.ReadCloser
+
+	FileName() string
+
+	FullPath() string
+
+	IsDirectory() bool
+
+	NextFile() (File, error)
+}
+
+const cmdNameAdd = "add"
+const cmdVersion = "version"
+
+type ServiceAction func(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error)
+
+var NbsCommandSet = map[string]ServiceAction{
+	cmdNameAdd: ServiceTaskAddFile,
+	cmdVersion: ServiceTaskVersion,
+}
 
 func (s *cmdService) RpcTask(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
 	return handleInputCmd(ctx, req)
@@ -46,7 +67,7 @@ func StartCmdService() {
 
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		logger.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("Failed to listen: %v", err)
 	}
 	theServer := grpc.NewServer()
 
@@ -54,7 +75,7 @@ func StartCmdService() {
 
 	reflection.Register(theServer)
 	if err := theServer.Serve(listener); err != nil {
-		logger.Fatalf("failed to serve: %v", err)
+		logger.Fatalf("Failed to serve: %v", err)
 	}
 }
 

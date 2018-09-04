@@ -54,7 +54,7 @@ func shellAddFile(cmd *cobra.Command, args []string) {
 	logger.Info("Reading success......", response.Message)
 }
 
-func ServiceTaskVersionAddFile(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
+func ServiceTaskAddFile(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
 
 	logger.Info(req)
 

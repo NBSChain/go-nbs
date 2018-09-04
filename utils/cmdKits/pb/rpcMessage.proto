@@ -24,9 +24,18 @@ service CmdTask {
     rpc RpcTask (CmdRequest) returns (CmdResponse) {}
 }
 
+
 message CmdRequest {
     string              cmdName = 1;
     repeated string     args    = 2;
+
+    message Files{
+        string      fileName    = 1;
+        string      fullPath    = 2;
+        bytes       fileData    = 3;
+    }
+
+    repeated Files      files   = 3;
 }
 
 message CmdResponse {

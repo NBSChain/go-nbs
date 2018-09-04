@@ -5,11 +5,5 @@ import (
 )
 
 func main() {
-
 	cmdKits.Execute()
-
-	//nbslog.Test()
-
-	//router := routing.GetInstance()
-	//router.Run()
 }
