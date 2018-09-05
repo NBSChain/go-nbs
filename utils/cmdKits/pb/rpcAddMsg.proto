@@ -22,21 +22,29 @@ package pb;
 
 enum FileType {
     FILE        = 0;
-    DIRECTORY   = 1;
-    SYSTEMLINK  = 2;
+    LARGEFILE   = 1;
+    DIRECTORY   = 2;
+    SYSTEMLINK  = 3;
 }
 
 service AddTask {
     rpc AddFile (AddRequest) returns (AddResponse) {}
+    rpc TransLargeFile(stream Content) returns (AddResponse) {}
+}
+
+message Content{
+    bytes   content = 1;
 }
 
 message AddRequest{
     string      fileName    = 1;
     string      fullPath    = 2;
-    bytes       fileData    = 3;
+    int32       fileSize    = 3;
     FileType    fileType    = 4;
+    bytes       fileData    = 5;
 }
 
 message AddResponse {
-    string message = 1;
+    string message      = 1;
+    string sessionId    = 2;
 }

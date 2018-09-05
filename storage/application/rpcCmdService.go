@@ -2,7 +2,9 @@ package application
 
 import (
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/W-B-S/nbs-node/storage/application"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"os"
 )
@@ -32,11 +34,34 @@ func StartCmdService() {
 	}
 }
 
-func (s *cmdService) AddFile(ctx context.Context, req *pb.AddRequest) (*pb.AddResponse, error) {
+func (s *cmdService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.AddResponse, error) {
 
-	logger.Info(req)
+	logger.Info(request)
 
-	fileName := req.FileName
+	switch request.FileType {
+
+	case pb.FileType_LARGEFILE:
+		{
+			sessionId := crypto.MD5(request.FullPath + string(request.FileSize))
+			return &pb.AddResponse{Message: "continue", SessionId: sessionId}, nil
+		}
+	case pb.FileType_FILE:
+		{
+			return &pb.AddResponse{Message: "success"}, nil
+		}
+	case pb.FileType_DIRECTORY:
+		{
+			return &pb.AddResponse{Message: "success"}, nil
+		}
+	case pb.FileType_SYSTEMLINK:
+		{
+			return &pb.AddResponse{Message: "success"}, nil
+		}
+	default:
+		return nil, errors.New("Unsupported file type!")
+	}
+
+	fileName := request.FileName
 
 	app := application.GetInstance()
 
@@ -48,7 +73,11 @@ func (s *cmdService) AddFile(ctx context.Context, req *pb.AddRequest) (*pb.AddRe
 
 	app.AddFile(file)
 
-	return &pb.AddResponse{Message: "I want to add " + req.FileName}, nil
+	return &pb.AddResponse{Message: "I want to add " + request.FileName}, nil
+}
+
+func (s *cmdService) TransLargeFile(stream pb.AddTask_TransLargeFileServer) error {
+	return nil
 }
 
 func (s *cmdService) SystemVersion(ctx context.Context,

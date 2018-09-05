@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/libp2p/go-libp2p"
-	//TODO:: replace this gx repository
-	"gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-host"
 	"sync"
 )
 
