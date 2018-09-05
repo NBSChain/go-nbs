@@ -1,13 +1,11 @@
 package cmdKits
 
 import (
-	"github.com/NBSChain/go-nbs/storage/application"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"log"
-	"os"
 	"path/filepath"
 )
 
@@ -19,10 +17,10 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add file to nbs network",
 	Long:  `Add file to cache and find the peers to store it.`,
-	Run:   shellAddFile,
+	Run:   addFile,
 }
 
-func shellAddFile(cmd *cobra.Command, args []string) {
+func addFile(cmd *cobra.Command, args []string) {
 
 	logger.Info("Add command args:(", args, ")-->", cmd.CommandPath())
 
@@ -43,33 +41,28 @@ func shellAddFile(cmd *cobra.Command, args []string) {
 		logger.Fatal(err)
 	}
 
-	request := &pb.CmdRequest{
-		CmdName: cmdNameAdd,
-		Args: []string{
-			fileName,
-		},
-	}
+	request := &pb.AddRequest{}
 
-	response := DialToCmdService(request)
+	response := AddFile(request)
 
 	logger.Info("Reading success......", response.Message)
 }
 
-func ServiceTaskAddFile(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
+//------client side------
+func AddFile(request *pb.AddRequest) *pb.AddResponse {
 
-	logger.Info(req)
+	conn := DialToCmdService()
 
-	fileName := req.Args[0]
+	defer conn.Close()
+	client := pb.NewAddTaskClient(conn)
 
-	app := application.GetInstance()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	file, err := os.Open(fileName)
+	response, err := client.AddFile(ctx, request)
 	if err != nil {
-		logger.Warning("Failed to open file.")
-		return nil, err
+		log.Fatalf("could not greet: %v", err)
 	}
 
-	app.AddFile(file)
-
-	return &pb.CmdResponse{Message: "I want to  " + req.CmdName}, nil
+	return response
 }
