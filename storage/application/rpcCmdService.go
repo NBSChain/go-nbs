@@ -15,7 +15,7 @@ import "github.com/NBSChain/go-nbs/utils"
 
 type cmdService struct{}
 
-func StartCmdService() {
+func startCmdService() {
 
 	var address = "127.0.0.1:" + utils.GetConfig().CmdServicePort
 

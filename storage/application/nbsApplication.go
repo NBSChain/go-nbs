@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/utils"
-	"os"
 	"sync"
 )
 
@@ -40,9 +39,11 @@ func newApplication() (*NbsApplication, error) {
 	}, nil
 }
 
-func (*NbsApplication) AddFile(file *os.File) error {
+func (*NbsApplication) Start() error {
 
-	logger.Info("Application start to Add File", file)
+	logger.Info("Application starting......")
+
+	startCmdService()
 
 	return nil
 }

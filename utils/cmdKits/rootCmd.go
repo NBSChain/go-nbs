@@ -34,7 +34,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	logger.Info("root command args:", args)
 
-	application.StartCmdService()
+	application.GetInstance().Start()
 
 	logger.Info("Nbs daemon is ready......")
 }
