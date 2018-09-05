@@ -3,12 +3,15 @@ package application
 import (
 	"context"
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/application/rpcService"
+	"github.com/NBSChain/go-nbs/storage/core"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
 
 type NbsApplication struct {
-	Context context.Context
+	context context.Context
+	node    core.StorageNode
 }
 
 var logger = utils.GetLogInstance()
@@ -35,15 +38,18 @@ func GetInstance() Application {
 func newApplication() (*NbsApplication, error) {
 
 	return &NbsApplication{
-		Context: context.Background(),
+		context: context.Background(),
+		node:    core.NewNode(),
 	}, nil
 }
 
-func (*NbsApplication) Start() error {
+func (app *NbsApplication) Start() error {
 
 	logger.Info("Application starting......")
 
-	startCmdService()
+	rpcService.StartCmdService()
+
+	instance.node.Online()
 
 	return nil
 }

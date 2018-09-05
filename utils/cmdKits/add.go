@@ -48,7 +48,6 @@ func addFile(cmd *cobra.Command, args []string) {
 	logger.Info("Reading success......", response.Message)
 }
 
-//------client side------
 func AddFile(request *pb.AddRequest) *pb.AddResponse {
 
 	conn := DialToCmdService()
