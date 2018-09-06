@@ -13,6 +13,7 @@ import (
 )
 
 const DefaultStreamTaskNo = 30
+const StreamSessionIDKey = "sessionid"
 
 type addService struct {
 	taskLock    sync.RWMutex
@@ -66,11 +67,11 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer) error {
 
 	header, ok := metadata.FromIncomingContext(stream.Context())
-	if !ok || len(header["sessionId"]) == 0 {
+	if !ok || len(header[StreamSessionIDKey]) == 0 {
 		return errors.New("unknown stream without session info")
 	}
 
-	sessionId := header["sessionId"][0]
+	sessionId := header[StreamSessionIDKey][0]
 
 	request := service.fileAddTask[sessionId]
 	if request == nil {
@@ -79,13 +80,13 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 
 	defer service.removeTask(sessionId)
 
-	file, err := os.Create("test.mp4")
+	file, err := os.Create("server-" + request.FileName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	var dataLen int64 = 0
+	var dataLen int32 = 0
 
 	for {
 		fileData, err := stream.Recv()
@@ -98,7 +99,8 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 			}
 		}
 
-		file.Write(fileData.Content)
+		size, err := file.Write(fileData.Content)
+		dataLen += int32(size)
 	}
 
 	stream.SendAndClose(&pb.AddResponse{

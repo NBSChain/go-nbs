@@ -1,6 +1,7 @@
 package cmdKits
 
 import (
+	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
@@ -13,7 +14,7 @@ import (
 )
 
 const BigFileThreshold int64 = 50 << 20 //50M
-const BigFileChunckSize int64 = 1 << 15 //32K
+const BigFileChunkSize int64 = 1 << 15  //32K
 
 func init() {
 	rootCmd.AddCommand(addCmd)
@@ -68,7 +69,7 @@ func addFileCmd(cmd *cobra.Command, args []string) {
 
 			response := addFile(request)
 
-			logger.Info("Send file metadata success......", response.Message)
+			logger.Info("Send file metadata success......", response)
 
 			sendFileStream(response.SessionId, fullPath)
 
@@ -102,7 +103,7 @@ func sendFileStream(sessionId, fileName string) {
 	client := pb.NewAddTaskClient(conn)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	header := metadata.Pairs("sessionId", sessionId)
+	header := metadata.Pairs(rpcService.StreamSessionIDKey, sessionId)
 	ctx = metadata.NewOutgoingContext(ctx, header)
 	defer cancel()
 
@@ -117,7 +118,7 @@ func sendFileStream(sessionId, fileName string) {
 	}
 	defer file.Close()
 
-	buffer := make([]byte, BigFileChunckSize)
+	buffer := make([]byte, BigFileChunkSize)
 
 	for {
 

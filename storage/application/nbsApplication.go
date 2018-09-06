@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/storage/core"
 	"github.com/NBSChain/go-nbs/utils"
@@ -27,7 +26,7 @@ func GetInstance() Application {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("--->Create application to run......\n")
+		logger.Info("--->Create application to run......\n")
 
 		instance = app
 	})

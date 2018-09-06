@@ -7,7 +7,9 @@ PROTOC = protoc --gogofaster_out=. --proto_path=.:$(GOPATH)/src:$(dir $@) $<
 .SECONDEXPANSION:
 
 
-test: pbs
+all: pbs test
+
+test:
 	go build -o nbs
 
 deps:

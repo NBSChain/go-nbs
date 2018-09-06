@@ -49,5 +49,5 @@ message AddRequest{
 message AddResponse {
     string message      = 1;
     string sessionId    = 2;
-    int64  dataReceive  = 3;
+    int32  dataReceive  = 3;
 }
