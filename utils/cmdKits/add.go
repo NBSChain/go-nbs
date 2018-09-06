@@ -13,9 +13,6 @@ import (
 	"path/filepath"
 )
 
-const BigFileThreshold int64 = 50 << 20 //50M
-const BigFileChunkSize int64 = 1 << 15  //32K
-
 func init() {
 	rootCmd.AddCommand(addCmd)
 }
@@ -63,7 +60,7 @@ func addFileCmd(cmd *cobra.Command, args []string) {
 
 	} else {
 
-		if fileInfo.Size() >= BigFileThreshold {
+		if fileInfo.Size() >= rpcService.BigFileThreshold {
 
 			request.FileType = pb.FileType_LARGEFILE
 
@@ -118,7 +115,7 @@ func sendFileStream(sessionId, fileName string) {
 	}
 	defer file.Close()
 
-	buffer := make([]byte, BigFileChunkSize)
+	buffer := make([]byte, rpcService.BigFileChunkSize)
 
 	for {
 

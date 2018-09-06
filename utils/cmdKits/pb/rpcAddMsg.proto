@@ -43,7 +43,8 @@ message AddRequest{
     string      fullPath    = 2;
     int64       fileSize    = 3;
     FileType    fileType    = 4;
-    bytes       fileData    = 5;
+    int32       chunkSize   = 5;
+    bytes       fileData    = 6;
 }
 
 message AddResponse {
