@@ -1,11 +1,13 @@
 package cmdKits
 
 import (
+	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"log"
+	"os"
 	"path/filepath"
 )
 
@@ -36,12 +38,47 @@ func addFile(cmd *cobra.Command, args []string) {
 		//TODO::Going to support directory.
 	}
 
-	fileName, err := filepath.Abs(fileName)
+	fullPath, err := filepath.Abs(fileName)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	request := &pb.AddRequest{}
+	request := &pb.AddRequest{
+		FileName: fileName,
+		FullPath: fullPath,
+		FileSize: fileInfo.Size(),
+	}
+
+	if fileInfo.IsDir() {
+
+		request.FileType = pb.FileType_DIRECTORY
+
+	} else if fileInfo.Mode() == os.ModeSymlink {
+
+		request.FileType = pb.FileType_SYSTEMLINK
+
+	} else {
+
+		if fileInfo.Size() >= rpcService.BigFileThreshold {
+
+			request.FileType = pb.FileType_LARGEFILE
+
+		} else {
+
+			request.FileType = pb.FileType_FILE
+
+			request.FileData = make([]byte, fileInfo.Size())
+
+			file, err := os.Open(fullPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			file.Read(request.FileData)
+
+			file.Close()
+		}
+	}
 
 	response := AddFile(request)
 

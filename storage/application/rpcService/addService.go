@@ -5,13 +5,14 @@ import (
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"golang.org/x/net/context"
+	"os"
 )
 
 type addService struct{}
 
-func (s *addService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.AddResponse, error) {
+const BigFileThreshold int64 = 50 << 20
 
-	logger.Info(request)
+func (s *addService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.AddResponse, error) {
 
 	switch request.FileType {
 
@@ -22,6 +23,15 @@ func (s *addService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.A
 		}
 	case pb.FileType_FILE:
 		{
+			file, err := os.Create("server-" + request.FileName)
+			if err != nil {
+				return nil, err
+			}
+
+			file.Write(request.FileData)
+
+			file.Close()
+
 			return &pb.AddResponse{Message: "success"}, nil
 		}
 	case pb.FileType_DIRECTORY:
