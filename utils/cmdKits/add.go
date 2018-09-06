@@ -19,10 +19,10 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add file to nbs network",
 	Long:  `Add file to cache and find the peers to store it.`,
-	Run:   addFile,
+	Run:   addFileCmd,
 }
 
-func addFile(cmd *cobra.Command, args []string) {
+func addFileCmd(cmd *cobra.Command, args []string) {
 
 	logger.Info("Add command args:(", args, ")-->", cmd.CommandPath())
 
@@ -33,9 +33,8 @@ func addFile(cmd *cobra.Command, args []string) {
 	fileName := args[0]
 
 	fileInfo, ok := utils.FileExists(fileName)
-	if !ok || fileInfo.IsDir() {
+	if !ok {
 		log.Fatal("File is not available.")
-		//TODO::Going to support directory.
 	}
 
 	fullPath, err := filepath.Abs(fileName)
@@ -63,6 +62,10 @@ func addFile(cmd *cobra.Command, args []string) {
 
 			request.FileType = pb.FileType_LARGEFILE
 
+			response := addFile(request)
+
+			logger.Info("Reading success......", response.Message)
+
 		} else {
 
 			request.FileType = pb.FileType_FILE
@@ -77,19 +80,20 @@ func addFile(cmd *cobra.Command, args []string) {
 			file.Read(request.FileData)
 
 			file.Close()
+
+			response := addFile(request)
+
+			logger.Info("Reading success......", response.Message)
 		}
 	}
 
-	response := AddFile(request)
-
-	logger.Info("Reading success......", response.Message)
 }
 
-func AddFile(request *pb.AddRequest) *pb.AddResponse {
+func addFile(request *pb.AddRequest) *pb.AddResponse {
 
 	conn := DialToCmdService()
-
 	defer conn.Close()
+
 	client := pb.NewAddTaskClient(conn)
 
 	ctx, cancel := context.WithCancel(context.Background())

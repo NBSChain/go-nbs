@@ -35,6 +35,6 @@ func StartCmdService() {
 func (s *cmdService) SystemVersion(ctx context.Context,
 	request *pb.VersionRequest) (*pb.VersionResponse, error) {
 
-	return &pb.VersionResponse{Message: "Current version is  " +
+	return &pb.VersionResponse{Result: "Current version is  " +
 		utils.GetConfig().CurrentVersion}, nil
 }

@@ -30,5 +30,5 @@ message VersionRequest {
 }
 
 message VersionResponse {
-    string message = 1;
+    string result = 1;
 }

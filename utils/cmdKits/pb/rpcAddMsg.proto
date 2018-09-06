@@ -28,7 +28,9 @@ enum FileType {
 }
 
 service AddTask {
+
     rpc AddFile (AddRequest) returns (AddResponse) {}
+
     rpc TransLargeFile(stream Content) returns (AddResponse) {}
 }
 
@@ -47,4 +49,5 @@ message AddRequest{
 message AddResponse {
     string message      = 1;
     string sessionId    = 2;
+    int64  dataReceive  = 3;
 }
