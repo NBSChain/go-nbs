@@ -31,10 +31,10 @@ service AddTask {
 
     rpc AddFile (AddRequest) returns (AddResponse) {}
 
-    rpc TransLargeFile(stream Content) returns (AddResponse) {}
+    rpc TransLargeFile(stream FileChunk) returns (AddResponse) {}
 }
 
-message Content{
+message FileChunk{
     bytes   content = 1;
 }
 

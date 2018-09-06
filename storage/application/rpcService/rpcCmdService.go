@@ -21,9 +21,13 @@ func StartCmdService() {
 	if err != nil {
 		logger.Fatalf("Failed to listen: %v", err)
 	}
+
 	theServer := grpc.NewServer()
 
-	pb.RegisterAddTaskServer(theServer, &addService{})
+	pb.RegisterAddTaskServer(theServer, &addService{
+		fileAddTask: make(map[string]*pb.AddRequest),
+	})
+
 	pb.RegisterVersionTaskServer(theServer, &cmdService{})
 
 	reflection.Register(theServer)
