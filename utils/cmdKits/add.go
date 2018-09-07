@@ -115,6 +115,7 @@ func sendFileStream(sessionId, fileName string) {
 	}
 	defer file.Close()
 
+	//buffer := make([]byte, 123)
 	buffer := make([]byte, rpcService.BigFileChunkSize)
 
 	for {
