@@ -1,6 +1,11 @@
 package core
 
-import "github.com/NBSChain/go-nbs/storage/routing"
+import (
+	"github.com/NBSChain/go-nbs/storage/routing"
+	"github.com/NBSChain/go-nbs/utils"
+)
+
+var logger = utils.GetLogInstance()
 
 type StorageNode interface {
 	Online() error

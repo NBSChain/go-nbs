@@ -119,8 +119,6 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 
 	err := core.ImportFile(importer)
 
-	importer.reader.Close()
-
 	return err
 }
 
@@ -240,6 +238,7 @@ func (importer *RpcFileImporter) IsDirectory() bool {
 func (importer *RpcFileImporter) NextFile() (core.FileImporter, error) {
 	return nil, io.EOF
 }
+
 func (importer *RpcFileImporter) Close() error {
 	return importer.reader.Close()
 }
