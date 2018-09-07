@@ -221,12 +221,12 @@ type RpcFileImporter struct {
 	splitterSize int32
 }
 
-func (importer *RpcFileImporter) NextChunk() (chunk []byte, err error) {
+func (importer *RpcFileImporter) NextChunk() ([]byte, error) {
 
-	chunk = make([]byte, importer.splitterSize)
-	_, err = importer.reader.Read(chunk)
+	chunk := make([]byte, importer.splitterSize)
+	realSize, err := importer.reader.Read(chunk)
 
-	return chunk, err
+	return chunk[:realSize], err
 }
 
 func (importer *RpcFileImporter) FileName() string {

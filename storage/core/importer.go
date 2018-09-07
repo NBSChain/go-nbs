@@ -8,7 +8,7 @@ import (
 type FileImporter interface {
 	io.Closer
 
-	NextChunk() (chunk []byte, err error)
+	NextChunk() ([]byte, error)
 
 	FileName() string
 
