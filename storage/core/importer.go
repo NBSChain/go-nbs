@@ -21,6 +21,13 @@ type FileImporter interface {
 
 func ImportFile(importer FileImporter) error {
 
+	importer.Close()
+
+	return nil
+}
+
+func ImportFileTest(importer FileImporter) error {
+
 	logger.Info("fileName:" + importer.FileName())
 	logger.Info("fullPath:" + importer.FullPath())
 
