@@ -3,7 +3,9 @@ package core
 import "io"
 
 type FileImporter interface {
-	io.ReadCloser
+	io.Closer
+
+	NextChunk() (chunk []byte, err error)
 
 	FileName() string
 

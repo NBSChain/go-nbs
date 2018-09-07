@@ -16,9 +16,9 @@ import (
 
 const DefaultStreamTaskNo = 30
 const StreamSessionIDKey = "sessionid"
-const DefaultChunkSize = 1 << 18
-const BigFileThreshold int64 = 50 << 20 //50M
-const BigFileChunkSize int64 = 1 << 20  //1M
+const SplitterSize = 1 << 18                     //256K
+const BigFileThreshold int64 = 50 << 20          //50M
+const BigFileChunkSize int64 = SplitterSize << 2 //1M
 
 type addService struct {
 	taskLock    sync.RWMutex
@@ -44,8 +44,8 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 
 	case pb.FileType_FILE:
 		{
-			if cs := request.ChunkSize; cs == 0 {
-				request.ChunkSize = DefaultChunkSize
+			if cs := request.SplitterSize; cs == 0 {
+				request.SplitterSize = SplitterSize
 			}
 
 			reader := &fileReader{
@@ -53,11 +53,11 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 			}
 
 			importer := &RpcFileImporter{
-				chunkSize:   request.ChunkSize,
-				reader:      reader,
-				fileName:    request.FileName,
-				fullPath:    request.FullPath,
-				isDirectory: false,
+				splitterSize: request.SplitterSize,
+				reader:       reader,
+				fileName:     request.FileName,
+				fullPath:     request.FullPath,
+				isDirectory:  false,
 			}
 
 			err := core.ImportFile(importer)
@@ -99,8 +99,8 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 			"request of this session: %s", sessionId))
 	}
 
-	if cs := request.ChunkSize; cs == 0 {
-		request.ChunkSize = DefaultChunkSize
+	if cs := request.SplitterSize; cs == 0 {
+		request.SplitterSize = SplitterSize
 	}
 
 	reader := &streamReader{
@@ -110,11 +110,11 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 	}
 
 	importer := &RpcFileImporter{
-		chunkSize:   request.ChunkSize,
-		reader:      reader,
-		fileName:    request.FileName,
-		fullPath:    request.FullPath,
-		isDirectory: false,
+		splitterSize: request.SplitterSize,
+		reader:       reader,
+		fileName:     request.FileName,
+		fullPath:     request.FullPath,
+		isDirectory:  false,
 	}
 
 	err := core.ImportFile(importer)
@@ -150,10 +150,10 @@ func (r *fileReader) Close() error {
 }
 
 type streamReader struct {
-	stream     pb.AddTask_TransLargeFileServer
-	sessionId  string
-	service    *addService
-	cacheBytes []byte
+	stream    pb.AddTask_TransLargeFileServer
+	sessionId string
+	service   *addService
+	reminder  []byte
 }
 
 func (s *streamReader) Read(p []byte) (n int, err error) {
@@ -163,27 +163,41 @@ func (s *streamReader) Read(p []byte) (n int, err error) {
 		return 0, nil
 	}
 
-	if s.cacheBytes == nil || len(s.cacheBytes) == 0 {
+	var copied = 0
+	for copied < pLen {
 
-		fileChunk, err := s.stream.Recv()
-		if err != nil {
-			return 0, err
+		if s.reminder != nil && len(s.reminder) > 0 {
+
+			dataSize := copy(p[copied:], s.reminder)
+			copied += dataSize
+
+			if dataSize == len(s.reminder) {
+				s.reminder = nil
+			} else {
+				s.reminder = s.reminder[dataSize:]
+			}
+		} else {
+			fileChunk, err := s.stream.Recv()
+
+			if err != nil {
+				if err != io.EOF {
+					return 0, err
+				} else {
+					return copied, err
+				}
+			}
+
+			dataSize := copy(p[copied:], fileChunk.Content)
+			copied += dataSize
+
+			if dataSize < len(fileChunk.Content) {
+				s.reminder = make([]byte, len(fileChunk.Content)-dataSize)
+				copy(s.reminder, fileChunk.Content[dataSize:])
+			}
 		}
-
-		s.cacheBytes = make([]byte, BigFileChunkSize)
-		copy(s.cacheBytes, fileChunk.Content)
 	}
 
-	cacheLen := len(s.cacheBytes)
-	if pLen >= cacheLen {
-		copy(p, s.cacheBytes)
-		s.cacheBytes = nil
-		return cacheLen, nil
-	} else {
-		copy(p, s.cacheBytes[:pLen])
-		s.cacheBytes = s.cacheBytes[pLen:]
-		return pLen, nil
-	}
+	return copied, nil
 }
 
 func (s *streamReader) Close() error {
@@ -196,16 +210,21 @@ func (s *streamReader) Close() error {
 }
 
 type RpcFileImporter struct {
-	reader      io.ReadCloser
-	fileName    string
-	fullPath    string
-	isDirectory bool
-	chunkSize   int32
+	reader       io.ReadCloser
+	fileName     string
+	fullPath     string
+	isDirectory  bool
+	splitterSize int32
 }
 
-func (importer *RpcFileImporter) Read(p []byte) (n int, err error) {
-	return importer.reader.Read(p)
+func (importer *RpcFileImporter) NextChunk() (chunk []byte, err error) {
+
+	chunk = make([]byte, importer.splitterSize)
+	_, err = importer.reader.Read(chunk)
+
+	return chunk, err
 }
+
 func (importer *RpcFileImporter) FileName() string {
 	return importer.fileName
 }
