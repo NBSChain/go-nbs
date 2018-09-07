@@ -152,13 +152,18 @@ type streamReader struct {
 	sessionId string
 	service   *addService
 	reminder  []byte
+	err       error
 }
 
-func (s *streamReader) Read(p []byte) (n int, err error) {
+func (s *streamReader) Read(p []byte) (int, error) {
 
 	pLen := len(p)
 	if pLen == 0 {
 		return 0, nil
+	}
+
+	if s.err != nil {
+		return 0, s.err
 	}
 
 	var copied = 0
@@ -181,7 +186,8 @@ func (s *streamReader) Read(p []byte) (n int, err error) {
 				if err != io.EOF {
 					return 0, err
 				} else {
-					return copied, err
+					s.err = io.EOF
+					return copied, nil
 				}
 			}
 

@@ -21,8 +21,8 @@ type FileImporter interface {
 
 func ImportFile(importer FileImporter) error {
 
-	logger.Info("\nfileName:" + importer.FileName())
-	logger.Info("\nfullPath:" + importer.FullPath())
+	logger.Info("fileName:" + importer.FileName())
+	logger.Info("fullPath:" + importer.FullPath())
 
 	file, err := os.Create("server-" + importer.FileName())
 	if err != nil {
@@ -32,6 +32,7 @@ func ImportFile(importer FileImporter) error {
 	data, err := importer.NextChunk()
 	for err == nil {
 		file.Write(data)
+		data, err = importer.NextChunk()
 	}
 
 	if err != io.EOF {
