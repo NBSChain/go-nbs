@@ -1,6 +1,5 @@
 package cid
 
-//github.com/multiformats/multibase
 import (
 	"github.com/multiformats/go-multihash"
 )
