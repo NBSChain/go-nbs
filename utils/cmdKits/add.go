@@ -1,11 +1,13 @@
 package cmdKits
 
 import (
-	"github.com/NBSChain/go-nbs/storage/application"
+	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,10 +21,10 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add file to nbs network",
 	Long:  `Add file to cache and find the peers to store it.`,
-	Run:   shellAddFile,
+	Run:   addFileCmd,
 }
 
-func shellAddFile(cmd *cobra.Command, args []string) {
+func addFileCmd(cmd *cobra.Command, args []string) {
 
 	logger.Info("Add command args:(", args, ")-->", cmd.CommandPath())
 
@@ -33,42 +35,123 @@ func shellAddFile(cmd *cobra.Command, args []string) {
 	fileName := args[0]
 
 	fileInfo, ok := utils.FileExists(fileName)
-	if !ok || fileInfo.IsDir() {
+	if !ok {
 		log.Fatal("File is not available.")
 	}
 
-	fileName, err := filepath.Abs(fileName)
+	fullPath, err := filepath.Abs(fileName)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	request := &pb.CmdRequest{
-		CmdName: cmdNameAdd,
-		Args: []string{
-			fileName,
-		},
+	request := &pb.AddRequest{
+		FileName: fileName,
+		FullPath: fullPath,
+		FileSize: fileInfo.Size(),
 	}
 
-	response := DialToCmdService(request)
+	if fileInfo.IsDir() {
 
-	logger.Info("Reading success......", response.Message)
+		request.FileType = pb.FileType_DIRECTORY
+
+	} else if fileInfo.Mode() == os.ModeSymlink {
+
+		request.FileType = pb.FileType_SYSTEMLINK
+
+	} else {
+
+		if fileInfo.Size() >= rpcService.BigFileThreshold {
+
+			request.FileType = pb.FileType_LARGEFILE
+
+			response := addFile(request)
+
+			logger.Info("Send file metadata success......", response)
+
+			sendFileStream(response.SessionId, fullPath)
+
+		} else {
+
+			request.FileType = pb.FileType_FILE
+
+			request.FileData = make([]byte, fileInfo.Size())
+
+			file, err := os.Open(fullPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			file.Read(request.FileData)
+
+			response := addFile(request)
+
+			defer file.Close()
+
+			logger.Info("Add file success......", response.Message)
+		}
+	}
 }
 
-func ServiceTaskAddFile(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
+func sendFileStream(sessionId, fileName string) {
 
-	logger.Info(req)
+	conn := DialToCmdService()
+	defer conn.Close()
 
-	fileName := req.Args[0]
+	client := pb.NewAddTaskClient(conn)
 
-	app := application.GetInstance()
+	ctx, cancel := context.WithCancel(context.Background())
+	header := metadata.Pairs(rpcService.StreamSessionIDKey, sessionId)
+	ctx = metadata.NewOutgoingContext(ctx, header)
+	defer cancel()
+
+	stream, err := client.TransLargeFile(ctx)
+	if err != nil {
+		log.Fatalf("send file stream failed : %v", err)
+	}
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		logger.Warning("Failed to open file.")
-		return nil, err
+		logger.Fatal("failed to open the file:", err)
+	}
+	defer file.Close()
+
+	buffer := make([]byte, rpcService.BigFileChunkSize)
+
+	for {
+
+		no, err := file.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				logger.Fatal("failed to read file chunck:", err)
+			}
+		}
+
+		stream.Send(&pb.FileChunk{
+			Content: buffer[:no],
+		})
 	}
 
-	app.AddFile(file)
+	response, err := stream.CloseAndRecv()
+	logger.Info("Send file stream success......", response, err)
 
-	return &pb.CmdResponse{Message: "I want to  " + req.CmdName}, nil
+}
+
+func addFile(request *pb.AddRequest) *pb.AddResponse {
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewAddTaskClient(conn)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	response, err := client.AddFile(ctx, request)
+	if err != nil {
+		log.Fatalf("could not add file : %v", err)
+	}
+
+	return response
 }

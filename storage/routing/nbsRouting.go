@@ -2,8 +2,8 @@ package routing
 
 import (
 	"context"
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"sync"
@@ -16,6 +16,7 @@ type NbsDHT struct {
 var instance *NbsDHT
 var once sync.Once
 var parentContext context.Context
+var logger = utils.GetLogInstance()
 
 func GetInstance() Routing {
 	once.Do(func() {
@@ -24,7 +25,7 @@ func GetInstance() Routing {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("router start to run......\n")
+		logger.Info("router start to run......\n")
 		instance = router
 	})
 
@@ -61,8 +62,10 @@ func (*NbsDHT) GetValue(context.Context, string) ([]byte, error) {
 
 func (router *NbsDHT) Run() {
 
+	logger.Info("routing start running.\n")
+
 	select {
 	case <-parentContext.Done():
-		fmt.Printf("routing node done!\n")
+		logger.Info("routing node done!\n")
 	}
 }

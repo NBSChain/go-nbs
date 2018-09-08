@@ -2,10 +2,9 @@ package network
 
 import (
 	"context"
-	"fmt"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/libp2p/go-libp2p"
-	//TODO:: replace this gx repository
-	"gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-host"
 	"sync"
 )
 
@@ -16,6 +15,7 @@ type NbsNetwork struct {
 
 var once sync.Once
 var instance *NbsNetwork
+var logger = utils.GetLogInstance()
 
 func GetInstance() Network {
 
@@ -37,7 +37,7 @@ func newNetwork() *NbsNetwork {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Create host  %s\n", newHost.Addrs())
+	logger.Info("Create host  %s\n", newHost.Addrs())
 
 	network.Host = newHost
 

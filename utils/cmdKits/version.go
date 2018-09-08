@@ -1,10 +1,10 @@
 package cmdKits
 
 import (
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"time"
 )
 
 func init() {
@@ -17,14 +17,27 @@ var versionCmd = &cobra.Command{
 	Long:  `show the current software's version.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		request := &pb.CmdRequest{CmdName: cmdVersion}
+		request := &pb.VersionRequest{CmdName: "version"}
 
-		response := DialToCmdService(request)
+		response := versionReq(request)
 		logger.Info(response)
 	},
 }
 
-func ServiceTaskVersion(ctx context.Context, req *pb.CmdRequest) (*pb.CmdResponse, error) {
-	return &pb.CmdResponse{Message: "Current version is  " +
-		utils.GetConfig().CurrentVersion}, nil
+func versionReq(request *pb.VersionRequest) *pb.VersionResponse {
+
+	conn := DialToCmdService()
+
+	defer conn.Close()
+	client := pb.NewVersionTaskClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	response, err := client.SystemVersion(ctx, request)
+	if err != nil {
+		logger.Fatalf("could not greet: %v", err)
+	}
+
+	return response
 }

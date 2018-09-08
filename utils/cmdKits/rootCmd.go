@@ -2,8 +2,10 @@ package cmdKits
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/application"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"os"
 )
 
@@ -32,7 +34,18 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	logger.Info("root command args:", args)
 
-	StartCmdService()
+	application.GetInstance().Start()
 
 	logger.Info("Nbs daemon is ready......")
+}
+
+func DialToCmdService() *grpc.ClientConn {
+	var address = "127.0.0.1:" + utils.GetConfig().CmdServicePort
+
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	if err != nil {
+		logger.Fatalf("did not connect: %v", err)
+		return nil
+	}
+	return conn
 }
