@@ -83,3 +83,7 @@ type Cid struct {
 	Len     int
 	Hash    multihash.Multihash
 }
+
+func (c *Cid) String() string {
+	return ""
+}

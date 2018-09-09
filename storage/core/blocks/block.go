@@ -1,4 +1,4 @@
-package core
+package blocks
 
 import "github.com/NBSChain/go-nbs/storage/merkledag/cid"
 

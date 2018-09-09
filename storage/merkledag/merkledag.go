@@ -9,7 +9,7 @@ import (
 type NodeGetter interface {
 	Get(context.Context, *cid.Cid) (ipld.DagNode, error)
 
-	GetMany(context.Context, []*cid.Cid) <-chan *ipld.NodeOption
+	GetMany(context.Context, []*cid.Cid) <-chan *ipld.DagNode
 }
 
 type LinkGetter interface {
