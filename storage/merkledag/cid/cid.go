@@ -1,6 +1,7 @@
 package cid
 
 import (
+	"encoding/binary"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -77,13 +78,56 @@ var CodecToStr = map[uint64]string{
 }
 
 type Cid struct {
-	Version uint64
-	Code    uint64
-	Type    uint64
-	Len     int
-	Hash    multihash.Multihash
+	Version  uint64
+	Code     uint64
+	HashType uint64
+	HashLen  int
+	Hash     multihash.Multihash
 }
 
 func (c *Cid) String() string {
 	return ""
+}
+
+func (c *Cid) Bytes() []byte {
+	switch c.Version {
+	case 0:
+		return c.bytesV0()
+	case 1:
+		return c.bytesV1()
+	default:
+		panic("not possible to reach this point")
+	}
+}
+
+func (c *Cid) bytesV0() []byte {
+	return []byte(c.Hash)
+}
+
+func (c *Cid) bytesV1() []byte {
+
+	// two 8 bytes (max) numbers plus hash
+	buf := make([]byte, 2*binary.MaxVarintLen64+len(c.Hash))
+
+	n := binary.PutUvarint(buf, c.Version)
+	n += binary.PutUvarint(buf[n:], c.Code)
+
+	cn := copy(buf[n:], c.Hash)
+	if cn != len(c.Hash) {
+		panic("copy hash length is inconsistent")
+	}
+
+	return buf[:n+len(c.Hash)]
+}
+
+func (c *Cid) Sum(data []byte) error {
+
+	hash, err := multihash.Sum(data, c.HashType, c.HashLen)
+	if err != nil {
+		return err
+	}
+
+	c.Hash = hash
+
+	return nil
 }

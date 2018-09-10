@@ -3,12 +3,11 @@ package core
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/core/pb"
+	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/gogo/protobuf/proto"
 	"io"
-	"sync"
-	"time"
 )
 
 const BlockSizeLimit = 1048576 // 1 MB
@@ -41,6 +40,7 @@ type FileImporter interface {
 	NextFile() (FileImporter, error)
 }
 
+//TODO:: add args and optional settings.
 func ImportFile(importer FileImporter) error {
 
 	adder := &Adder{
@@ -66,47 +66,70 @@ type Adder struct {
 
 func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 
-	root, fileSize, err := adder.newImportNode()
+	root := adder.newImportNode(TFile)
+
+	fileSize, err := adder.fullFillLeafNode(root)
 
 	for depth := 1; err == nil; depth++ {
 
-		newRoot, _, _ := adder.newImportNode()
+		newRoot := adder.newImportNode(TFile)
 		newRoot.AddChild(root, fileSize)
 	}
 
 	return adder.AddNodeAndClose(root)
 }
 
-func (adder *Adder) newImportNode() (*ImportNode, int64, error) {
+func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode {
+	node := new(ImportNode)
+
+	node.dag = new(ipld.ProtoDagNode)
+
+	node.format = &unixfs_pb.Data{
+
+		Type:     nodeType,
+		Filesize: 0,
+		DataLen:  0,
+	}
+
+	return node
+}
+
+func (adder *Adder) fullFillLeafNode(node *ImportNode) (int64, error) {
 
 	data, err := adder.importer.NextChunk()
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
 
 	dataLen := int64(len(data))
 	if dataLen > BlockSizeLimit {
-		return nil, 0, fmt.Errorf("object size limit exceeded")
+		return 0, fmt.Errorf("object size limit exceeded")
 	}
 
-	node := new(ImportNode)
-
-	node.format = &unixfs_pb.Data{
-		Type:     TFile,
-		Data:     data,
-		Filesize: dataLen,
-		DataLen:  dataLen,
-	}
+	node.format.Data = data
+	node.format.Filesize = dataLen
+	node.format.DataLen = dataLen
 
 	fileData, err := proto.Marshal(node.format)
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
 
-	node.dag = new(ipld.ProtoDagNode)
 	node.dag.SetData(fileData)
 
-	return node, dataLen, nil
+	return dataLen, nil
+}
+
+func (node *ImportNode) AddChild(child *ImportNode, dataSize int64) error {
+
+	err := node.dag.AddNodeLink("", child.dag)
+	if err != nil {
+		return err
+	}
+
+	node.format.AddBlockSize(dataSize)
+
+	return node.batch.Add(child.dag)
 }
 
 func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
@@ -114,18 +137,7 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 }
 
 type ImportNode struct {
+	batch  *merkledag.Batch
 	dag    *ipld.ProtoDagNode
 	format *unixfs_pb.Data
-}
-
-func (node *ImportNode) AddChild(child *ImportNode, dataSize int64) {
-
-}
-
-type Directory struct {
-	name      string
-	lock      sync.Mutex
-	modTime   time.Time
-	childDirs map[string]*Directory
-	files     map[string]*ipld.DagNode
 }

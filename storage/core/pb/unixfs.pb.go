@@ -50,7 +50,7 @@ func (x Data_DataType) String() string {
 	return proto.EnumName(Data_DataType_name, int32(x))
 }
 func (Data_DataType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_unixfs_7720b98d85f6ec4c, []int{0, 0}
+	return fileDescriptor_unixfs_645c9ddcd88f8062, []int{0, 0}
 }
 
 type Data struct {
@@ -70,7 +70,7 @@ func (m *Data) Reset()         { *m = Data{} }
 func (m *Data) String() string { return proto.CompactTextString(m) }
 func (*Data) ProtoMessage()    {}
 func (*Data) Descriptor() ([]byte, []int) {
-	return fileDescriptor_unixfs_7720b98d85f6ec4c, []int{0}
+	return fileDescriptor_unixfs_645c9ddcd88f8062, []int{0}
 }
 func (m *Data) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Data.Unmarshal(m, b)
@@ -150,7 +150,7 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_unixfs_7720b98d85f6ec4c, []int{1}
+	return fileDescriptor_unixfs_645c9ddcd88f8062, []int{1}
 }
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
@@ -183,9 +183,9 @@ func init() {
 	proto.RegisterEnum("unixfs.pb.Data_DataType", Data_DataType_name, Data_DataType_value)
 }
 
-func init() { proto.RegisterFile("unixfs.proto", fileDescriptor_unixfs_7720b98d85f6ec4c) }
+func init() { proto.RegisterFile("unixfs.proto", fileDescriptor_unixfs_645c9ddcd88f8062) }
 
-var fileDescriptor_unixfs_7720b98d85f6ec4c = []byte{
+var fileDescriptor_unixfs_645c9ddcd88f8062 = []byte{
 	// 271 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xbd, 0x4e, 0xc3, 0x30,
 	0x14, 0x85, 0x71, 0x9d, 0xe6, 0xe7, 0x12, 0x90, 0x75, 0x07, 0x64, 0x31, 0xa0, 0x28, 0x03, 0xca,

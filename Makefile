@@ -17,6 +17,10 @@ deps:
 
 dir := utils/cmdKits/pb
 dir2 := storage/core/pb
+dir3 := storage/merkledag/pb
+
 pbs:
 	protoc -I=$(dir) --go_out=plugins=grpc:${dir} ${dir}/*.proto
 	protoc -I=$(dir2) --go_out=plugins=grpc:${dir2} ${dir2}/*.proto
+	protoc -I=$(dir3) -I=$(GOPATH)/src -I=$(GOPATH)/src/github.com/gogo/protobuf/protobuf \
+	--go_out=plugins=grpc:${dir3} ${dir3}/*.proto
