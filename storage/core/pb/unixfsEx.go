@@ -1,5 +1,7 @@
 package unixfs_pb
 
+//TODO::change syntax = "proto2"; -->>syntax = "proto3";
+
 import "github.com/golang/protobuf/proto"
 
 func (format *Data) AddBlockSize(size int64) {

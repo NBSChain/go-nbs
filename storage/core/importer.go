@@ -131,10 +131,17 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 		return nil, err
 	}
 
+	logger.Info("start leaf node->", root.dag.String())
+
 	for depth := 1; adder.hasNext(); depth++ {
 
 		newRoot := adder.newImportNode(TFile)
+
+		logger.Info("===1===depth: ", depth, " newRoot->", newRoot.dag.String())
+
 		newRoot.AddChild(adder, root, fileSize)
+
+		logger.Info("===2===depth: ", depth, " newRoot->", newRoot.dag.String())
 
 		fileSize, err = adder.fillNodeRec(newRoot, depth)
 		if err != nil {
@@ -142,6 +149,8 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 		}
 
 		root = newRoot
+
+		logger.Info("root->", root.dag.String())
 	}
 
 	return adder.AddNodeAndClose(root)
@@ -156,6 +165,8 @@ func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode 
 	node.format = &unixfs_pb.Data{
 		Type: &nodeType,
 	}
+
+	node.format.Filesize = proto.Uint64(node.format.GetFilesize())
 
 	return node
 }
@@ -263,11 +274,16 @@ type ImportNode struct {
 func (node *ImportNode) AddChild(adder *Adder, child *ImportNode, dataSize int64) error {
 
 	err := node.dag.AddNodeLink("", child.dag)
+
 	if err != nil {
 		return err
 	}
 
+	logger.Info("===3=== newRoot->", node.dag.String())
+
 	node.format.AddBlockSize(dataSize)
+
+	logger.Info("===4=== newRoot->", node.dag.String())
 
 	return adder.batch.Add(child.dag)
 }

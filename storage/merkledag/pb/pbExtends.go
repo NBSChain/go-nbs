@@ -28,13 +28,12 @@ func (m *PBLink) Size() (n int) {
 		l = len(m.Hash)
 		n += 1 + l + sovMerkledag(uint64(l))
 	}
-	if m.Name != "" {
-		l = len(m.Name)
-		n += 1 + l + sovMerkledag(uint64(l))
-	}
-	if m.Tsize != 0 {
-		n += 1 + sovMerkledag(uint64(m.Tsize))
-	}
+
+	l = len(m.Name)
+	n += 1 + l + sovMerkledag(uint64(l))
+
+	n += 1 + sovMerkledag(uint64(m.Tsize))
+
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -80,17 +79,16 @@ func (m *PBLink) MarshalTo(data []byte) (n int, err error) {
 		i = encodeVarintMerkledag(data, i, uint64(len(m.Hash)))
 		i += copy(data[i:], m.Hash)
 	}
-	if m.Name != "" {
-		data[i] = 0x12
-		i++
-		i = encodeVarintMerkledag(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	if m.Tsize != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintMerkledag(data, i, uint64(m.Tsize))
-	}
+
+	data[i] = 0x12
+	i++
+	i = encodeVarintMerkledag(data, i, uint64(len(m.Name)))
+	i += copy(data[i:], m.Name)
+
+	data[i] = 0x18
+	i++
+	i = encodeVarintMerkledag(data, i, uint64(m.Tsize))
+
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
