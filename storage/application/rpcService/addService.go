@@ -25,6 +25,11 @@ type addService struct {
 	fileAddTask map[string]*pb.AddRequest
 }
 
+/*****************************************************************
+*
+*		service callback function.
+*
+*****************************************************************/
 func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.AddResponse, error) {
 
 	switch request.FileType {
@@ -121,7 +126,6 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 
 	return err
 }
-
 func (service *addService) appendTask(sessionId string, request *pb.AddRequest) {
 
 	service.taskLock.Lock()
@@ -136,6 +140,11 @@ func (service *addService) removeTask(sessionId string) {
 	delete(service.fileAddTask, sessionId)
 }
 
+/*****************************************************************
+*
+*		simple file reader implement
+*
+*****************************************************************/
 type fileReader struct {
 	reader io.Reader
 }
@@ -147,6 +156,11 @@ func (r *fileReader) Close() error {
 	return nil
 }
 
+/*****************************************************************
+*
+*		stream reader implement
+*
+*****************************************************************/
 type streamReader struct {
 	stream    pb.AddTask_TransLargeFileServer
 	sessionId string
@@ -213,6 +227,11 @@ func (s *streamReader) Close() error {
 	return nil
 }
 
+/*****************************************************************
+*
+*		rpc file importer tool.
+*
+*****************************************************************/
 type RpcFileImporter struct {
 	reader       io.ReadCloser
 	fileName     string
