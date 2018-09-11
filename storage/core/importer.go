@@ -45,6 +45,7 @@ func ImportFile(importer FileImporter) error {
 
 	adder := &Adder{
 		importer: importer,
+		batch:    merkledag.NewBatch(),
 	}
 
 	rootNode, err := adder.buildNodeLayout()
@@ -52,9 +53,11 @@ func ImportFile(importer FileImporter) error {
 		return err
 	}
 
-	importer.Close()
+	cidStr := rootNode.String()
 
-	logger.Info(rootNode)
+	logger.Info("rootNode:->", cidStr)
+
+	importer.Close()
 
 	return nil
 }
@@ -71,6 +74,7 @@ type Adder struct {
 	rootDir  *Directory
 	importer FileImporter
 	nextData []byte
+	batch    *merkledag.Batch
 }
 
 /*******************************************************************************
@@ -130,7 +134,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 	for depth := 1; adder.hasNext(); depth++ {
 
 		newRoot := adder.newImportNode(TFile)
-		newRoot.AddChild(root, fileSize)
+		newRoot.AddChild(adder, root, fileSize)
 
 		fileSize, err = adder.fillNodeRec(newRoot, depth)
 		if err != nil {
@@ -209,7 +213,12 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 			}
 		}
 
-		err = node.AddChild(childNode, childFileSize)
+		err = node.AddChild(adder, childNode, childFileSize)
+		if err != nil {
+			return 0, err
+		}
+
+		err = adder.batch.Add(childNode.dag)
 		if err != nil {
 			return 0, err
 		}
@@ -228,12 +237,12 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 	dagNode := node.dag
 
-	err := node.batch.Add(dagNode)
+	err := adder.batch.Add(dagNode)
 	if err != nil {
 		return nil, err
 	}
 
-	err = node.batch.Commit()
+	err = adder.batch.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -248,12 +257,11 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 *****************************************************************/
 
 type ImportNode struct {
-	batch  *merkledag.Batch
 	dag    *ipld.ProtoDagNode
 	format *unixfs_pb.Data
 }
 
-func (node *ImportNode) AddChild(child *ImportNode, dataSize int64) error {
+func (node *ImportNode) AddChild(adder *Adder, child *ImportNode, dataSize int64) error {
 
 	err := node.dag.AddNodeLink("", child.dag)
 	if err != nil {
@@ -262,7 +270,7 @@ func (node *ImportNode) AddChild(child *ImportNode, dataSize int64) error {
 
 	node.format.AddBlockSize(dataSize)
 
-	return node.batch.Add(child.dag)
+	return adder.batch.Add(child.dag)
 }
 
 func (node *ImportNode) NumChildren() int {

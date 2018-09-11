@@ -8,6 +8,18 @@ import (
 
 var ParallelBatchCommits = runtime.NumCPU() * 2
 
+func NewBatch() *Batch {
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	return &Batch{
+		ctx:           ctx,
+		cancel:        cancel,
+		commitResults: make(chan error, ParallelBatchCommits),
+		MaxSize:       8 << 20,
+		MaxNodes:      128,
+	}
+}
+
 type Batch struct {
 	ctx    context.Context
 	cancel func()

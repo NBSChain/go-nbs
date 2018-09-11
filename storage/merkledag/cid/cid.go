@@ -2,6 +2,7 @@ package cid
 
 import (
 	"encoding/binary"
+	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multihash"
 )
 
@@ -86,7 +87,20 @@ type Cid struct {
 }
 
 func (c *Cid) String() string {
-	return ""
+
+	switch c.Version {
+	case 0:
+		return c.Hash.B58String()
+	case 1:
+		mbstr, err := multibase.Encode(multibase.Base58BTC, c.bytesV1())
+		if err != nil {
+			panic("should not error with hardcoded mbase: " + err.Error())
+		}
+
+		return mbstr
+	default:
+		panic("not possible to reach this point")
+	}
 }
 
 func (c *Cid) Bytes() []byte {
