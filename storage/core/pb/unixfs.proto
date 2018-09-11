@@ -1,27 +1,26 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package unixfs.pb;
 
 message Data {
-
     enum DataType {
-        Raw         = 0;
-        Directory   = 1;
-        File        = 2;
-        Metadata    = 3;
-        Symlink     = 4;
-        HAMTShard   = 5;
+        Raw = 0;
+        Directory = 1;
+        File = 2;
+        Metadata = 3;
+        Symlink = 4;
+        HAMTShard = 5;
     }
 
-    DataType    Type            = 1;
-    bytes       Data            = 2;
-    int64       DataLen         = 3;
-    int64       filesize        = 4;
-    int32       hashType        = 5;
-    int64       fanout          = 6;
-    repeated int64 blocksizes   = 7;
+    required DataType Type = 1;
+    optional bytes Data = 2;
+    optional uint64 filesize = 3;
+    repeated uint64 blocksizes = 4;
+
+    optional uint64 hashType = 5;
+    optional uint64 fanout = 6;
 }
 
 message Metadata {
-    string      MimeType        = 1;
+    optional string MimeType = 1;
 }

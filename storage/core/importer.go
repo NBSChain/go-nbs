@@ -154,9 +154,7 @@ func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode 
 	node.dag = new(ipld.ProtoDagNode)
 
 	node.format = &unixfs_pb.Data{
-		Type:     nodeType,
-		Filesize: 0,
-		DataLen:  0,
+		Type: &nodeType,
 	}
 
 	return node
@@ -171,9 +169,9 @@ func (adder *Adder) leafNodeWithData(node *ImportNode) (int64, error) {
 	}()
 
 	dataLen := int64(len(data))
+	node.format.Filesize = proto.Uint64(uint64(
+		int64(node.format.GetFilesize()) + int64(len(data)-len(node.format.GetData()))))
 	node.format.Data = data
-	node.format.Filesize = dataLen
-	node.format.DataLen = dataLen
 
 	err := node.Commit()
 
@@ -235,6 +233,7 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 }
 
 func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
+
 	dagNode := node.dag
 
 	err := adder.batch.Add(dagNode)
@@ -278,7 +277,7 @@ func (node *ImportNode) NumChildren() int {
 }
 
 func (node *ImportNode) FileSize() int64 {
-	return node.format.Filesize
+	return int64(node.format.GetFilesize())
 }
 
 func (node *ImportNode) Commit() error {
