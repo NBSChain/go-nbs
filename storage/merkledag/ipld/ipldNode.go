@@ -53,11 +53,10 @@ func (ls LinkSlice) Swap(a, b int)      { ls[a], ls[b] = ls[b], ls[a] }
 func (ls LinkSlice) Less(a, b int) bool { return ls[a].Name < ls[b].Name }
 
 type ProtoDagNode struct {
-	links   []*DagLink
-	data    []byte
-	encoded []byte
-	cached  *cid.Cid
-
+	links      []*DagLink
+	data       []byte
+	encoded    []byte
+	cached     *cid.Cid
 	cidVersion int
 }
 
@@ -85,12 +84,6 @@ func (node *ProtoDagNode) RawData() []byte {
 
 func (node *ProtoDagNode) Cid() *cid.Cid {
 	return nil
-}
-
-func (node *ProtoDagNode) Loggable() map[string]interface{} {
-	return map[string]interface{}{
-		"node": node.String(),
-	}
 }
 
 func (node *ProtoDagNode) String() string {
@@ -229,6 +222,7 @@ func (node *ProtoDagNode) sumCached() error {
 
 	//TODO::Use default cid0 now.
 	if node.cached == nil {
+
 		node.cached = &cid.Cid{
 			Version:  0,
 			Code:     cid.DagProtobuf,

@@ -226,7 +226,11 @@ func (importer *RpcFileImporter) NextChunk() ([]byte, error) {
 	chunk := make([]byte, importer.splitterSize)
 	realSize, err := importer.reader.Read(chunk)
 
-	return chunk[:realSize], err
+	if realSize > 0 {
+		return chunk[:realSize], nil
+	} else {
+		return nil, err
+	}
 }
 
 func (importer *RpcFileImporter) FileName() string {

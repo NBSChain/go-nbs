@@ -6,7 +6,6 @@ type Block interface {
 	RawData() []byte
 	Cid() *cid.Cid
 	String() string
-	Loggable() map[string]interface{}
 }
 
 type BasicBlock struct {

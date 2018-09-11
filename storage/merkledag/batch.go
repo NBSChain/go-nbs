@@ -115,3 +115,28 @@ loop:
 	t.size = 0
 	t.activeCommits = 0
 }
+
+func (t *Batch) Commit() error {
+	if t.err != nil {
+		return t.err
+	}
+
+	t.asyncCommit()
+
+loop:
+	for t.activeCommits > 0 {
+		select {
+		case err := <-t.commitResults:
+			t.activeCommits--
+			if err != nil {
+				t.setError(err)
+				break loop
+			}
+		case <-t.ctx.Done():
+			t.setError(t.ctx.Err())
+			break loop
+		}
+	}
+
+	return t.err
+}
