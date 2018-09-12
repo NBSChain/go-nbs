@@ -8,6 +8,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/golang/protobuf/proto"
 	"io"
+	"strconv"
 )
 
 /*****************************************************************
@@ -23,6 +24,14 @@ type Adder struct {
 	importer FileImporter
 	nextData []byte
 	batch    *merkledag.Batch
+	Out      chan interface{}
+}
+
+type AddedObject struct {
+	Name  string
+	Hash  string `json:",omitempty"`
+	Bytes int64  `json:",omitempty"`
+	Size  string `json:",omitempty"`
 }
 
 /*******************************************************************************
@@ -152,7 +161,9 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 		childNode := adder.newImportNode(TFile)
 
 		if depth == 1 {
+
 			childFileSize, err = adder.leafNodeWithData(childNode)
+
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -160,7 +171,9 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 					return 0, err
 				}
 			}
+
 		} else {
+
 			childFileSize, err = adder.fillNodeRec(childNode, depth-1)
 			if err != nil {
 				return 0, err
@@ -176,6 +189,7 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
+
 	}
 
 	resultFileSize := node.FileSize()
@@ -206,8 +220,31 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 }
 
 func (adder *Adder) addNode(node ipld.DagNode, path string) error {
-	if path == "" {
 
+	if path == "" {
+		path = node.String()
 	}
+
+	if err := adder.rootDir.PutNode(path, node); err != nil {
+		return err
+	}
+
+	return adder.OutputDagNode(path, node)
+}
+
+func (adder *Adder) OutputDagNode(name string, dagNode ipld.DagNode) error {
+
+	s, err := dagNode.Size()
+
+	if err != nil {
+		return err
+	}
+
+	adder.Out <- &AddedObject{
+		Hash: dagNode.String(),
+		Name: name,
+		Size: strconv.FormatInt(s, 10),
+	}
+
 	return nil
 }

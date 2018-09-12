@@ -13,7 +13,7 @@ const BlockSizeLimit = 1048576 // 1 MB
 
 const roughLinkBlockSize = 1 << 13 // 8KB
 const roughLinkSize = 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
-
+const adderOutChanSize = 8
 const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
 
 const (
@@ -47,6 +47,8 @@ func ImportFile(importer FileImporter) error {
 	adder := &Adder{
 		importer: importer,
 		batch:    merkledag.NewBatch(),
+		rootDir:  NewDir(),
+		Out:      make(chan interface{}, adderOutChanSize),
 	}
 
 	rootNode, err := adder.buildNodeLayout()

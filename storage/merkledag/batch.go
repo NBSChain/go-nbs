@@ -93,7 +93,7 @@ func (t *Batch) asyncCommit() {
 
 		dagService := GetInstance()
 		select {
-		case result <- dagService.AddMany(ctx, b):
+		case result <- dagService.AddMany(b):
 		case <-ctx.Done():
 		}
 	}(t.ctx, t.nodes, t.commitResults)

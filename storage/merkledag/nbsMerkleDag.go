@@ -35,21 +35,21 @@ func newNbsDagService() (*NbsDAGService, error) {
 	return &NbsDAGService{}, nil
 }
 
-func (service *NbsDAGService) Get(context.Context, *cid.Cid) (ipld.DagNode, error) {
+func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
 	return nil, nil
 }
-func (service *NbsDAGService) GetMany(context.Context, []*cid.Cid) <-chan *ipld.DagNode {
+func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
-func (service *NbsDAGService) Add(context.Context, ipld.DagNode) error {
+func (service *NbsDAGService) Add(ipld.DagNode) error {
 	return nil
 }
-func (service *NbsDAGService) Remove(context.Context, *cid.Cid) error {
+func (service *NbsDAGService) Remove(*cid.Cid) error {
 	return nil
 }
-func (service *NbsDAGService) AddMany(context.Context, []ipld.DagNode) error {
+func (service *NbsDAGService) AddMany([]ipld.DagNode) error {
 	return nil
 }
-func (service *NbsDAGService) RemoveMany(context.Context, []*cid.Cid) error {
+func (service *NbsDAGService) RemoveMany([]*cid.Cid) error {
 	return nil
 }

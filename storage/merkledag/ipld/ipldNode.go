@@ -261,3 +261,10 @@ func (node *ProtoDagNode) AddRawLink(name string, l *DagLink) error {
 
 	return nil
 }
+
+func NodeWithData(d []byte) *ProtoDagNode {
+
+	return &ProtoDagNode{
+		data: d,
+	}
+}
