@@ -166,8 +166,6 @@ func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode 
 		Type: &nodeType,
 	}
 
-	node.format.Filesize = proto.Uint64(node.format.GetFilesize())
-
 	return node
 }
 
@@ -180,8 +178,7 @@ func (adder *Adder) leafNodeWithData(node *ImportNode) (int64, error) {
 	}()
 
 	dataLen := int64(len(data))
-	node.format.Filesize = proto.Uint64(uint64(
-		int64(node.format.GetFilesize()) + int64(len(data)-len(node.format.GetData()))))
+	node.format.Filesize = proto.Uint64(uint64(len(data)))
 	node.format.Data = data
 
 	err := node.Commit()
