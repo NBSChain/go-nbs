@@ -1,4 +1,4 @@
-package rpcService
+package rpcServiceImpl
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
+	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/golang/protobuf/proto"
 	"io"
 	"strconv"
@@ -24,14 +25,6 @@ type Adder struct {
 	importer FileImporter
 	nextData []byte
 	batch    *merkledag.Batch
-	Out      chan interface{}
-}
-
-type AddedObject struct {
-	Name  string
-	Hash  string `json:",omitempty"`
-	Bytes int64  `json:",omitempty"`
-	Size  string `json:",omitempty"`
 }
 
 /*******************************************************************************
@@ -229,7 +222,9 @@ func (adder *Adder) addNode(node ipld.DagNode, path string) error {
 		return err
 	}
 
-	return adder.OutputDagNode(path, node)
+	go adder.OutputDagNode(path, node)
+
+	return nil
 }
 
 func (adder *Adder) OutputDagNode(name string, dagNode ipld.DagNode) error {
@@ -240,7 +235,7 @@ func (adder *Adder) OutputDagNode(name string, dagNode ipld.DagNode) error {
 		return err
 	}
 
-	adder.Out <- &AddedObject{
+	adder.importer.ResultCh() <- &pb.AddResponse{
 		Hash: dagNode.String(),
 		Name: name,
 		Size: strconv.FormatInt(s, 10),

@@ -87,7 +87,7 @@ func addFileCmd(cmd *cobra.Command, args []string) {
 
 			defer file.Close()
 
-			logger.Info("Add file success......", response.Message)
+			logger.Info("Add file success......", response)
 		}
 	}
 }

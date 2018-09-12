@@ -1,10 +1,11 @@
-package rpcService
+package rpcServiceImpl
 
 import (
 	"github.com/NBSChain/go-nbs/storage/core/pb"
 	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/gogo/protobuf/proto"
 	"io"
 )
@@ -39,6 +40,8 @@ type FileImporter interface {
 	IsDirectory() bool
 
 	NextFile() (FileImporter, error)
+
+	ResultCh() chan *pb.AddResponse
 }
 
 //TODO:: add args and optional settings.
@@ -48,7 +51,6 @@ func ImportFile(importer FileImporter) error {
 		importer: importer,
 		batch:    merkledag.NewBatch(),
 		rootDir:  NewDir(),
-		Out:      make(chan interface{}, adderOutChanSize),
 	}
 
 	rootNode, err := adder.buildNodeLayout()
