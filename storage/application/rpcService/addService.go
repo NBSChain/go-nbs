@@ -2,10 +2,11 @@ package rpcService
 
 import (
 	"bytes"
+	"github.com/NBSChain/go-nbs/storage/core/rpcService"
+
 	//"bytes"
 	"errors"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/core"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"golang.org/x/net/context"
@@ -65,7 +66,7 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 				isDirectory:  false,
 			}
 
-			err := core.ImportFile(importer)
+			err := rpcService.ImportFile(importer)
 
 			if err != nil {
 				return nil, err
@@ -122,7 +123,7 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 		isDirectory:  false,
 	}
 
-	err := core.ImportFile(importer)
+	err := rpcService.ImportFile(importer)
 
 	return err
 }
@@ -264,7 +265,7 @@ func (importer *RpcFileImporter) IsDirectory() bool {
 	return importer.isDirectory
 }
 
-func (importer *RpcFileImporter) NextFile() (core.FileImporter, error) {
+func (importer *RpcFileImporter) NextFile() (rpcService.FileImporter, error) {
 	return nil, io.EOF
 }
 

@@ -1,4 +1,4 @@
-package core
+package rpcService
 
 import (
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
