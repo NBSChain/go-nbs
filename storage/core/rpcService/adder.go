@@ -206,6 +206,8 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 }
 
 func (adder *Adder) addNode(node ipld.DagNode, path string) error {
+	if path == "" {
 
+	}
 	return nil
 }
