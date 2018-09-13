@@ -276,6 +276,7 @@ func NodeWithData(d []byte) *ProtoDagNode {
 *****************************************************************/
 func (node *ProtoDagNode) AddChild(name string, child DagNode) error {
 
+	//TODO:: really need to remove and add ?
 	node.RemoveChild(name)
 
 	return node.AddNodeLink(name, child)
@@ -294,5 +295,5 @@ func (node *ProtoDagNode) RemoveChild(string) error {
 }
 
 func (node *ProtoDagNode) GetNode() (DagNode, error) {
-	return nil, nil
+	return node, nil
 }

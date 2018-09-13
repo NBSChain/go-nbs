@@ -62,6 +62,10 @@ func ImportFile(importer FileImporter) error {
 
 	adder.addNode(rootNode, importer.FileName())
 
+	adder.Finalize()
+
+	adder.PinRoot()
+
 	importer.Close()
 
 	return nil

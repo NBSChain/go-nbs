@@ -19,7 +19,6 @@ import (
 *****************************************************************/
 
 type Adder struct {
-	rootNode ipld.DagNode
 	tempRoot *cid.Cid
 	rootDir  *Directory
 	importer FileImporter
@@ -241,5 +240,21 @@ func (adder *Adder) OutputDagNode(name string, dagNode ipld.DagNode) error {
 		Size: strconv.FormatInt(s, 10),
 	}
 
+	return nil
+}
+
+func (adder *Adder) Finalize() (ipld.DagNode, error) {
+
+	//TODO:: Maybe need to flush-->err := adder.rootDir.Flush()
+
+	//TODO:: err = adder.outputDirs(name, root)
+
+	//TODO:: republish the node to network.
+
+	return adder.rootDir.dirIO.GetNode()
+}
+
+func (adder *Adder) PinRoot() error {
+	//TODO:: pin it.
 	return nil
 }
