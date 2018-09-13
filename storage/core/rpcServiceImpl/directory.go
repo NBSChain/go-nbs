@@ -12,12 +12,18 @@ import (
 	"time"
 )
 
+/*****************************************************************
+*
+*		Directory
+*
+*****************************************************************/
 type Directory struct {
 	name      string
 	lock      sync.Mutex
 	modTime   time.Time
 	childDirs map[string]*Directory
 	files     map[string]*ipld.DagNode
+	dirIO     DirectoryIO
 }
 
 func NewDir() *Directory {
@@ -29,9 +35,15 @@ func NewDir() *Directory {
 		childDirs: make(map[string]*Directory),
 		files:     make(map[string]*ipld.DagNode),
 		modTime:   time.Now(),
+		dirIO:     dagNode,
 	}
 }
 
+/*****************************************************************
+*
+*		class functions
+*
+*****************************************************************/
 func (d *Directory) PutNode(filePath string, node ipld.DagNode) error {
 
 	parentDir, fileName := path.Split(filePath)
@@ -68,9 +80,28 @@ func (d *Directory) AddChild(fileName string, node ipld.DagNode) error {
 	dagService := merkledag.GetInstance()
 	dagService.Add(node)
 
-	//TODO:: AddUnixFSChild
+	d.dirIO.AddChild(fileName, node)
 
 	d.modTime = time.Now()
 
 	return nil
+}
+
+/*****************************************************************
+*
+*		class functions
+*
+*****************************************************************/
+type DirectoryIO interface {
+	AddChild(string, ipld.DagNode) error
+
+	ForEachLink(func(*ipld.DagLink) error) error
+
+	Links() []*ipld.DagLink
+
+	Find(string) (ipld.DagNode, error)
+
+	RemoveChild(string) error
+
+	GetNode() (ipld.DagNode, error)
 }

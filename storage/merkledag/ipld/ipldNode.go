@@ -268,3 +268,31 @@ func NodeWithData(d []byte) *ProtoDagNode {
 		data: d,
 	}
 }
+
+/*****************************************************************
+*
+*		ProtoDagNode implements.
+*
+*****************************************************************/
+func (node *ProtoDagNode) AddChild(name string, child DagNode) error {
+
+	node.RemoveChild(name)
+
+	return node.AddNodeLink(name, child)
+}
+
+func (node *ProtoDagNode) ForEachLink(func(*DagLink) error) error {
+	return nil
+}
+
+func (node *ProtoDagNode) Find(string) (DagNode, error) {
+	return nil, nil
+}
+
+func (node *ProtoDagNode) RemoveChild(string) error {
+	return nil
+}
+
+func (node *ProtoDagNode) GetNode() (DagNode, error) {
+	return nil, nil
+}
