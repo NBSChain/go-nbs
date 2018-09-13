@@ -40,6 +40,20 @@ type DagNode interface {
 *
 *****************************************************************/
 
+var v0Cid = &cid.Cid{
+	Version:  0,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+
+var v1Cid = &cid.Cid{
+	Version:  1,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+
 type DagLink struct {
 	Name string // utf8
 	Size int64
@@ -53,11 +67,10 @@ func (ls LinkSlice) Swap(a, b int)      { ls[a], ls[b] = ls[b], ls[a] }
 func (ls LinkSlice) Less(a, b int) bool { return ls[a].Name < ls[b].Name }
 
 type ProtoDagNode struct {
-	links      []*DagLink
-	data       []byte
-	encoded    []byte
-	cached     *cid.Cid
-	cidVersion int
+	links   []*DagLink
+	data    []byte
+	encoded []byte
+	cached  *cid.Cid
 }
 
 func MakeLink(n DagNode) (*DagLink, error) {
@@ -79,17 +92,17 @@ func MakeLink(n DagNode) (*DagLink, error) {
 *
 *****************************************************************/
 func (node *ProtoDagNode) RawData() []byte {
-	node.EncodeProtobuf(false)
+	node.EncodeProtoBuf(false)
 	return node.encoded
 }
 
 func (node *ProtoDagNode) Cid() *cid.Cid {
 
-	if node.encoded != nil && node.cached != nil {
+	if node.encoded != nil && node.cached.Hash != nil {
 		return node.cached
 	}
 
-	err := node.EncodeProtobuf(false)
+	err := node.EncodeProtoBuf(false)
 	if err != nil {
 		err = fmt.Errorf("invalid CID of length %d: %x: %v", len(node.RawData()), node.RawData(), err)
 		panic(err)
@@ -134,7 +147,7 @@ func (node *ProtoDagNode) Links() []*DagLink {
 
 func (node *ProtoDagNode) Size() (int64, error) {
 
-	err := node.EncodeProtobuf(false)
+	err := node.EncodeProtoBuf(false)
 	if err != nil {
 		return 0, err
 	}
@@ -155,7 +168,7 @@ func (node *ProtoDagNode) Size() (int64, error) {
 *****************************************************************/
 func (node *ProtoDagNode) SetData(d []byte) {
 	node.encoded = nil
-	node.cached = nil
+	node.cached.Hash = nil
 	node.data = d
 }
 
@@ -174,30 +187,18 @@ func (node *ProtoDagNode) AddNodeLink(name string, that DagNode) error {
 	return nil
 }
 
-func (node *ProtoDagNode) EncodeProtobuf(force bool) error {
+func (node *ProtoDagNode) EncodeProtoBuf(force bool) (err error) {
 
-	sort.Stable(LinkSlice(node.links))
-
-	if node.encoded == nil || force {
-
-		node.cached = nil
-		var err error
-
-		node.encoded, err = node.Marshal()
-		if err != nil {
-			return err
-		}
-
+	if node.encoded != nil && !force {
+		return nil
 	}
 
-	if node.cached == nil {
-		err := node.sumCached()
-		if err != nil {
-			return err
-		}
+	node.encoded, err = node.Marshal()
+	if err != nil {
+		return err
 	}
 
-	return nil
+	return node.cached.Sum(node.encoded)
 }
 
 func (node *ProtoDagNode) Marshal() ([]byte, error) {
@@ -233,21 +234,6 @@ func (node *ProtoDagNode) getPBNode() *pb.PBNode {
 		pbn.Data = node.data
 	}
 	return pbn
-}
-
-func (node *ProtoDagNode) sumCached() error {
-
-	//TODO::Use default cid0 now.
-	if node.cached == nil {
-		node.cached = &cid.Cid{
-			Version:  0,
-			Code:     cid.DagProtobuf,
-			HashType: multihash.SHA2_256,
-			HashLen:  -1,
-		}
-	}
-
-	return node.cached.Sum(node.encoded)
 }
 
 func (node *ProtoDagNode) AddRawLink(name string, l *DagLink) error {

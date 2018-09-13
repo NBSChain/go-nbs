@@ -60,7 +60,7 @@ func ImportFile(importer FileImporter) error {
 
 	logger.Info("rootNode:->", rootNode.String())
 
-	adder.addNode(rootNode, importer.FileName())
+	adder.AddNode(rootNode, importer.FileName())
 
 	adder.Finalize()
 

@@ -47,6 +47,7 @@ func newLogIns() *logging.Logger {
 	formattedCmdBackend := logging.NewBackendFormatter(cmdBackend, cmdFormat)
 
 	logging.SetBackend(leveledFileBackend, formattedCmdBackend)
+	//logging.SetLevel(logging.DEBUG, "")
 
 	return log
 }
