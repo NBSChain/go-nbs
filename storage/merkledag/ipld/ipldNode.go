@@ -46,6 +46,19 @@ type DagLink struct {
 	Cid  *cid.Cid
 }
 
+var v0Cid = &cid.Cid{
+	Version:  0,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+var v1Cid = &cid.Cid{
+	Version:  1,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+
 type LinkSlice []*DagLink
 
 func (ls LinkSlice) Len() int           { return len(ls) }
@@ -79,7 +92,7 @@ func MakeLink(n DagNode) (*DagLink, error) {
 *
 *****************************************************************/
 func (node *ProtoDagNode) RawData() []byte {
-	node.EncodeProtobuf(false)
+	node.EncodeProtoBuf(false)
 	return node.encoded
 }
 
@@ -89,7 +102,7 @@ func (node *ProtoDagNode) Cid() *cid.Cid {
 		return node.cached
 	}
 
-	err := node.EncodeProtobuf(false)
+	err := node.EncodeProtoBuf(false)
 	if err != nil {
 		err = fmt.Errorf("invalid CID of length %d: %x: %v", len(node.RawData()), node.RawData(), err)
 		panic(err)
@@ -134,7 +147,7 @@ func (node *ProtoDagNode) Links() []*DagLink {
 
 func (node *ProtoDagNode) Size() (int64, error) {
 
-	err := node.EncodeProtobuf(false)
+	err := node.EncodeProtoBuf(false)
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +187,7 @@ func (node *ProtoDagNode) AddNodeLink(name string, that DagNode) error {
 	return nil
 }
 
-func (node *ProtoDagNode) EncodeProtobuf(force bool) error {
+func (node *ProtoDagNode) EncodeProtoBuf(force bool) error {
 
 	sort.Stable(LinkSlice(node.links))
 

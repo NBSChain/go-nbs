@@ -77,7 +77,7 @@ func (d *Directory) AddChild(fileName string, node ipld.DagNode) error {
 
 	//TODO:: sync node cache
 
-	dagService := merkledag.GetInstance()
+	dagService := merkledag.GetDagInstance()
 	dagService.Add(node)
 
 	d.dirIO.AddChild(fileName, node)

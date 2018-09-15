@@ -13,7 +13,7 @@ var once sync.Once
 var parentContext context.Context
 var logger = utils.GetLogInstance()
 
-func GetInstance() DAGService {
+func GetDagInstance() DAGService {
 	once.Do(func() {
 		parentContext = context.Background()
 		router, err := newNbsDagService()

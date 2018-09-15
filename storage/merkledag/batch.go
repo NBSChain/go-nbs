@@ -2,153 +2,94 @@ package merkledag
 
 import (
 	"context"
+	"errors"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
-	"runtime"
+	"time"
 )
 
-var ParallelBatchCommits = runtime.NumCPU() * 2
+const MaxNodes = 2 << 7
+const MaxTimeToWaitInSeconds = 1
 
 func NewBatch() *Batch {
 
 	ctx, cancel := context.WithCancel(context.TODO())
-	return &Batch{
-		ctx:           ctx,
-		cancel:        cancel,
-		commitResults: make(chan error, ParallelBatchCommits),
-		MaxSize:       8 << 20,
-		MaxNodes:      128,
+	batch := &Batch{
+		ctx:    ctx,
+		cancel: cancel,
+		nodes:  make(chan ipld.DagNode, MaxNodes),
 	}
+
+	go batch.run()
+
+	return batch
 }
 
 type Batch struct {
-	ctx    context.Context
-	cancel func()
-
+	ctx           context.Context
+	cancel        func()
 	activeCommits int
-	err           error
-	commitResults chan error
-
-	nodes []ipld.DagNode
-	size  int
-
-	MaxSize  int
-	MaxNodes int
+	commitResult  error
+	nodes         chan ipld.DagNode
 }
 
-func (t *Batch) Add(nd ipld.DagNode) error {
-	if t.err != nil {
-		return t.err
-	}
+func (batch *Batch) run() {
 
-	t.processResults()
+	dagService := GetDagInstance()
 
-	if t.err != nil {
-		return t.err
-	}
-
-	t.nodes = append(t.nodes, nd)
-	t.size += len(nd.RawData())
-
-	if t.size > t.MaxSize || len(t.nodes) > t.MaxNodes {
-		t.asyncCommit()
-	}
-	return t.err
-}
-
-func (t *Batch) processResults() {
-	for t.activeCommits > 0 {
-		select {
-		case err := <-t.commitResults:
-			t.activeCommits--
-			if err != nil {
-				t.setError(err)
-				return
-			}
-		default:
-			return
-		}
-	}
-}
-
-func (t *Batch) asyncCommit() {
-	numBlocks := len(t.nodes)
-	if numBlocks == 0 {
-		return
-	}
-	if t.activeCommits >= ParallelBatchCommits {
-		select {
-		case err := <-t.commitResults:
-			t.activeCommits--
-
-			if err != nil {
-				t.setError(err)
-				return
-			}
-		case <-t.ctx.Done():
-			t.setError(t.ctx.Err())
-			return
-		}
-	}
-	go func(ctx context.Context, b []ipld.DagNode, result chan error) {
-
-		dagService := GetInstance()
-		select {
-		case result <- dagService.AddMany(b):
-		case <-ctx.Done():
-		}
-	}(t.ctx, t.nodes, t.commitResults)
-
-	t.activeCommits++
-	t.nodes = make([]ipld.DagNode, 0, numBlocks)
-	t.size = 0
-
-	return
-}
-
-func (t *Batch) setError(err error) {
-	t.err = err
-
-	t.cancel()
-
-	// Drain as much as we can without blocking.
-loop:
 	for {
 		select {
-		case <-t.commitResults:
-		default:
-			break loop
+
+		case <-batch.ctx.Done():
+			batch.commitResult = batch.ctx.Err()
+			break
+
+		case node := <-batch.nodes:
+			err := dagService.Add(node)
+			if err != nil {
+				batch.commitResult = err
+				batch.cancel()
+				break
+			}
 		}
 	}
-
-	// Be nice and cleanup. These can take a *lot* of memory.
-	t.commitResults = nil
-	t.ctx = nil
-	t.nodes = nil
-	t.size = 0
-	t.activeCommits = 0
 }
 
-func (t *Batch) Commit() error {
-	if t.err != nil {
-		return t.err
+func (batch *Batch) Add(node ipld.DagNode) error {
+
+	if batch.commitResult != nil {
+		return batch.commitResult
 	}
 
-	t.asyncCommit()
+	select {
+	case <-time.After(time.Second * MaxTimeToWaitInSeconds):
+		logger.Error("add task is too busy")
+		return errors.New("add task is too busy")
 
-loop:
-	for t.activeCommits > 0 {
-		select {
-		case err := <-t.commitResults:
-			t.activeCommits--
-			if err != nil {
-				t.setError(err)
-				break loop
-			}
-		case <-t.ctx.Done():
-			t.setError(t.ctx.Err())
-			break loop
+	case batch.nodes <- node:
+		return nil
+	}
+}
+
+func (batch *Batch) Commit() error {
+
+	defer batch.cancel()
+
+	if batch.commitResult != nil {
+		return batch.commitResult
+	}
+
+	reminder := len(batch.nodes)
+	if reminder == 0 {
+		return nil
+	}
+
+	select {
+
+	case <-time.After(time.Second * MaxTimeToWaitInSeconds):
+		if batch.commitResult != nil || len(batch.nodes) > 0 {
+			return errors.New("can't add dag node successfully. ")
 		}
 	}
 
-	return t.err
+	return nil
 }

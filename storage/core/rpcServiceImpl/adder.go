@@ -53,7 +53,6 @@ func (adder *Adder) hasNext() bool {
 
 	data, err := adder.importer.NextChunk()
 	if err != nil {
-		adder.nextData = nil
 		return false
 	}
 
@@ -86,11 +85,11 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 
 		newRoot := adder.newImportNode(TFile)
 
-		logger.Info("===1===depth: ", depth, " newRoot->", newRoot.dag.String())
+		logger.Debug("===1===depth: ", depth, " newRoot->", newRoot.dag.String())
 
 		newRoot.AddChild(adder, root, fileSize)
 
-		logger.Info("===2===depth: ", depth, " newRoot->", newRoot.dag.String())
+		logger.Debug("===2===depth: ", depth, " newRoot->", newRoot.dag.String())
 
 		fileSize, err = adder.fillNodeRec(newRoot, depth)
 		if err != nil {
@@ -211,7 +210,7 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 	return dagNode, nil
 }
 
-func (adder *Adder) addNode(node ipld.DagNode, path string) error {
+func (adder *Adder) AddNode(node ipld.DagNode, path string) error {
 
 	if path == "" {
 		path = node.String()
