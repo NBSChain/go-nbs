@@ -39,21 +39,6 @@ type DagNode interface {
 *		implements
 *
 *****************************************************************/
-
-var v0Cid = &cid.Cid{
-	Version:  0,
-	Code:     cid.DagProtobuf,
-	HashType: multihash.SHA2_256,
-	HashLen:  -1,
-}
-
-var v1Cid = &cid.Cid{
-	Version:  1,
-	Code:     cid.DagProtobuf,
-	HashType: multihash.SHA2_256,
-	HashLen:  -1,
-}
-
 type DagLink struct {
 	Name string // utf8
 	Size int64
@@ -160,7 +145,7 @@ func (node *ProtoDagNode) Links() []*DagLink {
 
 func (node *ProtoDagNode) Size() (int64, error) {
 
-	err := node.EncodeProtobuf(false)
+	err := node.EncodeProtoBuf(false)
 	if err != nil {
 		return 0, err
 	}
@@ -200,7 +185,7 @@ func (node *ProtoDagNode) AddNodeLink(name string, that DagNode) error {
 	return nil
 }
 
-func (node *ProtoDagNode) EncodeProtobuf(force bool) error {
+func (node *ProtoDagNode) EncodeProtoBuf(force bool) error {
 
 	sort.Stable(LinkSlice(node.links))
 
