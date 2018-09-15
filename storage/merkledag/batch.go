@@ -8,7 +8,7 @@ import (
 )
 
 const MaxNodes = 2 << 7
-const MaxTimeToWaitInSeconds = 60
+const MaxTimeToWaitInSeconds = 1
 
 func NewBatch() *Batch {
 
@@ -60,9 +60,14 @@ func (batch *Batch) Add(node ipld.DagNode) error {
 		return batch.commitResult
 	}
 
-	batch.nodes <- node
+	select {
+	case <-time.After(time.Second * MaxTimeToWaitInSeconds):
+		logger.Error("add task is too busy")
+		return errors.New("add task is too busy")
 
-	return nil
+	case batch.nodes <- node:
+		return nil
+	}
 }
 
 func (batch *Batch) Commit() error {
