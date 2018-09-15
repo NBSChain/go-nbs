@@ -212,10 +212,6 @@ func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
 
 func (adder *Adder) AddNode(node ipld.DagNode, path string) error {
 
-	if path == "" {
-		path = node.String()
-	}
-
 	if err := adder.rootDir.PutNode(path, node); err != nil {
 		return err
 	}

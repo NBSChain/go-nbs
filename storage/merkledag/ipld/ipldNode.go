@@ -40,6 +40,20 @@ type DagNode interface {
 *
 *****************************************************************/
 
+var v0Cid = &cid.Cid{
+	Version:  0,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+
+var v1Cid = &cid.Cid{
+	Version:  1,
+	Code:     cid.DagProtobuf,
+	HashType: multihash.SHA2_256,
+	HashLen:  -1,
+}
+
 type DagLink struct {
 	Name string // utf8
 	Size int64
@@ -66,11 +80,10 @@ func (ls LinkSlice) Swap(a, b int)      { ls[a], ls[b] = ls[b], ls[a] }
 func (ls LinkSlice) Less(a, b int) bool { return ls[a].Name < ls[b].Name }
 
 type ProtoDagNode struct {
-	links      []*DagLink
-	data       []byte
-	encoded    []byte
-	cached     *cid.Cid
-	cidVersion int
+	links   []*DagLink
+	data    []byte
+	encoded []byte
+	cached  *cid.Cid
 }
 
 func MakeLink(n DagNode) (*DagLink, error) {
@@ -147,7 +160,7 @@ func (node *ProtoDagNode) Links() []*DagLink {
 
 func (node *ProtoDagNode) Size() (int64, error) {
 
-	err := node.EncodeProtoBuf(false)
+	err := node.EncodeProtobuf(false)
 	if err != nil {
 		return 0, err
 	}
@@ -187,7 +200,7 @@ func (node *ProtoDagNode) AddNodeLink(name string, that DagNode) error {
 	return nil
 }
 
-func (node *ProtoDagNode) EncodeProtoBuf(force bool) error {
+func (node *ProtoDagNode) EncodeProtobuf(force bool) error {
 
 	sort.Stable(LinkSlice(node.links))
 
