@@ -90,11 +90,11 @@ func (node *ImportNode) AddChild(adder *Adder, child *ImportNode, dataSize int64
 		return err
 	}
 
-	logger.Info("===3=== newRoot->", node.dag.String())
+	logger.Debug("===3=== newRoot->", node.dag.String())
 
 	node.format.AddBlockSize(dataSize)
 
-	logger.Info("===4=== newRoot->", node.dag.String())
+	logger.Debug("===4=== newRoot->", node.dag.String())
 
 	return adder.batch.Add(child.dag)
 }

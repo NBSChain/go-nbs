@@ -79,7 +79,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 		return nil, err
 	}
 
-	logger.Info("start leaf node->", root.dag.String())
+	logger.Debug("start leaf node->", root.dag.String())
 
 	for depth := 1; adder.hasNext(); depth++ {
 
@@ -98,7 +98,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 
 		root = newRoot
 
-		logger.Info("root->", root.dag.String())
+		logger.Debug("root->", root.dag.String())
 	}
 
 	return adder.AddNodeAndClose(root)
