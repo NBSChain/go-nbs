@@ -108,7 +108,7 @@ func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode 
 
 	node := new(ImportNode)
 
-	node.dag = new(ipld.ProtoDagNode)
+	node.dag = ipld.NewNode()
 
 	node.format = &unixfs_pb.Data{
 		Type: &nodeType,
@@ -246,7 +246,8 @@ func (adder *Adder) Finalize() (ipld.DagNode, error) {
 
 	//TODO:: republish the node to network.
 
-	return adder.rootDir.dirIO.GetNode()
+	node := adder.rootDir.dirIO.(ipld.DagNode)
+	return node, nil
 }
 
 func (adder *Adder) PinRoot() error {

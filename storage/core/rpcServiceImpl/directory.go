@@ -102,6 +102,4 @@ type DirectoryIO interface {
 	Find(string) (ipld.DagNode, error)
 
 	RemoveChild(string) error
-
-	GetNode() (ipld.DagNode, error)
 }

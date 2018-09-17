@@ -1,6 +1,7 @@
 package ipld
 
 import (
+	"errors"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/core/blocks"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
@@ -65,10 +66,11 @@ func (ls LinkSlice) Swap(a, b int)      { ls[a], ls[b] = ls[b], ls[a] }
 func (ls LinkSlice) Less(a, b int) bool { return ls[a].Name < ls[b].Name }
 
 type ProtoDagNode struct {
-	links   []*DagLink
-	data    []byte
-	encoded []byte
-	cached  *cid.Cid
+	links     []*DagLink
+	data      []byte
+	encoded   []byte
+	cached    *cid.Cid
+	linkCache map[string]int
 }
 
 func MakeLink(n DagNode) (*DagLink, error) {
@@ -248,13 +250,21 @@ func (node *ProtoDagNode) AddRawLink(name string, l *DagLink) error {
 		Cid:  l.Cid,
 	})
 
+	node.linkCache[name] = len(node.links) - 1
+
 	return nil
 }
 
 func NodeWithData(d []byte) *ProtoDagNode {
 
 	return &ProtoDagNode{
-		data: d,
+		data:      d,
+		linkCache: make(map[string]int),
+	}
+}
+func NewNode() *ProtoDagNode {
+	return &ProtoDagNode{
+		linkCache: make(map[string]int),
 	}
 }
 
@@ -279,10 +289,20 @@ func (node *ProtoDagNode) Find(string) (DagNode, error) {
 	return nil, nil
 }
 
-func (node *ProtoDagNode) RemoveChild(string) error {
-	return nil
-}
+//TODO:: need to test.
+func (node *ProtoDagNode) RemoveChild(name string) error {
 
-func (node *ProtoDagNode) GetNode() (DagNode, error) {
-	return node, nil
+	if index, ok := node.linkCache[name]; ok {
+
+		node.links = node.links[:index]
+		node.linkCache = make(map[string]int)
+
+		for newIdx, l := range node.links {
+			node.linkCache[l.Name] = newIdx
+		}
+
+		return nil
+	}
+
+	return errors.New("can't find the dag link:" + name)
 }
