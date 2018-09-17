@@ -45,13 +45,13 @@ type DagLink struct {
 	Cid  *cid.Cid
 }
 
-var v0Cid = &cid.Cid{
+var v0Cid = cid.Cid{
 	Version:  0,
 	Code:     cid.DagProtobuf,
 	HashType: multihash.SHA2_256,
 	HashLen:  -1,
 }
-var v1Cid = &cid.Cid{
+var v1Cid = cid.Cid{
 	Version:  1,
 	Code:     cid.DagProtobuf,
 	HashType: multihash.SHA2_256,
@@ -187,28 +187,21 @@ func (node *ProtoDagNode) AddNodeLink(name string, that DagNode) error {
 
 func (node *ProtoDagNode) EncodeProtoBuf(force bool) error {
 
-	sort.Stable(LinkSlice(node.links))
-
-	if node.encoded == nil || force {
-
-		node.cached = nil
-		var err error
-
-		node.encoded, err = node.Marshal()
-		if err != nil {
-			return err
-		}
-
+	if node.encoded != nil && !force {
+		return nil
 	}
 
-	if node.cached == nil {
-		err := node.sumCached()
-		if err != nil {
-			return err
-		}
+	var err error
+	node.encoded, err = node.Marshal()
+	if err != nil {
+		return err
 	}
 
-	return nil
+	//TODO:: add V2 cid version.
+	v1 := v0Cid
+	node.cached = &v1
+
+	return node.cached.Sum(node.encoded)
 }
 
 func (node *ProtoDagNode) Marshal() ([]byte, error) {
@@ -244,21 +237,6 @@ func (node *ProtoDagNode) getPBNode() *pb.PBNode {
 		pbn.Data = node.data
 	}
 	return pbn
-}
-
-func (node *ProtoDagNode) sumCached() error {
-
-	//TODO::Use default cid0 now.
-	if node.cached == nil {
-		node.cached = &cid.Cid{
-			Version:  0,
-			Code:     cid.DagProtobuf,
-			HashType: multihash.SHA2_256,
-			HashLen:  -1,
-		}
-	}
-
-	return node.cached.Sum(node.encoded)
 }
 
 func (node *ProtoDagNode) AddRawLink(name string, l *DagLink) error {
