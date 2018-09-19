@@ -34,17 +34,18 @@ type DataStore interface {
 	Batch() (Batch, error)
 }
 
-type Options 		opt.Options
-var instance 		*dataStore
-var once 		sync.Once
-var parentContext	context.Context
-var logger 		= utils.GetLogInstance()
+type Options opt.Options
+
+var instance *dataStore
+var once sync.Once
+var parentContext context.Context
+var logger = utils.GetLogInstance()
 
 func GetDsInstance() DataStore {
 	once.Do(func() {
 		parentContext = context.Background()
 		dataStore, err := newDataStore("", &Options{
-			Filter:filter.NewBloomFilter(10),
+			Filter: filter.NewBloomFilter(10),
 		})
 
 		if err != nil {
@@ -80,8 +81,8 @@ func newDataStore(path string, opts *Options) (*dataStore, error) {
 	}
 
 	return &dataStore{
-		DB:   db,
-		path: path,
+		DataBase: db,
+		path:     path,
 	}, nil
 }
 
@@ -91,16 +92,16 @@ func newDataStore(path string, opts *Options) (*dataStore, error) {
 *
 *****************************************************************/
 type dataStore struct {
-	DB   *leveldb.DB
-	path string
+	DataBase *leveldb.DB
+	path     string
 }
 
 func (d *dataStore) Put(key Key, value []byte) (err error) {
-	return d.DB.Put(key.Bytes(), value, nil)
+	return d.DataBase.Put(key.Bytes(), value, nil)
 }
 
 func (d *dataStore) Get(key Key) (value []byte, err error) {
-	val, err := d.DB.Get(key.Bytes(), nil)
+	val, err := d.DataBase.Get(key.Bytes(), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			return nil, err
@@ -111,7 +112,7 @@ func (d *dataStore) Get(key Key) (value []byte, err error) {
 }
 
 func (d *dataStore) Has(key Key) (exists bool, err error) {
-	return d.DB.Has(key.Bytes(), nil)
+	return d.DataBase.Has(key.Bytes(), nil)
 }
 
 func (d *dataStore) Delete(key Key) (err error) {
@@ -119,13 +120,13 @@ func (d *dataStore) Delete(key Key) (err error) {
 	// exist (see https://github.com/syndtr/goleveldb/issues/109),
 	// so check that the key exists first and if not return an
 	// error
-	exists, err := d.DB.Has(key.Bytes(), nil)
+	exists, err := d.DataBase.Has(key.Bytes(), nil)
 	if !exists {
 		return leveldb.ErrNotFound
 	} else if err != nil {
 		return err
 	}
-	return d.DB.Delete(key.Bytes(), nil)
+	return d.DataBase.Delete(key.Bytes(), nil)
 }
 
 func (d *dataStore) Query(q Query) (Results, error) {
@@ -143,7 +144,7 @@ func (d *dataStore) QueryNew(q Query) (Results, error) {
 	if q.Prefix != "" {
 		rnge = util.BytesPrefix([]byte(q.Prefix))
 	}
-	i := d.DB.NewIterator(rnge, nil)
+	i := d.DataBase.NewIterator(rnge, nil)
 	return ResultsFromIterator(q, Iterator{
 		Next: func() (Result, bool) {
 			ok := i.Next()
@@ -200,7 +201,7 @@ func (d *dataStore) runQuery(worker goprocess.Process, qrb *ResultBuilder) {
 	if qrb.Query.Prefix != "" {
 		rnge = util.BytesPrefix([]byte(qrb.Query.Prefix))
 	}
-	i := d.DB.NewIterator(rnge, nil)
+	i := d.DataBase.NewIterator(rnge, nil)
 	defer i.Release()
 
 	// advance iterator for offset
@@ -268,7 +269,7 @@ func (d *dataStore) DiskUsage() (uint64, error) {
 
 // LevelDB needs to be closed.
 func (d *dataStore) Close() (err error) {
-	return d.DB.Close()
+	return d.DataBase.Close()
 }
 
 func (d *dataStore) IsThreadSafe() {}
@@ -287,7 +288,6 @@ type Batch interface {
 	Commit() error
 }
 
-
 type leveldbBatch struct {
 	b  *leveldb.Batch
 	db *leveldb.DB
@@ -296,7 +296,7 @@ type leveldbBatch struct {
 func (d *dataStore) Batch() (Batch, error) {
 	return &leveldbBatch{
 		b:  new(leveldb.Batch),
-		db: d.DB,
+		db: d.DataBase,
 	}, nil
 }
 
@@ -313,4 +313,3 @@ func (b *leveldbBatch) Delete(key Key) error {
 	b.b.Delete(key.Bytes())
 	return nil
 }
-
