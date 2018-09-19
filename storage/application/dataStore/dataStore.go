@@ -36,10 +36,10 @@ type DataStore interface {
 
 type Options opt.Options
 
-var instance *dataStore
-var once sync.Once
-var parentContext context.Context
-var logger = utils.GetLogInstance()
+var instance 		*dataStore
+var once 		sync.Once
+var parentContext 	context.Context
+var logger 		= utils.GetLogInstance()
 
 func GetDsInstance() DataStore {
 	once.Do(func() {
