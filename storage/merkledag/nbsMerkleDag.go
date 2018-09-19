@@ -2,6 +2,8 @@ package merkledag
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/application/dataStore"
+	"github.com/NBSChain/go-nbs/storage/bitswap"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
@@ -28,11 +30,19 @@ func GetDagInstance() DAGService {
 }
 
 type NbsDAGService struct {
+	rehash     bool
+	checkFirst bool
+	dataStore  dataStore.DataStore
+	dataBatch  dataStore.Batch
+	exchange   bitswap.Exchange
 }
 
 func newNbsDagService() (*NbsDAGService, error) {
 
-	return &NbsDAGService{}, nil
+	return &NbsDAGService{
+		checkFirst: true,
+		rehash:     false, //TODO:: I don't know the default value right now.
+	}, nil
 }
 
 func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
@@ -41,7 +51,7 @@ func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
-func (service *NbsDAGService) Add(ipld.DagNode) error {
+func (service *NbsDAGService) Add(node ipld.DagNode) error {
 	return nil
 }
 func (service *NbsDAGService) Remove(*cid.Cid) error {

@@ -1,7 +1,7 @@
 package rpcServiceImpl
 
 import (
-	"github.com/NBSChain/go-nbs/storage/core/pb"
+	"github.com/NBSChain/go-nbs/storage/application/pb"
 	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"

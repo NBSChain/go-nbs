@@ -3,7 +3,6 @@ package ipld
 import (
 	"errors"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/core/blocks"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	pb "github.com/NBSChain/go-nbs/storage/merkledag/pb"
 	"github.com/multiformats/go-multihash"
@@ -21,8 +20,14 @@ type Resolver interface {
 	Tree(path string, depth int) []string
 }
 
+type Block interface {
+	RawData() []byte
+	Cid() *cid.Cid
+	String() string
+}
+
 type DagNode interface {
-	blocks.Block
+	Block
 
 	Resolver
 
@@ -88,7 +93,7 @@ func MakeLink(n DagNode) (*DagLink, error) {
 
 /*****************************************************************
 *
-*		blocks.Block Interface
+*		Block Interface
 *
 *****************************************************************/
 func (node *ProtoDagNode) RawData() []byte {
@@ -275,7 +280,6 @@ func NewNode() *ProtoDagNode {
 *****************************************************************/
 func (node *ProtoDagNode) AddChild(name string, child DagNode) error {
 
-	//TODO:: really need to remove and add ?
 	node.RemoveChild(name)
 
 	return node.AddNodeLink(name, child)

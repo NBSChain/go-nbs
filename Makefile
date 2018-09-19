@@ -7,16 +7,16 @@ PROTOC = protoc --gogofaster_out=. --proto_path=.:$(GOPATH)/src:$(dir $@) $<
 .SECONDEXPANSION:
 
 
-all: pbs test
+all: pbs build
 
-test:
+build:
 	go build -o nbs
 
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
 
 dir := utils/cmdKits/pb
-dir2 := storage/core/pb
+dir2 := storage/application/pb
 dir3 := storage/merkledag/pb
 
 pbs:
@@ -27,3 +27,6 @@ pbs:
 
 clean:
 	rm -rf nbs
+
+test:
+	go test -v ./storage/application/rpcService/
