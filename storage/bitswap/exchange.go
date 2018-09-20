@@ -25,10 +25,10 @@ type Exchange interface {
 	io.Closer
 }
 
-var instance *bitSwap
-var once sync.Once
-var parentContext context.Context
-var logger = utils.GetLogInstance()
+var instance 		*bitSwap
+var once 		sync.Once
+var parentContext 	context.Context
+var logger 		= utils.GetLogInstance()
 
 func GetExInstance() Exchange {
 	once.Do(func() {
@@ -37,7 +37,7 @@ func GetExInstance() Exchange {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("router start to run......\n")
+		logger.Info("bitSwap start to run......\n")
 		instance = bs
 	})
 

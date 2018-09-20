@@ -36,7 +36,7 @@ func newNbsDagService() (*NbsDAGService, error) {
 
 	return &NbsDAGService{
 		checkFirst: true,
-		rehash:     false, //TODO:: I don't know the default value right now.
+		rehash:     false,
 	}, nil
 }
 
