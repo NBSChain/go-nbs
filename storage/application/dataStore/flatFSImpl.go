@@ -39,13 +39,12 @@ type ShardFunc func(string) string
 
 type opT int
 
-// op wraps useful arguments of write operations
 type op struct {
-	typ  opT           // operation type
-	key  Key // datastore key. Mandatory.
-	tmp  string        // temp file path
-	path string        // file path
-	v    []byte        // value
+	typ  opT
+	key  Key
+	tmp  string
+	path string
+	v    []byte
 }
 
 type opMap struct {
@@ -53,11 +52,10 @@ type opMap struct {
 }
 
 type opResult struct {
-	mu      sync.RWMutex
+	mu	sync.RWMutex
 	success bool
-
-	opMap *opMap
-	name  string
+	opMap 	*opMap
+	name  	string
 }
 
 type FlatFileDataStore struct {
@@ -65,16 +63,22 @@ type FlatFileDataStore struct {
 	path 		string
 	shardStr 	string
 	getDir   	ShardFunc
-	sync bool
-	dirty       bool
-	storedValue diskUsageValue
-	checkpointCh chan struct{}
-	done         chan struct{}
-	opMap *opMap
+	sync 		bool
+	dirty       	bool
+	storedValue 	diskUsageValue
+	checkpointCh 	chan struct{}
+	done         	chan struct{}
+	opMap 		*opMap
 }
-func newFlatFileDataStore(path string, fun *ShardIdV1) (*FlatFileDataStore, error) {
 
-	return &FlatFileDataStore{}, nil
+
+func newFlatFileDataStore(path string, fun *ShardIdV1) (*Mount, error) {
+
+	ds := &FlatFileDataStore{}
+	return &Mount{
+		prefix: 	NewKey("blocks"),
+		dataStore:	ds,
+	}, nil
 }
 
 

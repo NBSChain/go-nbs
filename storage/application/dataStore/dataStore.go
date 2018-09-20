@@ -2,6 +2,7 @@ package dataStore
 
 import (
 	"context"
+	"errors"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -28,14 +29,15 @@ type DataStore interface {
 	Batch() (Batch, error)
 }
 
-type Options opt.Options
-
 var instance 		*MountDataStore
 var once 		sync.Once
 var parentContext 	context.Context
 var logger 		= utils.GetLogInstance()
+var ErrNotFound		= errors.New("datastore: key not found")
+var ErrInvalidType 	= errors.New("datastore: invalid type error")
 
 func GetDsInstance() DataStore {
+
 	once.Do(func() {
 		parentContext = context.Background()
 		mounts, err := newMount()
@@ -43,6 +45,7 @@ func GetDsInstance() DataStore {
 		if err != nil {
 			panic(err)
 		}
+
 		logger.Info("data store service start to run......\n")
 		instance = mounts
 	})
@@ -56,33 +59,36 @@ type Mount struct {
 	dataStore DataStore
 }
 type MountDataStore struct {
-	mounts []Mount
+	mounts 	[]Mount
 }
 
 //TODO:: Configurable this mount settings later.
 func newMount() (*MountDataStore, error) {
-	m := make([]Mount, 2)
 
-	levelDb, err := newLevelDB("", &Options{
+	mounts := make([]Mount, 2)
+
+	levelDbMount, err := newLevelDB( &opt.Options{
 		Filter: filter.NewBloomFilter(10),
 	})
+
 	if err != nil{
 		return nil ,err
 	}
-	m[0].dataStore = levelDb
-	m[0].prefix = NewKey("/")
+
+	mounts[0] = *levelDbMount
 
 
-	flatFile, err := newFlatFileDataStore("", nil)
+	flatFileMount, err := newFlatFileDataStore("", nil)
 	if err != nil{
 		return nil, err
 	}
-	m[1].dataStore = flatFile
-	m[1].prefix = NewKey("blocks")
 
-	sort.Slice(m, func(i, j int) bool { return m[i].prefix.String() > m[j].prefix.String() })
+	mounts[1] = *flatFileMount
 
-	return &MountDataStore{mounts: m}, nil
+
+	sort.Slice(mounts, func(i, j int) bool { return mounts[i].prefix.String() > mounts[j].prefix.String() })
+
+	return &MountDataStore{mounts: mounts}, nil
 }
 
 

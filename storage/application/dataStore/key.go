@@ -61,7 +61,7 @@ func KeyWithNamespaces(ns []string) Key {
 	return NewKey(strings.Join(ns, "/"))
 }
 
-// Clean up a Key, using path.Clean.
+// Clean up a Key, using storePath.Clean.
 func (k *Key) Clean() {
 	switch {
 	case len(k.string) == 0:
@@ -136,7 +136,7 @@ func (k Key) Namespaces() []string {
 	return k.List()
 }
 
-// BaseNamespace returns the "base" namespace of this key (path.Base(filename))
+// BaseNamespace returns the "base" namespace of this key (storePath.Base(filename))
 //   NewKey("/Comedy/MontyPython/Actor:JohnCleese").BaseNamespace()
 //   "Actor:JohnCleese"
 func (k Key) BaseNamespace() string {
@@ -165,7 +165,7 @@ func (k Key) Instance(s string) Key {
 	return NewKey(k.string + ":" + s)
 }
 
-// Path returns the "path" of this key (parent + type).
+// Path returns the "storePath" of this key (parent + type).
 //   NewKey("/Comedy/MontyPython/Actor:JohnCleese").Path()
 //   NewKey("/Comedy/MontyPython/Actor")
 func (k Key) Path() Key {
@@ -255,7 +255,7 @@ func RandomKey() Key {
 }
 
 /*
-A Key Namespace is like a path element.
+A Key Namespace is like a storePath element.
 A namespace can optionally include a type (delimited by ':')
 
     > NamespaceValue("Song:PhilosopherSong")
@@ -275,7 +275,7 @@ func NamespaceType(namespace string) string {
 	return strings.Join(parts[0:len(parts)-1], ":")
 }
 
-// NamespaceValue returns the last component of a namespace. `baz` in `f:b:baz`
+// NamespaceValue returns the last component of a namespace. `baz` in `f:batch:baz`
 func NamespaceValue(namespace string) string {
 	parts := strings.Split(namespace, ":")
 	return parts[len(parts)-1]

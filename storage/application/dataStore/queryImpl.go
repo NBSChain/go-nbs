@@ -2,13 +2,12 @@ package dataStore
 
 func DerivedResults(qr Results, ch <-chan Result) Results {
 	return &results{
-		query: qr.Query(),
-		proc:  qr.Process(),
-		res:   ch,
+		query:   qr.Query(),
+		process: qr.Process(),
+		result:  ch,
 	}
 }
 
-// NaiveFilter applies a filter to the results.
 func NaiveFilter(qr Results, filter Filter) Results {
 	ch := make(chan Result)
 	go func() {
@@ -16,7 +15,7 @@ func NaiveFilter(qr Results, filter Filter) Results {
 		defer qr.Close()
 
 		for e := range qr.Next() {
-			if e.Error != nil || filter.Filter(e.Entry) {
+			if e.Error != nil || filter.Filter(e.entry) {
 				ch <- e
 			}
 		}
@@ -49,7 +48,6 @@ func NaiveLimit(qr Results, limit int) Results {
 	return DerivedResults(qr, ch)
 }
 
-// NaiveOffset skips a given number of results
 func NaiveOffset(qr Results, offset int) Results {
 	ch := make(chan Result)
 	go func() {
@@ -73,8 +71,6 @@ func NaiveOffset(qr Results, offset int) Results {
 	return DerivedResults(qr, ch)
 }
 
-// NaiveOrder reorders results according to given Order.
-// WARNING: this is the only non-stream friendly operation!
 func NaiveOrder(qr Results, o Order) Results {
 	ch := make(chan Result)
 	var entries []Entry
@@ -87,12 +83,12 @@ func NaiveOrder(qr Results, o Order) Results {
 				ch <- e
 			}
 
-			entries = append(entries, e.Entry)
+			entries = append(entries, e.entry)
 		}
 
 		o.Sort(entries)
 		for _, e := range entries {
-			ch <- Result{Entry: e}
+			ch <- Result{entry: e}
 		}
 	}()
 

@@ -2,251 +2,181 @@ package dataStore
 
 import "github.com/jbenet/goprocess"
 
-/*
-Query represents storage for any key-value pair.
-
-tl;dr:
-
-  queries are supported across datastores.
-  Cheap on top of relational dbs, and expensive otherwise.
-  Pick the right tool for the job!
-
-In addition to the key-value store get and set semantics, datastore
-provides an interface to retrieve multiple records at a time through
-the use of queries. The datastore Query model gleans a common set of
-operations performed when querying. To avoid pasting here years of
-database research, let’s summarize the operations datastore supports.
-
-Query Operations:
-
-  * namespace - scope the query, usually by object type
-  * filters - select a subset of values by applying constraints
-  * orders - sort the results by applying sort conditions
-  * limit - impose a numeric limit on the number of results
-  * offset - skip a number of results (for efficient pagination)
-
-datastore combines these operations into a simple Query class that allows
-applications to define their constraints in a simple, generic, way without
-introducing datastore specific calls, languages, etc.
-
-Of course, different datastores provide relational query support across a
-wide spectrum, from full support in traditional databases to none at all in
-most key-value stores. Datastore aims to provide a common, simple interface
-for the sake of application evolution over time and keeping large code bases
-free of tool-specific code. It would be ridiculous to claim to support high-
-performance queries on architectures that obviously do not. Instead, datastore
-provides the interface, ideally translating queries to their native form
-(e.g. into SQL for MySQL).
-
-However, on the wrong datastore, queries can potentially incur the high cost
-of performing the aforemantioned query operations on the data set directly in
-Go. It is the client’s responsibility to select the right tool for the job:
-pick a data storage solution that fits the application’s needs now, and wrap
-it with a datastore implementation. As the needs change, swap out datastore
-implementations to support your new use cases. Some applications, particularly
-in early development stages, can afford to incurr the cost of queries on non-
-relational databases (e.g. using a FSDatastore and not worry about a database
-at all). When it comes time to switch the tool for performance, updating the
-application code can be as simple as swapping the datastore in one place, not
-all over the application code base. This gain in engineering time, both at
-initial development and during later iterations, can significantly offset the
-cost of the layer of abstraction.
-
-*/
-
-
 type Entry struct {
-	Key   string
-	Value []byte
+	Key   	string
+	Value 	[]byte
 }
 
 type Result struct {
-	Entry
-
-	Error error
+	entry	Entry
+	Error 	error
 }
 type Query struct {
-	Prefix   string
-	Filters  []Filter
-	Orders   []Order
-	Limit    int
-	Offset   int
-	KeysOnly bool
+	Prefix   	string
+	Filters  	[]Filter
+	Orders   	[]Order
+	Limit    	int
+	Offset   	int
+	KeysOnly 	bool
 }
 
 type Results interface {
-	Query() Query
-	Next() <-chan Result
-	NextSync() (Result, bool)
-	Rest() ([]Entry, error)
-	Close() error
-	Process() goprocess.Process
+	Query() 	Query
+	Next() 		<-chan Result
+	NextSync() 	(Result, bool)
+	Rest() 		([]Entry, error)
+	Close() 	error
+	Process() 	goprocess.Process
 }
 
-// results implements Results
 type results struct {
-	query Query
-	proc  goprocess.Process
-	res   <-chan Result
+	query   	Query
+	process 	goprocess.Process
+	result  	<-chan Result
 }
 
 func (r *results) Next() <-chan Result {
-	return r.res
+	return r.result
 }
 
 func (r *results) NextSync() (Result, bool) {
-	val, ok := <-r.res
+	val, ok := <-r.result
 	return val, ok
 }
 
 func (r *results) Rest() ([]Entry, error) {
-	var es []Entry
-	for e := range r.res {
-		if e.Error != nil {
-			return es, e.Error
+	var entries []Entry
+
+	for result := range r.result {
+		if result.Error != nil {
+			return entries, result.Error
 		}
-		es = append(es, e.Entry)
+		entries = append(entries, result.entry)
 	}
-	<-r.proc.Closed() // wait till the processing finishes.
-	return es, nil
+	<-r.process.Closed()
+	return entries, nil
 }
 
 func (r *results) Process() goprocess.Process {
-	return r.proc
+	return r.process
 }
 
 func (r *results) Close() error {
-	return r.proc.Close()
+	return r.process.Close()
 }
 
 func (r *results) Query() Query {
 	return r.query
 }
 
-// ResultBuilder is what implementors use to construct results
-// Implementors of datastores and their clients must respect the
-// Process of the Request:
-//
-//   * clients must call r.Process().Close() on an early exit, so
-//     implementations can reclaim resources.
-//   * if the Entries are read to completion (channel closed), Process
-//     should be closed automatically.
-//   * datastores must respect <-Process.Closing(), which intermediates
-//     an early close signal from the client.
-//
 type ResultBuilder struct {
-	Query   Query
-	Process goprocess.Process
-	Output  chan Result
+	Query   	Query
+	Process 	goprocess.Process
+	Output  	chan Result
 }
 
-// Results returns a Results to to this builder.
+//TODO:: Refactoring result builder.
 func (rb *ResultBuilder) Results() Results {
 	return &results{
-		query: rb.Query,
-		proc:  rb.Process,
-		res:   rb.Output,
+		query:   rb.Query,
+		process: rb.Process,
+		result:  rb.Output,
 	}
 }
 
-const NormalBufSize = 1
-const KeysOnlyBufSize = 128
+const NormalBufSize 	= 1
+const KeysOnlyBufSize 	= 128
 
-func NewResultBuilder(q Query) *ResultBuilder {
+func NewResultBuilder(query Query) *ResultBuilder {
+
 	bufSize := NormalBufSize
-	if q.KeysOnly {
+	if query.KeysOnly {
 		bufSize = KeysOnlyBufSize
 	}
-	b := &ResultBuilder{
-		Query:  q,
+
+	resultBuilder := &ResultBuilder{
+		Query:  query,
 		Output: make(chan Result, bufSize),
 	}
-	b.Process = goprocess.WithTeardown(func() error {
-		close(b.Output)
+
+	resultBuilder.Process = goprocess.WithTeardown(func() error {
+		close(resultBuilder.Output)
 		return nil
 	})
-	return b
+
+	return resultBuilder
 }
 
-// ResultsWithChan returns a Results object from a channel
-// of Result entries. Respects its own Close()
-func ResultsWithChan(q Query, res <-chan Result) Results {
-	b := NewResultBuilder(q)
+func ResultsWithChan(query Query, resultChan <-chan Result) Results {
 
-	// go consume all the entries and add them to the results.
-	b.Process.Go(func(worker goprocess.Process) {
+	resultBuilder := NewResultBuilder(query)
+
+	resultBuilder.Process.Go(func(worker goprocess.Process) {
 		for {
 			select {
 			case <-worker.Closing(): // client told us to close early
 				return
-			case e, more := <-res:
+			case result, more := <-resultChan:
 				if !more {
 					return
 				}
 
 				select {
-				case b.Output <- e:
-				case <-worker.Closing(): // client told us to close early
+				case resultBuilder.Output <- result:
+				case <-worker.Closing():
 					return
 				}
 			}
 		}
 	})
 
-	go b.Process.CloseAfterChildren()
-	return b.Results()
+	go resultBuilder.Process.CloseAfterChildren()
+	return resultBuilder.Results()
 }
 
-// ResultsWithEntries returns a Results object from a list of entries
-func ResultsWithEntries(q Query, res []Entry) Results {
-	b := NewResultBuilder(q)
+func ResultsWithEntries(query Query, entries []Entry) Results {
+	resultBuilder := NewResultBuilder(query)
 
-	// go consume all the entries and add them to the results.
-	b.Process.Go(func(worker goprocess.Process) {
-		for _, e := range res {
+	resultBuilder.Process.Go(func(worker goprocess.Process) {
+		for _, entry := range entries {
 			select {
-			case b.Output <- Result{Entry: e}:
-			case <-worker.Closing(): // client told us to close early
+			case resultBuilder.Output <- Result{entry: entry}:
+			case <-worker.Closing():
 				return
 			}
 		}
 		return
 	})
 
-	go b.Process.CloseAfterChildren()
-	return b.Results()
+	go resultBuilder.Process.CloseAfterChildren()
+	return resultBuilder.Results()
 }
 
-func ResultsReplaceQuery(r Results, q Query) Results {
-	switch r := r.(type) {
+func ResultsReplaceQuery(res Results, query Query) Results {
+
+	switch r := res.(type) {
 	case *results:
-		// note: not using field names to make sure all fields are copied
-		return &results{q, r.proc, r.res}
-	case *resultsIter:
-		// note: not using field names to make sure all fields are copied
+		return &results{query, r.process, r.result}
+
+	case *resultsIterator:
 		lr := r.legacyResults
 		if lr != nil {
-			lr = &results{q, lr.proc, lr.res}
+			lr = &results{query, lr.process, lr.result}
 		}
-		return &resultsIter{q, r.next, r.close, lr}
+		return &resultsIterator{query, r.next, r.close, lr}
 	default:
 		panic("unknown results type")
 	}
 }
 
-//
-// ResultFromIterator provides an alternative way to to construct
-// results without the use of channels.
-//
-
-func ResultsFromIterator(q Query, iter Iterator) Results {
-	if iter.Close == nil {
-		iter.Close = noopClose
+func ResultsFromIterator(query Query, iterator Iterator) Results {
+	if iterator.Close == nil {
+		iterator.Close = noopClose
 	}
-	return &resultsIter{
-		query: q,
-		next:  iter.Next,
-		close: iter.Close,
+	return &resultsIterator{
+		query: 	query,
+		next:  	iterator.Next,
+		close: 	iterator.Close,
 	}
 }
 
@@ -256,22 +186,22 @@ func noopClose() error {
 
 type Iterator struct {
 	Next  func() (Result, bool)
-	Close func() error // note: might be called more than once
+	Close func() error
 }
 
-type resultsIter struct {
+type resultsIterator struct {
 	query         Query
 	next          func() (Result, bool)
 	close         func() error
 	legacyResults *results
 }
 
-func (r *resultsIter) Next() <-chan Result {
+func (r *resultsIterator) Next() <-chan Result {
 	r.useLegacyResults()
 	return r.legacyResults.Next()
 }
 
-func (r *resultsIter) NextSync() (Result, bool) {
+func (r *resultsIterator) NextSync() (Result, bool) {
 	if r.legacyResults != nil {
 		return r.legacyResults.NextSync()
 	} else {
@@ -283,7 +213,7 @@ func (r *resultsIter) NextSync() (Result, bool) {
 	}
 }
 
-func (r *resultsIter) Rest() ([]Entry, error) {
+func (r *resultsIterator) Rest() ([]Entry, error) {
 	var es []Entry
 	for {
 		e, ok := r.NextSync()
@@ -293,17 +223,17 @@ func (r *resultsIter) Rest() ([]Entry, error) {
 		if e.Error != nil {
 			return es, e.Error
 		}
-		es = append(es, e.Entry)
+		es = append(es, e.entry)
 	}
 	return es, nil
 }
 
-func (r *resultsIter) Process() goprocess.Process {
+func (r *resultsIterator) Process() goprocess.Process {
 	r.useLegacyResults()
 	return r.legacyResults.Process()
 }
 
-func (r *resultsIter) Close() error {
+func (r *resultsIterator) Close() error {
 	if r.legacyResults != nil {
 		return r.legacyResults.Close()
 	} else {
@@ -311,27 +241,26 @@ func (r *resultsIter) Close() error {
 	}
 }
 
-func (r *resultsIter) Query() Query {
+func (r *resultsIterator) Query() Query {
 	return r.query
 }
 
-func (r *resultsIter) useLegacyResults() {
+func (r *resultsIterator) useLegacyResults() {
 	if r.legacyResults != nil {
 		return
 	}
 
-	b := NewResultBuilder(r.query)
+	resultBuilder := NewResultBuilder(r.query)
 
-	// go consume all the entries and add them to the results.
-	b.Process.Go(func(worker goprocess.Process) {
+	resultBuilder.Process.Go(func(worker goprocess.Process) {
 		defer r.close()
 		for {
-			e, ok := r.next()
+			result, ok := r.next()
 			if !ok {
 				break
 			}
 			select {
-			case b.Output <- e:
+			case resultBuilder.Output <- result:
 			case <-worker.Closing(): // client told us to close early
 				return
 			}
@@ -339,8 +268,7 @@ func (r *resultsIter) useLegacyResults() {
 		return
 	})
 
-	go b.Process.CloseAfterChildren()
+	go resultBuilder.Process.CloseAfterChildren()
 
-	r.legacyResults = b.Results().(*results)
+	r.legacyResults = resultBuilder.Results().(*results)
 }
-

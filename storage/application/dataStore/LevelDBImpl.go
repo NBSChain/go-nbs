@@ -1,6 +1,7 @@
 package dataStore
 
 import (
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/jbenet/goprocess"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -11,21 +12,19 @@ import (
 	"path/filepath"
 )
 
-func newLevelDB(path string, opts *Options) (*dataStore, error) {
-	var nopts opt.Options
-	if opts != nil {
-		nopts = opt.Options(*opts)
-	}
+func newLevelDB(opts *opt.Options) (*Mount, error) {
 
-	var err error
-	var db *leveldb.DB
+	var path 	= utils.GetConfig().LevelDBDir
+	var err 	error
+	var dataBase 	*leveldb.DB
 
 	if path == "" {
-		db, err = leveldb.Open(storage.NewMemStorage(), &nopts)
+		dataBase, err = leveldb.Open(storage.NewMemStorage(), opts)
 	} else {
-		db, err = leveldb.OpenFile(path, &nopts)
-		if errors.IsCorrupted(err) && !nopts.GetReadOnly() {
-			db, err = leveldb.RecoverFile(path, &nopts)
+
+		dataBase, err = leveldb.OpenFile(path, opts)
+		if errors.IsCorrupted(err) && !opts.GetReadOnly() {
+			dataBase, err = leveldb.RecoverFile(path, opts)
 		}
 	}
 
@@ -33,57 +32,24 @@ func newLevelDB(path string, opts *Options) (*dataStore, error) {
 		return nil, err
 	}
 
-	return &dataStore{
-		DataBase: db,
-		path:     path,
+	dateStore := &dataStore{
+		dataBase:  	dataBase,
+		storePath: 	path,
+	}
+
+	return &Mount{
+		prefix:		NewKey("/"),
+		dataStore:	dateStore,
 	}, nil
 }
-
 /*****************************************************************
 *
-*		Batch interface and implements.
+*		The functions below are implements of interface
 *
 *****************************************************************/
-type dataStore struct {
-	DataBase *leveldb.DB
-	path     string
-}
-
-func (d *dataStore) Put(key Key, value []byte) (err error) {
-	return d.DataBase.Put(key.Bytes(), value, nil)
-}
-
-func (d *dataStore) Get(key Key) (value []byte, err error) {
-	val, err := d.DataBase.Get(key.Bytes(), nil)
-	if err != nil {
-		if err == leveldb.ErrNotFound {
-			return nil, err
-		}
-		return nil, err
-	}
-	return val, nil
-}
-
-func (d *dataStore) Has(key Key) (exists bool, err error) {
-	return d.DataBase.Has(key.Bytes(), nil)
-}
-
-func (d *dataStore) Delete(key Key) (err error) {
-
-	exists, err := d.DataBase.Has(key.Bytes(), nil)
-	if !exists {
-		return leveldb.ErrNotFound
-	} else if err != nil {
-		return err
-	}
-	return d.DataBase.Delete(key.Bytes(), nil)
-}
-
-func (d *dataStore) Query(q Query) (Results, error) {
-	return d.QueryNew(q)
-}
-
+//TODO:: What's the interface of following functions.
 func (d *dataStore) QueryNew(q Query) (Results, error) {
+
 	if len(q.Filters) > 0 ||
 		len(q.Orders) > 0 ||
 		q.Limit > 0 ||
@@ -94,119 +60,116 @@ func (d *dataStore) QueryNew(q Query) (Results, error) {
 	if q.Prefix != "" {
 		rnge = util.BytesPrefix([]byte(q.Prefix))
 	}
-	i := d.DataBase.NewIterator(rnge, nil)
+
+	iterator := d.dataBase.NewIterator(rnge, nil)
+
 	return ResultsFromIterator(q, Iterator{
 		Next: func() (Result, bool) {
-			ok := i.Next()
+			ok := iterator.Next()
 			if !ok {
 				return Result{}, false
 			}
-			k := string(i.Key())
-			e := Entry{Key: k}
+
+			key 	:= string(iterator.Key())
+			entry 	:= Entry{Key: key}
 
 			if !q.KeysOnly {
-				buf := make([]byte, len(i.Value()))
-				copy(buf, i.Value())
-				e.Value = buf
+				buf := make([]byte, len(iterator.Value()))
+				copy(buf, iterator.Value())
+				entry.Value = buf
 			}
-			return Result{Entry: e}, true
+
+			return Result{Entry: entry}, true
 		},
 		Close: func() error {
-			i.Release()
+			iterator.Release()
 			return nil
 		},
 	}), nil
 }
 
-func (d *dataStore) QueryOrig(q Query) (Results, error) {
-	// we can use multiple iterators concurrently. see:
-	// https://godoc.org/github.com/syndtr/goleveldb/leveldb#DB.NewIterator
-	// advance the iterator only if the reader reads
-	//
-	// run query in own sub-process tied to Results.Process(), so that
-	// it waits for us to finish AND so that clients can signal to us
-	// that resources should be reclaimed.
-	qrb := NewResultBuilder(q)
-	qrb.Process.Go(func(worker goprocess.Process) {
-		d.runQuery(worker, qrb)
+func (d *dataStore) QueryOrig(query Query) (Results, error) {
+
+	resultBuilder := NewResultBuilder(query)
+	resultBuilder.Process.Go(func(worker goprocess.Process) {
+		d.runQuery(worker, resultBuilder)
 	})
 
-	// go wait on the worker (without signaling close)
-	go qrb.Process.CloseAfterChildren()
+	go resultBuilder.Process.CloseAfterChildren()
 
-	// Now, apply remaining things (filters, order)
-	qr := qrb.Results()
-	for _, f := range q.Filters {
-		qr = NaiveFilter(qr, f)
+	queryResult := resultBuilder.Results()
+
+	for _, filter := range query.Filters {
+		queryResult = NaiveFilter(queryResult, filter)
 	}
-	for _, o := range q.Orders {
-		qr = NaiveOrder(qr, o)
+
+	for _, order := range query.Orders {
+		queryResult = NaiveOrder(queryResult, order)
 	}
-	return qr, nil
+
+	return queryResult, nil
 }
 
-func (d *dataStore) runQuery(worker goprocess.Process, qrb *ResultBuilder) {
+func (d *dataStore) runQuery(worker goprocess.Process, resultBuilder *ResultBuilder) {
 
 	var rnge *util.Range
-	if qrb.Query.Prefix != "" {
-		rnge = util.BytesPrefix([]byte(qrb.Query.Prefix))
+	if resultBuilder.Query.Prefix != "" {
+		rnge = util.BytesPrefix([]byte(resultBuilder.Query.Prefix))
 	}
-	i := d.DataBase.NewIterator(rnge, nil)
-	defer i.Release()
 
-	// advance iterator for offset
-	if qrb.Query.Offset > 0 {
-		for j := 0; j < qrb.Query.Offset; j++ {
-			i.Next()
+	iterator := d.dataBase.NewIterator(rnge, nil)
+	defer iterator.Release()
+
+	if resultBuilder.Query.Offset > 0 {
+		for j := 0; j < resultBuilder.Query.Offset; j++ {
+			iterator.Next()
 		}
 	}
 
-	// iterate, and handle limit, too
-	for sent := 0; i.Next(); sent++ {
-		// end early if we hit the limit
-		if qrb.Query.Limit > 0 && sent >= qrb.Query.Limit {
+	for sent := 0; iterator.Next(); sent++ {
+
+		if resultBuilder.Query.Limit > 0 && sent >= resultBuilder.Query.Limit {
 			break
 		}
 
-		k := string(i.Key())
-		e := Entry{Key: k}
+		key 	:= string(iterator.Key())
+		entry 	:= Entry{Key: key}
 
-		if !qrb.Query.KeysOnly {
-			buf := make([]byte, len(i.Value()))
-			copy(buf, i.Value())
-			e.Value = buf
+		if !resultBuilder.Query.KeysOnly {
+			buf := make([]byte, len(iterator.Value()))
+			copy(buf, iterator.Value())
+			entry.Value = buf
 		}
 
 		select {
-		case qrb.Output <- Result{Entry: e}: // we sent it out
-		case <-worker.Closing(): // client told us to end early.
+		case resultBuilder.Output <- Result{Entry: entry}:
+		case <-worker.Closing():
 			break
 		}
 	}
 
-	if err := i.Error(); err != nil {
+	if err := iterator.Error(); err != nil {
 		select {
-		case qrb.Output <- Result{Error: err}: // client read our error
-		case <-worker.Closing(): // client told us to end.
+		case resultBuilder.Output <- Result{Error: err}:
+		case <-worker.Closing():
 			return
 		}
 	}
 }
 
-// DiskUsage returns the current disk size used by this levelDB.
-// For in-mem datastores, it will return 0.
 func (d *dataStore) DiskUsage() (uint64, error) {
-	if d.path == "" { // in-mem
+	if d.storePath == "" { // in-mem
 		return 0, nil
 	}
 
-	var du uint64
+	var diskUsage uint64
 
-	err := filepath.Walk(d.path, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(d.storePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		du += uint64(info.Size())
+
+		diskUsage += uint64(info.Size())
 		return nil
 	})
 
@@ -214,12 +177,11 @@ func (d *dataStore) DiskUsage() (uint64, error) {
 		return 0, err
 	}
 
-	return du, nil
+	return diskUsage, nil
 }
 
-// LevelDB needs to be closed.
 func (d *dataStore) Close() (err error) {
-	return d.DataBase.Close()
+	return d.dataBase.Close()
 }
 
 func (d *dataStore) IsThreadSafe() {}
@@ -229,8 +191,60 @@ func (d *dataStore) IsThreadSafe() {}
 *		Batch interface and implements.
 *
 *****************************************************************/
+type dataStore struct {
+	dataBase  	*leveldb.DB
+	storePath 	string
+}
+
+func (d *dataStore) Put(key Key, value []byte) (err error) {
+	return d.dataBase.Put(key.Bytes(), value, nil)
+}
+
+func (d *dataStore) Get(key Key) (value []byte, err error) {
+	value, err = d.dataBase.Get(key.Bytes(), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return value, nil
+}
+
+func (d *dataStore) Has(key Key) (exists bool, err error) {
+	return d.dataBase.Has(key.Bytes(), nil)
+}
+
+func (d *dataStore) Delete(key Key) (err error) {
+
+	exists, err := d.dataBase.Has(key.Bytes(), nil)
+	if !exists {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	return d.dataBase.Delete(key.Bytes(), nil)
+}
+
+func (d *dataStore) Query(q Query) (Results, error) {
+	return d.QueryNew(q)
+}
+
+func (d *dataStore) Batch() (Batch, error) {
+
+	return &levelDBBatch{
+		batch:    	new(leveldb.Batch),
+		database: 	d.dataBase,
+	}, nil
+}
+/*****************************************************************
+*
+*		Batch interface and implements.
+*
+*****************************************************************/
 
 type Batch interface {
+
 	Put(key Key, val []byte) error
 
 	Delete(key Key) error
@@ -238,28 +252,21 @@ type Batch interface {
 	Commit() error
 }
 
-type leveldbBatch struct {
-	b  *leveldb.Batch
-	db *leveldb.DB
+type levelDBBatch struct {
+	batch    	*leveldb.Batch
+	database 	*leveldb.DB
 }
 
-func (d *dataStore) Batch() (Batch, error) {
-	return &leveldbBatch{
-		b:  new(leveldb.Batch),
-		db: d.DataBase,
-	}, nil
-}
-
-func (b *leveldbBatch) Put(key Key, value []byte) error {
-	b.b.Put(key.Bytes(), value)
+func (b *levelDBBatch) Put(key Key, value []byte) error {
+	b.batch.Put(key.Bytes(), value)
 	return nil
 }
 
-func (b *leveldbBatch) Commit() error {
-	return b.db.Write(b.b, nil)
+func (b *levelDBBatch) Commit() error {
+	return b.database.Write(b.batch, nil)
 }
 
-func (b *leveldbBatch) Delete(key Key) error {
-	b.b.Delete(key.Bytes())
+func (b *levelDBBatch) Delete(key Key) error {
+	b.batch.Delete(key.Bytes())
 	return nil
 }

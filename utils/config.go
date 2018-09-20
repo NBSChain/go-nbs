@@ -8,11 +8,12 @@ import (
 )
 
 type Configure struct {
-	BaseDir        string
-	StorageDir     string
-	LogFileName    string
-	CmdServicePort string
-	CurrentVersion string
+	BaseDir        	string
+	LevelDBDir     	string
+	BlocksDir	string
+	LogFileName    	string
+	CmdServicePort 	string
+	CurrentVersion 	string
 }
 
 const cmdServicePort = "6080"
@@ -39,15 +40,16 @@ func initConfig() *Configure {
 		}
 	}
 
-	storageDir := filepath.Join(baseDir, string(filepath.Separator), "database")
-
-	logFileName := filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
+	levelDBDir 	:= filepath.Join(baseDir, string(filepath.Separator), "dataStore")
+	blockStoreDir 	:= filepath.Join(baseDir, string(filepath.Separator), "blocks")
+	logFileName 	:= filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
 
 	return &Configure{
 		BaseDir:        baseDir,
-		StorageDir:     storageDir,
+		LevelDBDir:     levelDBDir,
+		BlocksDir:     	blockStoreDir,
 		LogFileName:    logFileName,
-		CmdServicePort: cmdServicePort,
+		CmdServicePort:	cmdServicePort,
 		CurrentVersion: currentVersion,
 	}
 }
