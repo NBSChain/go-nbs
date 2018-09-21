@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-func newLevelDB(opts *opt.Options) (*Mount, error) {
+func newLevelDB(opts *opt.Options) (DataStore, error) {
 
 	var path 	= utils.GetConfig().LevelDBDir
 	var err 	error
@@ -32,15 +32,12 @@ func newLevelDB(opts *opt.Options) (*Mount, error) {
 		return nil, err
 	}
 
-	dateStore := &dataStore{
+	dateStore := &levelDBDataStore{
 		dataBase:  	dataBase,
 		storePath: 	path,
 	}
 
-	return &Mount{
-		prefix:		NewKey("/"),
-		dataStore:	dateStore,
-	}, nil
+	return dateStore, nil
 }
 /*****************************************************************
 *
@@ -48,22 +45,22 @@ func newLevelDB(opts *opt.Options) (*Mount, error) {
 *
 *****************************************************************/
 //TODO:: What's the interface of following functions.
-func (d *dataStore) QueryNew(q Query) (Results, error) {
+func (d *levelDBDataStore) QueryNew(query Query) (Results, error) {
 
-	if len(q.Filters) > 0 ||
-		len(q.Orders) > 0 ||
-		q.Limit > 0 ||
-		q.Offset > 0 {
-		return d.QueryOrig(q)
+	if len(query.Filters) > 0 ||
+		len(query.Orders) > 0 ||
+		query.Limit > 0 ||
+		query.Offset > 0 {
+		return d.QueryOrig(query)
 	}
 	var rnge *util.Range
-	if q.Prefix != "" {
-		rnge = util.BytesPrefix([]byte(q.Prefix))
+	if query.Prefix != "" {
+		rnge = util.BytesPrefix([]byte(query.Prefix))
 	}
 
 	iterator := d.dataBase.NewIterator(rnge, nil)
 
-	return ResultsFromIterator(q, Iterator{
+	return ResultsFromIterator(query, Iterator{
 		Next: func() (Result, bool) {
 			ok := iterator.Next()
 			if !ok {
@@ -73,13 +70,13 @@ func (d *dataStore) QueryNew(q Query) (Results, error) {
 			key 	:= string(iterator.Key())
 			entry 	:= Entry{Key: key}
 
-			if !q.KeysOnly {
+			if !query.KeysOnly {
 				buf := make([]byte, len(iterator.Value()))
 				copy(buf, iterator.Value())
 				entry.Value = buf
 			}
 
-			return Result{Entry: entry}, true
+			return Result{entry: entry}, true
 		},
 		Close: func() error {
 			iterator.Release()
@@ -88,7 +85,7 @@ func (d *dataStore) QueryNew(q Query) (Results, error) {
 	}), nil
 }
 
-func (d *dataStore) QueryOrig(query Query) (Results, error) {
+func (d *levelDBDataStore) QueryOrig(query Query) (Results, error) {
 
 	resultBuilder := NewResultBuilder(query)
 	resultBuilder.Process.Go(func(worker goprocess.Process) {
@@ -110,7 +107,7 @@ func (d *dataStore) QueryOrig(query Query) (Results, error) {
 	return queryResult, nil
 }
 
-func (d *dataStore) runQuery(worker goprocess.Process, resultBuilder *ResultBuilder) {
+func (d *levelDBDataStore) runQuery(worker goprocess.Process, resultBuilder *ResultBuilder) {
 
 	var rnge *util.Range
 	if resultBuilder.Query.Prefix != "" {
@@ -142,7 +139,7 @@ func (d *dataStore) runQuery(worker goprocess.Process, resultBuilder *ResultBuil
 		}
 
 		select {
-		case resultBuilder.Output <- Result{Entry: entry}:
+		case resultBuilder.Output <- Result{entry: entry}:
 		case <-worker.Closing():
 			break
 		}
@@ -157,7 +154,7 @@ func (d *dataStore) runQuery(worker goprocess.Process, resultBuilder *ResultBuil
 	}
 }
 
-func (d *dataStore) DiskUsage() (uint64, error) {
+func (d *levelDBDataStore) DiskUsage() (uint64, error) {
 	if d.storePath == "" { // in-mem
 		return 0, nil
 	}
@@ -180,28 +177,28 @@ func (d *dataStore) DiskUsage() (uint64, error) {
 	return diskUsage, nil
 }
 
-func (d *dataStore) Close() (err error) {
+func (d *levelDBDataStore) Close() (err error) {
 	return d.dataBase.Close()
 }
 
-func (d *dataStore) IsThreadSafe() {}
+func (d *levelDBDataStore) IsThreadSafe() {}
 
 /*****************************************************************
 *
 *		Batch interface and implements.
 *
 *****************************************************************/
-type dataStore struct {
+type levelDBDataStore struct {
 	dataBase  	*leveldb.DB
 	storePath 	string
 }
 
-func (d *dataStore) Put(key Key, value []byte) (err error) {
-	return d.dataBase.Put(key.Bytes(), value, nil)
+func (d *levelDBDataStore) Put(key string, value []byte) (err error) {
+	return d.dataBase.Put([]byte(key), value, nil)
 }
 
-func (d *dataStore) Get(key Key) (value []byte, err error) {
-	value, err = d.dataBase.Get(key.Bytes(), nil)
+func (d *levelDBDataStore) Get(key string) (value []byte, err error) {
+	value, err = d.dataBase.Get([]byte(key), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
 			return nil, ErrNotFound
@@ -211,26 +208,27 @@ func (d *dataStore) Get(key Key) (value []byte, err error) {
 	return value, nil
 }
 
-func (d *dataStore) Has(key Key) (exists bool, err error) {
-	return d.dataBase.Has(key.Bytes(), nil)
+func (d *levelDBDataStore) Has(key string) (exists bool, err error) {
+	return d.dataBase.Has([]byte(key), nil)
 }
 
-func (d *dataStore) Delete(key Key) (err error) {
+func (d *levelDBDataStore) Delete(key string) (err error) {
 
-	exists, err := d.dataBase.Has(key.Bytes(), nil)
+	exists, err := d.dataBase.Has([]byte(key), nil)
 	if !exists {
 		return ErrNotFound
 	} else if err != nil {
 		return err
 	}
-	return d.dataBase.Delete(key.Bytes(), nil)
+
+	return d.dataBase.Delete([]byte(key), nil)
 }
 
-func (d *dataStore) Query(q Query) (Results, error) {
-	return d.QueryNew(q)
+func (d *levelDBDataStore) Query(query Query) (Results, error) {
+	return d.QueryNew(query)
 }
 
-func (d *dataStore) Batch() (Batch, error) {
+func (d *levelDBDataStore) Batch() (Batch, error) {
 
 	return &levelDBBatch{
 		batch:    	new(leveldb.Batch),
@@ -243,22 +241,13 @@ func (d *dataStore) Batch() (Batch, error) {
 *
 *****************************************************************/
 
-type Batch interface {
-
-	Put(key Key, val []byte) error
-
-	Delete(key Key) error
-
-	Commit() error
-}
-
 type levelDBBatch struct {
 	batch    	*leveldb.Batch
 	database 	*leveldb.DB
 }
 
-func (b *levelDBBatch) Put(key Key, value []byte) error {
-	b.batch.Put(key.Bytes(), value)
+func (b *levelDBBatch) Put(key string, value []byte) error {
+	b.batch.Put([]byte(key), value)
 	return nil
 }
 
@@ -266,7 +255,7 @@ func (b *levelDBBatch) Commit() error {
 	return b.database.Write(b.batch, nil)
 }
 
-func (b *levelDBBatch) Delete(key Key) error {
-	b.batch.Delete(key.Bytes())
+func (b *levelDBBatch) Delete(key string) error {
+	b.batch.Delete([]byte(key))
 	return nil
 }

@@ -49,7 +49,7 @@ func (f FilterValueCompare) Filter(e Entry) bool {
 	case NotEqual:
 		return !reflect.DeepEqual(f.Value, e.Value)
 	default:
-		panic(fmt.Errorf("cannot apply op '%s' to interface{}.", f.Op))
+		panic(fmt.Errorf("cannot apply op '%s' to interface{}. ", f.Op))
 	}
 }
 

@@ -1,0 +1,67 @@
+package dataStore
+
+import (
+	"context"
+	"errors"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/syndtr/goleveldb/leveldb/filter"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"sync"
+)
+
+var instance 		*ServiceRoutingMap
+var once 		sync.Once
+var parentContext 	context.Context
+var logger 		= utils.GetLogInstance()
+var ErrNotFound		= errors.New("datastore: key not found")
+var ErrInvalidType 	= errors.New("datastore: invalid type error")
+
+func GetServiceDispatcher() *ServiceRoutingMap {
+
+	once.Do(func() {
+		parentContext = context.Background()
+		mounts, err := newDispatcher()
+
+		if err != nil {
+			panic(err)
+		}
+
+		logger.Info("data store service start to run......\n")
+		instance = mounts
+	})
+
+	return instance
+}
+
+type ServiceRoutingMap struct {
+	serviceRouter	map[ServiceType]DataStore
+}
+
+//TODO:: Configurable this mount settings later.
+func newDispatcher() (*ServiceRoutingMap, error) {
+
+	serviceMap := new(ServiceRoutingMap)
+
+	levelDbMount, err := newLevelDB( &opt.Options{
+		Filter: filter.NewBloomFilter(10),
+	})
+
+	if err != nil{
+		return nil ,err
+	}
+	serviceMap.addService(NewServiceKey("/"), levelDbMount)
+
+
+	flatFileDs, err := newFlatFileDataStore()
+	if err != nil{
+		return nil, err
+	}
+	serviceMap.addService(NewServiceKey("blocks"), flatFileDs)
+
+	return serviceMap, nil
+}
+
+func (service *ServiceRoutingMap) addService(key ServiceType, item DataStore)  {
+	service.serviceRouter[key] = item
+}
+

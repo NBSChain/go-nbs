@@ -11,6 +11,8 @@ type Configure struct {
 	BaseDir        	string
 	LevelDBDir     	string
 	BlocksDir	string
+	SyncFiles	bool
+	ShardFun	string
 	LogFileName    	string
 	CmdServicePort 	string
 	CurrentVersion 	string
@@ -22,6 +24,7 @@ const currentVersion = "0.0.1"
 var config *Configure
 var onceConf sync.Once
 
+//TODO:: config to local storage.
 func GetConfig() *Configure {
 	onceConf.Do(func() {
 		config = initConfig()
@@ -48,6 +51,8 @@ func initConfig() *Configure {
 		BaseDir:        baseDir,
 		LevelDBDir:     levelDBDir,
 		BlocksDir:     	blockStoreDir,
+		ShardFun:	"/repo/flatfs/shard/v1/next-to-last/2",
+		SyncFiles:	true,
 		LogFileName:    logFileName,
 		CmdServicePort:	cmdServicePort,
 		CurrentVersion: currentVersion,
