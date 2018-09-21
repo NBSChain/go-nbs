@@ -11,7 +11,6 @@ type Configure struct {
 	BaseDir        	string
 	LevelDBDir     	string
 	BlocksDir	string
-	SyncFiles	bool
 	ShardFun	string
 	LogFileName    	string
 	CmdServicePort 	string
@@ -52,7 +51,6 @@ func initConfig() *Configure {
 		LevelDBDir:     levelDBDir,
 		BlocksDir:     	blockStoreDir,
 		ShardFun:	"/repo/flatfs/shard/v1/next-to-last/2",
-		SyncFiles:	true,
 		LogFileName:    logFileName,
 		CmdServicePort:	cmdServicePort,
 		CurrentVersion: currentVersion,

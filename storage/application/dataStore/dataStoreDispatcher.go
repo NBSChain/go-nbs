@@ -49,14 +49,14 @@ func newDispatcher() (*ServiceRoutingMap, error) {
 	if err != nil{
 		return nil ,err
 	}
-	serviceMap.addService(NewServiceKey("/"), levelDbMount)
+	serviceMap.addService(NewServiceKey(RootServiceURL), levelDbMount)
 
 
 	flatFileDs, err := newFlatFileDataStore()
 	if err != nil{
 		return nil, err
 	}
-	serviceMap.addService(NewServiceKey("blocks"), flatFileDs)
+	serviceMap.addService(NewServiceKey(BLOCKServiceURL), flatFileDs)
 
 	return serviceMap, nil
 }
@@ -65,3 +65,9 @@ func (service *ServiceRoutingMap) addService(key ServiceType, item DataStore)  {
 	service.serviceRouter[key] = item
 }
 
+func (service *ServiceRoutingMap) GetService(key string)  DataStore{
+
+	serviceKey := NewServiceKey(key)
+
+	return service.serviceRouter[serviceKey]
+}

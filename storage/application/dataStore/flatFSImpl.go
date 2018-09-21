@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/NBSChain/go-nbs/utils"
+	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -65,7 +67,6 @@ type FlatFileDataStore struct {
 	path 		string
 	shardStr 	string
 	getDir   	ShardFunc
-	sync 		bool
 	dirty       	bool
 	storedValue 	diskUsageValue
 	checkpointCh 	chan struct{}
@@ -104,12 +105,11 @@ func newFlatFileDataStore() (DataStore, error) {
 	}
 
 	fileStore := &FlatFileDataStore{
-		path:      path,
-		shardStr:  shardIdV1.String(),
-		getDir:    shardIdV1.Func(),
-		sync:      utils.GetConfig().SyncFiles,
-		diskUsage: 0,
-		opMap:     new(opMap),
+		path:      	path,
+		shardStr:  	shardIdV1.String(),
+		getDir:    	shardIdV1.Func(),
+		diskUsage: 	0,
+		opMap:     	new(opMap),
 	}
 
 	err := fileStore.calculateDiskUsage()
@@ -130,9 +130,11 @@ func (fs *FlatFileDataStore) calculateDiskUsage()  error{
 
 func (fs *FlatFileDataStore) checkpointLoop() {
 
-	timerActive := true
-	timer := time.NewTimer(0)
+	timerActive	:= true
+	timer 		:= time.NewTimer(0)
+
 	defer timer.Stop()
+
 	for {
 		select {
 		case _, more := <-fs.checkpointCh:
@@ -147,12 +149,76 @@ func (fs *FlatFileDataStore) checkpointLoop() {
 	}
 }
 
+func (fs *FlatFileDataStore) encode(key string) (dir, file string) {
+
+	noSlash	:= key[len(BLOCKServiceURL) + 1:]
+
+	dir 	= filepath.Join(fs.path, fs.getDir(noSlash))
+
+	file 	= filepath.Join(dir, noSlash + extension)
+
+	return dir, file
+}
+
+func (fs *FlatFileDataStore) decode(file string) (key string, ok bool) {
+
+	if filepath.Ext(file) != extension {
+		return "", false
+	}
+
+	name := file[:len(file)-len(extension)]
+
+	return name, true
+}
+
+func (fs *FlatFileDataStore) makeDir(dir string) error {
+	if _, exist := utils.FileExists(dir); exist{
+		return nil
+	}
+
+	if err := os.Mkdir(dir, 0755); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 /*****************************************************************
 *
 *		DataStore interface and implements.
 *
 *****************************************************************/
 func (fs *FlatFileDataStore) Put(key string, value []byte) error{
+
+	dir, path := fs.encode(key)
+
+	if err := fs.makeDir(dir); err != nil {
+		return err
+	}
+
+	tmp, err := ioutil.TempFile(dir, "put-")
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		tmp.Close()
+		os.Remove(tmp.Name())
+	}()
+
+	if _, err := tmp.Write(value); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+
+	err = os.Rename(tmp.Name(), path)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
