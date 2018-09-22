@@ -13,8 +13,9 @@ var instance 		*ServiceRoutingMap
 var once 		sync.Once
 var parentContext 	context.Context
 var logger 		= utils.GetLogInstance()
-var ErrNotFound		= errors.New("datastore: key not found")
-var ErrInvalidType 	= errors.New("datastore: invalid type error")
+var ErrNotFound		= errors.New("dataStore: key not found")
+var ErrInvalidType 	= errors.New("dataStore: invalid type error")
+var ErrCommit		= errors.New("dataStore: batch commit failed")
 
 func GetServiceDispatcher() *ServiceRoutingMap {
 

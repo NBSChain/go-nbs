@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -172,6 +173,7 @@ func (fs *FlatFileDataStore) decode(file string) (key string, ok bool) {
 }
 
 func (fs *FlatFileDataStore) makeDir(dir string) error {
+
 	if _, exist := utils.FileExists(dir); exist{
 		return nil
 	}
@@ -183,7 +185,16 @@ func (fs *FlatFileDataStore) makeDir(dir string) error {
 	return nil
 }
 
-
+func (fs *FlatFileDataStore) putAsync(key string, value []byte, errorNum *int32)  {
+	if err := fs.Put(key, value); err != nil{
+		atomic.AddInt32(errorNum, 1)
+	}
+}
+func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32)  {
+	if err := fs.Delete(key); err != nil {
+		atomic.AddInt32(errorNum, 1)
+	}
+}
 /*****************************************************************
 *
 *		DataStore interface and implements.
@@ -213,25 +224,27 @@ func (fs *FlatFileDataStore) Put(key string, value []byte) error{
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-
-	err = os.Rename(tmp.Name(), path)
-	if err != nil {
+	if err = os.Rename(tmp.Name(), path); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (fs *FlatFileDataStore) Get(key string) (value []byte, err error){
-	return nil, nil
+func (fs *FlatFileDataStore) Get(key string) ([]byte, error){
+	_, path := fs.encode(key)
+	return ioutil.ReadFile(path)
 }
 
-func (fs *FlatFileDataStore) Has(key string) (exists bool, err error){
-	return false, nil
+func (fs *FlatFileDataStore) Has(key string) (bool, error){
+	_, path := fs.encode(key)
+	_, err := os.Stat(path)
+	return err == nil, err
 }
 
 func (fs *FlatFileDataStore) Delete(key string) error{
-	return nil
+	_, path := fs.encode(key)
+	return os.Remove(path)
 }
 
 func (fs *FlatFileDataStore) Query(q Query) (Results, error){
@@ -239,5 +252,56 @@ func (fs *FlatFileDataStore) Query(q Query) (Results, error){
 }
 
 func (fs *FlatFileDataStore) Batch() (Batch, error){
-	return nil, nil
+
+	return &flatFileBatch{
+		puts:    	make(map[string][]byte),
+		deletes: 	make(map[string]struct{}),
+		dataStore:	fs,
+	}, nil
+}
+
+/*****************************************************************
+*
+*		Batch interface and implements.
+*
+*****************************************************************/
+
+type flatFileBatch struct {
+	puts    	map[string][]byte
+	deletes 	map[string]struct{}
+	dataStore	*FlatFileDataStore
+}
+
+
+func (fsb *flatFileBatch) Put(key string, value []byte) error {
+	fsb.puts[key] = value
+	return nil
+}
+
+func (fsb *flatFileBatch) Commit() error {
+
+	var errorNum int32 = 0
+
+	for key, value := range fsb.puts{
+		go fsb.dataStore.putAsync(key, value, &errorNum)
+	}
+
+	if errorNum > 0{
+		return ErrCommit
+	}
+
+	for k := range fsb.deletes {
+		go fsb.dataStore.deleteAsync(k, &errorNum)
+	}
+
+	if errorNum > 0{
+		return ErrCommit
+	}
+
+	return nil
+}
+
+func (fsb *flatFileBatch) Delete(key string) error {
+	fsb.deletes[key] = struct{}{}
+	return nil
 }
