@@ -2,6 +2,7 @@ package merkledag
 
 import (
 	"context"
+	"errors"
 	"github.com/AndreasBriese/bbloom"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/bitswap"
@@ -81,9 +82,39 @@ func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
+
+
 func (service *NbsDAGService) Add(node ipld.DagNode) error {
+
+	if node == nil{
+		return errors.New("dag node is nil. ")
+	}
+
+	cidObj := node.Cid()
+	err := cid.ValidateCid(cidObj)
+	if err != nil {
+		return err
+	}
+
+	if service.checkFirst && service.Has(cidObj){
+		return nil
+	}
+
+	key := cid.NewKeyFromBinary(cidObj.Bytes())
+	if err := service.dataStore.Put(key, node.RawData()); err != nil{
+		logger.Error(err)
+		return err
+	}
+
+	if err := bitswap.GetSwapInstance().HasBlock(node); err != nil{//TODO:: we need to optimize this part.
+		logger.Error(err)
+		return err
+	}
+
 	return nil
 }
+
+
 func (service *NbsDAGService) Remove(*cid.Cid) error {
 	return nil
 }
@@ -135,6 +166,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 
 	return nil
 }
+
 func (service *NbsDAGService) RemoveMany([]*cid.Cid) error {
 	return nil
 }
