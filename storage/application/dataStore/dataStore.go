@@ -11,9 +11,9 @@ const BLOCKServiceURL 	= "/blocks"
 type DataStore interface {
 	Put(key string, value []byte) error
 
-	Get(key string) (value []byte, err error)
+	Get(key string) ([]byte, error)
 
-	Has(key string) (exists bool, err error)
+	Has(key string) (bool, error)
 
 	Delete(key string) error
 

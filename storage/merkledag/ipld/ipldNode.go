@@ -21,9 +21,9 @@ type Resolver interface {
 }
 
 type Block interface {
-	RawData() []byte
-	Cid() *cid.Cid
-	String() string
+	RawData() 	[]byte
+	Cid() 		*cid.Cid
+	String() 	string
 }
 
 type DagNode interface {

@@ -4,20 +4,20 @@ import "strings"
 type ServiceType int32
 
 const (
-	serviceTypeROOT 	ServiceType = 0x01
-	serviceTypeBlock 	ServiceType = 0x0101
+	ServiceTypeROOT  ServiceType = 0x01
+	ServiceTypeBlock ServiceType = 0x0101
 )
 
 var ServiceDictionary  = map[string]*RouterInfo{
 	"/":{
-		key:"/",
-		code:serviceTypeROOT,
-		subRouter:nil,
+		key:       "/",
+		code:      ServiceTypeROOT,
+		subRouter: nil,
 	},
 	"blocks":{
-		key:"blocks",
-		code:serviceTypeBlock,
-		subRouter:nil,
+		key:       "blocks",
+		code:      ServiceTypeBlock,
+		subRouter: nil,
 	},
 }
 
@@ -31,7 +31,7 @@ type RouterInfo struct {
 func NewServiceKey(fullPath string) ServiceType{
 
 	if len(fullPath) <= 1{
-		return serviceTypeROOT
+		return ServiceTypeROOT
 	}
 
 	if fullPath[0] == '/' {
@@ -40,7 +40,7 @@ func NewServiceKey(fullPath string) ServiceType{
 
 	routers := strings.Split(fullPath, "/")
 	if len(routers) <= 1{
-		return serviceTypeROOT
+		return ServiceTypeROOT
 	}
 
 	/*TODO::
@@ -49,7 +49,7 @@ func NewServiceKey(fullPath string) ServiceType{
 
 	paraLen := len(routers)
 	parameter := routers[paraLen-1:]
-	currentCode := serviceTypeROOT
+	currentCode := ServiceTypeROOT
 	for _, item := range routers{
 		router := ServiceDictionary[item]
 
@@ -65,5 +65,5 @@ func NewServiceKey(fullPath string) ServiceType{
 		return service.code
 	}
 
-	return serviceTypeROOT
+	return ServiceTypeROOT
 }

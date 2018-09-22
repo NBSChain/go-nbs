@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
-	"gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
 	"io"
 	"sync"
 )
@@ -16,9 +15,10 @@ type Fetcher interface {
 }
 
 type Exchange interface {
+
 	Fetcher
 
-	HasBlock(blocks.Block) error
+	HasBlock(ipld.DagNode) error
 
 	IsOnline() bool
 
@@ -30,7 +30,7 @@ var once 		sync.Once
 var parentContext 	context.Context
 var logger 		= utils.GetLogInstance()
 
-func GetExInstance() Exchange {
+func GetSwapInstance() Exchange {
 	once.Do(func() {
 		parentContext = context.Background()
 		bs, err := newBitSwap()
@@ -58,7 +58,7 @@ func (bs *bitSwap) GetBlocks([]*cid.Cid) (<-chan ipld.DagNode, error){
 	return nil, nil
 }
 
-func (bs *bitSwap) HasBlock(blocks.Block) error{
+func (bs *bitSwap) HasBlock(node ipld.DagNode) error{
 	return nil
 }
 

@@ -2,6 +2,8 @@ package cid
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/multiformats/go-multibase"
 	"github.com/multiformats/go-multihash"
 )
@@ -78,6 +80,26 @@ var CodecToStr = map[uint64]string{
 	DecredTx:           "decred-tx",
 }
 
+
+var (
+	// ErrVarintBuffSmall means that a buffer passed to the cid parser was not
+	// long enough, or did not contain an invalid cid
+	ErrVarintBuffSmall = errors.New("reading varint: buffer too small")
+
+	// ErrVarintTooBig means that the varint in the given cid was above the
+	// limit of 2^64
+	ErrVarintTooBig = errors.New("reading varint: varint bigger than 64bits" +
+		" and not supported")
+
+	// ErrCidTooShort means that the cid passed to decode was not long
+	// enough to be a valid Cid
+	ErrCidTooShort = errors.New("cid too short")
+
+	// ErrInvalidEncoding means that selected encoding is not supported
+	// by this Cid version
+	ErrInvalidEncoding = errors.New("invalid base encoding")
+)
+
 type Cid struct {
 	Version  uint64
 	Code     uint64
@@ -144,4 +166,58 @@ func (c *Cid) Sum(data []byte) error {
 	c.Hash = hash
 
 	return nil
+}
+
+func Cast(data []byte) (*Cid, error) {
+	if len(data) == 34 && data[0] == 18 && data[1] == 32 {
+		h, err := multihash.Cast(data)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Cid{
+			Code:   	DagProtobuf,
+			Version: 	0,
+			Hash:    	h,
+			HashLen:	-1,
+		}, nil
+	}
+
+	vers, n := binary.Uvarint(data)
+	if err := uvError(n); err != nil {
+		return nil, err
+	}
+
+	if vers != 0 && vers != 1 {
+		return nil, fmt.Errorf("invalid cid version number: %d", vers)
+	}
+
+	codec, cn := binary.Uvarint(data[n:])
+	if err := uvError(cn); err != nil {
+		return nil, err
+	}
+
+	rest := data[n+cn:]
+	h, err := multihash.Cast(rest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Cid{
+		Version: 	vers,
+		Code:   	codec,
+		Hash:    	h,
+		HashLen:	-1,
+	}, nil
+}
+
+func uvError(read int) error {
+	switch {
+	case read == 0:
+		return ErrVarintBuffSmall
+	case read < 0:
+		return ErrVarintTooBig
+	default:
+		return nil
+	}
 }

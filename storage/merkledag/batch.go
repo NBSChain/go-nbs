@@ -2,13 +2,10 @@ package merkledag
 
 import (
 	"context"
-	"errors"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
-	"time"
 )
 
-const MaxNodes = 2 << 7
-const MaxTimeToWaitInSeconds = 1
+const MaxNodes	= 2 << 7
 
 func NewBatch() *Batch {
 
@@ -16,10 +13,8 @@ func NewBatch() *Batch {
 	batch := &Batch{
 		ctx:    ctx,
 		cancel: cancel,
-		nodes:  make(chan ipld.DagNode, MaxNodes),
+		nodes:  make([]ipld.DagNode, 0, MaxNodes),
 	}
-
-	go batch.run()
 
 	return batch
 }
@@ -27,32 +22,10 @@ func NewBatch() *Batch {
 type Batch struct {
 	ctx           context.Context
 	cancel        func()
-	activeCommits int
 	commitResult  error
-	nodes         chan ipld.DagNode
+	nodes         []ipld.DagNode
 }
 
-func (batch *Batch) run() {
-
-	dagService := GetDagInstance()
-
-	for {
-		select {
-
-		case <-batch.ctx.Done():
-			batch.commitResult = batch.ctx.Err()
-			break
-
-		case node := <-batch.nodes:
-			err := dagService.Add(node)
-			if err != nil {
-				batch.commitResult = err
-				batch.cancel()
-				break
-			}
-		}
-	}
-}
 
 func (batch *Batch) Add(node ipld.DagNode) error {
 
@@ -60,36 +33,39 @@ func (batch *Batch) Add(node ipld.DagNode) error {
 		return batch.commitResult
 	}
 
-	select {
-	case <-time.After(time.Second * MaxTimeToWaitInSeconds):
-		logger.Error("add task is too busy")
-		return errors.New("add task is too busy")
-
-	case batch.nodes <- node:
-		return nil
+	batch.nodes = append(batch.nodes, node)
+	if len(batch.nodes) >= MaxNodes{
+		go batch.asyCommit()
+		batch.nodes =  make([]ipld.DagNode, 0, MaxNodes)
 	}
+
+	return nil
 }
 
 func (batch *Batch) Commit() error {
-
-	defer batch.cancel()
 
 	if batch.commitResult != nil {
 		return batch.commitResult
 	}
 
+	defer batch.cancel()
+
+	batch.asyCommit()
+
+	return batch.commitResult
+}
+
+
+func (batch *Batch) asyCommit(){
+
 	reminder := len(batch.nodes)
 	if reminder == 0 {
-		return nil
+		return
 	}
 
-	select {
-
-	case <-time.After(time.Second * MaxTimeToWaitInSeconds):
-		if batch.commitResult != nil || len(batch.nodes) > 0 {
-			return errors.New("can't add dag node successfully. ")
-		}
+	dagService := GetDagInstance()
+	err := dagService.AddMany(batch.nodes)
+	if err != nil{
+		batch.commitResult = err
 	}
-
-	return nil
 }

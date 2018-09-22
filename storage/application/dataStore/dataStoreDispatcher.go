@@ -72,3 +72,8 @@ func (service *ServiceRoutingMap) GetService(key string)  DataStore{
 
 	return service.serviceRouter[serviceKey]
 }
+
+func (service *ServiceRoutingMap) ServiceByType(serviceKey ServiceType)  DataStore{
+
+	return service.serviceRouter[serviceKey]
+}
