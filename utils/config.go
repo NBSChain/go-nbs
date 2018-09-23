@@ -8,11 +8,13 @@ import (
 )
 
 type Configure struct {
-	BaseDir        string
-	StorageDir     string
-	LogFileName    string
-	CmdServicePort string
-	CurrentVersion string
+	BaseDir        	string
+	LevelDBDir     	string
+	BlocksDir	string
+	ShardFun	string
+	LogFileName    	string
+	CmdServicePort 	string
+	CurrentVersion 	string
 }
 
 const cmdServicePort = "6080"
@@ -21,6 +23,7 @@ const currentVersion = "0.0.1"
 var config *Configure
 var onceConf sync.Once
 
+//TODO:: config to local storage.
 func GetConfig() *Configure {
 	onceConf.Do(func() {
 		config = initConfig()
@@ -39,15 +42,17 @@ func initConfig() *Configure {
 		}
 	}
 
-	storageDir := filepath.Join(baseDir, string(filepath.Separator), "database")
-
-	logFileName := filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
+	levelDBDir 	:= filepath.Join(baseDir, string(filepath.Separator), "dataStore")
+	blockStoreDir 	:= filepath.Join(baseDir, string(filepath.Separator), "blocks")
+	logFileName 	:= filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
 
 	return &Configure{
 		BaseDir:        baseDir,
-		StorageDir:     storageDir,
+		LevelDBDir:     levelDBDir,
+		BlocksDir:     	blockStoreDir,
+		ShardFun:	"/repo/flatfs/shard/v1/next-to-last/2",
 		LogFileName:    logFileName,
-		CmdServicePort: cmdServicePort,
+		CmdServicePort:	cmdServicePort,
 		CurrentVersion: currentVersion,
 	}
 }

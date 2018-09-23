@@ -2,10 +2,9 @@ package rpcService
 
 import (
 	"bytes"
-	//"bytes"
 	"errors"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/core"
+	"github.com/NBSChain/go-nbs/storage/application/rpcServiceImpl"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"golang.org/x/net/context"
@@ -25,6 +24,11 @@ type addService struct {
 	fileAddTask map[string]*pb.AddRequest
 }
 
+/*****************************************************************
+*
+*		service callback function.
+*
+*****************************************************************/
 func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) (*pb.AddResponse, error) {
 
 	switch request.FileType {
@@ -58,15 +62,17 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 				fileName:     request.FileName,
 				fullPath:     request.FullPath,
 				isDirectory:  false,
+				Out:          make(chan *pb.AddResponse),
 			}
 
-			err := core.ImportFile(importer)
+			err := rpcServiceImpl.ImportFile(importer)
 
 			if err != nil {
 				return nil, err
 			} else {
+				result := <-importer.Out
 
-				return &pb.AddResponse{Message: "success"}, nil
+				return result, nil
 			}
 		}
 	case pb.FileType_DIRECTORY:
@@ -115,13 +121,13 @@ func (service *addService) TransLargeFile(stream pb.AddTask_TransLargeFileServer
 		fileName:     request.FileName,
 		fullPath:     request.FullPath,
 		isDirectory:  false,
+		Out:          make(chan *pb.AddResponse),
 	}
 
-	err := core.ImportFile(importer)
+	err := rpcServiceImpl.ImportFile(importer)
 
 	return err
 }
-
 func (service *addService) appendTask(sessionId string, request *pb.AddRequest) {
 
 	service.taskLock.Lock()
@@ -136,6 +142,11 @@ func (service *addService) removeTask(sessionId string) {
 	delete(service.fileAddTask, sessionId)
 }
 
+/*****************************************************************
+*
+*		simple file reader implement
+*
+*****************************************************************/
 type fileReader struct {
 	reader io.Reader
 }
@@ -143,10 +154,15 @@ type fileReader struct {
 func (r *fileReader) Read(p []byte) (n int, err error) {
 	return r.reader.Read(p)
 }
-func (r *fileReader) Close() error {
+func (r *fileReader) Close(Out chan *pb.AddResponse) error {
 	return nil
 }
 
+/*****************************************************************
+*
+*		stream reader implement
+*
+*****************************************************************/
 type streamReader struct {
 	stream    pb.AddTask_TransLargeFileServer
 	sessionId string
@@ -204,21 +220,35 @@ func (s *streamReader) Read(p []byte) (int, error) {
 	return copied, nil
 }
 
-func (s *streamReader) Close() error {
+func (s *streamReader) Close(Out chan *pb.AddResponse) error {
 
-	s.stream.SendAndClose(&pb.AddResponse{})
+	result := <-Out
+
+	s.stream.SendAndClose(result)
 
 	s.service.removeTask(s.sessionId)
 
 	return nil
 }
 
+/*****************************************************************
+*
+*		rpc file importer tool.
+*
+*****************************************************************/
+
+type RpcReadCloser interface {
+	io.Reader
+	Close(chan *pb.AddResponse) error
+}
+
 type RpcFileImporter struct {
-	reader       io.ReadCloser
+	reader       RpcReadCloser
 	fileName     string
 	fullPath     string
 	isDirectory  bool
 	splitterSize int32
+	Out          chan *pb.AddResponse
 }
 
 func (importer *RpcFileImporter) NextChunk() ([]byte, error) {
@@ -226,7 +256,11 @@ func (importer *RpcFileImporter) NextChunk() ([]byte, error) {
 	chunk := make([]byte, importer.splitterSize)
 	realSize, err := importer.reader.Read(chunk)
 
-	return chunk[:realSize], err
+	if realSize > 0 {
+		return chunk[:realSize], nil
+	} else {
+		return nil, err
+	}
 }
 
 func (importer *RpcFileImporter) FileName() string {
@@ -241,10 +275,14 @@ func (importer *RpcFileImporter) IsDirectory() bool {
 	return importer.isDirectory
 }
 
-func (importer *RpcFileImporter) NextFile() (core.FileImporter, error) {
+func (importer *RpcFileImporter) NextFile() (rpcServiceImpl.FileImporter, error) {
 	return nil, io.EOF
 }
 
 func (importer *RpcFileImporter) Close() error {
-	return importer.reader.Close()
+	return importer.reader.Close(importer.Out)
+}
+
+func (importer *RpcFileImporter) ResultCh() chan *pb.AddResponse {
+	return importer.Out
 }

@@ -48,7 +48,10 @@ message AddRequest{
 }
 
 message AddResponse {
-    string message      = 1;
-    string sessionId    = 2;
-    int32  dataReceive  = 3;
+    string  message     = 1;
+    string  sessionId   = 2;
+    string  name        = 3;
+    string  hash        = 4;
+    int64   bytes       = 5;
+    string  size        = 6;
 }

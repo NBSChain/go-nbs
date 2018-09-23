@@ -87,7 +87,7 @@ func addFileCmd(cmd *cobra.Command, args []string) {
 
 			defer file.Close()
 
-			logger.Info("Add file success......", response.Message)
+			logger.Info("Add file success......", response)
 		}
 	}
 }
@@ -115,6 +115,7 @@ func sendFileStream(sessionId, fileName string) {
 	}
 	defer file.Close()
 
+	//buffer := make([]byte, 123)
 	buffer := make([]byte, rpcService.BigFileChunkSize)
 
 	for {
