@@ -3,6 +3,7 @@ package cid
 import (
 	"fmt"
 	"github.com/multiformats/go-multihash"
+	"strings"
 )
 
 
@@ -58,4 +59,30 @@ func ValidateCid(c *Cid) error {
 	}
 
 	return nil
+}
+
+func IsValidPath(path string) (*Cid, error)  {
+	if path[0] == '/'{
+		path = path[1:]
+	}
+
+	parts := strings.Split(path, "/")
+	if len(parts) == 0{
+		return nil, ErrBelowMinimumHashLength
+	}
+
+	var hashKey = parts[0]
+	if parts[0] == "nbs"{
+		if len(parts) < 2{
+			return nil, ErrBelowMinimumHashLength
+		}
+		hashKey = parts[1]
+	}
+
+	c, err := Decode(hashKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }

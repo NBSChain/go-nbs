@@ -228,7 +228,7 @@ func (adder *Adder) OutputDagNode(name string, dagNode ipld.DagNode) error {
 	if err != nil {
 		return err
 	}
-
+	//TODO:: Add process tips.
 	adder.importer.ResultCh() <- &pb.AddResponse{
 		Hash: dagNode.String(),
 		Name: name,

@@ -13,11 +13,8 @@ import (
 	"sync"
 )
 
-const DefaultStreamTaskNo = 30
-const StreamSessionIDKey = "sessionid"
-const SplitterSize = 1 << 18                     //256K
-const BigFileThreshold int64 = 50 << 20          //50M
-const BigFileChunkSize int64 = SplitterSize << 2 //1M
+const DefaultStreamTaskNo 	= 30
+const StreamSessionIDKey 	= "sessionid"
 
 type addService struct {
 	taskLock    sync.RWMutex

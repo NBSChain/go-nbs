@@ -21,14 +21,13 @@ option java_outer_classname = "RpcGetMessage";
 package pb;
 
 service GetTask {
-    rpc Get (GetRequest) returns (GetResponse) {}
+    rpc Get (GetRequest) returns (stream GetResponse) {}
 }
 
 message GetRequest {
-    string              cmdName = 1;
-    repeated string     args    = 2;
+    string              dataUri = 1;
 }
 
 message GetResponse {
-    string message = 1;
+    bytes   content = 1;
 }

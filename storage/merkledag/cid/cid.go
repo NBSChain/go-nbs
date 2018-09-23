@@ -184,6 +184,34 @@ func (c *Cid) Sum(data []byte) error {
 	return nil
 }
 
+func Decode(v string) (*Cid, error) {
+	if len(v) < 2 {
+		return nil, ErrCidTooShort
+	}
+
+	if len(v) == 46 && v[:2] == "Qm" {
+		hash, err := multihash.FromB58String(v)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Cid{
+			Version: 	0,
+			Code:   	DagProtobuf,
+			Hash:    	hash,
+			HashLen:	-1,
+			HashType: 	multihash.SHA2_256,
+		}, nil
+	}
+
+	_, data, err := multibase.Decode(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return Cast(data)
+}
+
 func Cast(data []byte) (*Cid, error) {
 	if len(data) == 34 && data[0] == 18 && data[1] == 32 {
 		h, err := multihash.Cast(data)
@@ -196,6 +224,7 @@ func Cast(data []byte) (*Cid, error) {
 			Version: 	0,
 			Hash:    	h,
 			HashLen:	-1,
+			HashType: 	multihash.SHA2_256,
 		}, nil
 	}
 

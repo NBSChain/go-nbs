@@ -24,8 +24,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type GetRequest struct {
-	CmdName              string   `protobuf:"bytes,1,opt,name=cmdName,proto3" json:"cmdName,omitempty"`
-	Args                 []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	DataUri              string   `protobuf:"bytes,1,opt,name=dataUri,proto3" json:"dataUri,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -35,7 +34,7 @@ func (m *GetRequest) Reset()         { *m = GetRequest{} }
 func (m *GetRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRequest) ProtoMessage()    {}
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rpcGetMessage_37d52ece13f8079a, []int{0}
+	return fileDescriptor_rpcGetMessage_088438f80c9b508c, []int{0}
 }
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetRequest.Unmarshal(m, b)
@@ -55,22 +54,15 @@ func (m *GetRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetRequest proto.InternalMessageInfo
 
-func (m *GetRequest) GetCmdName() string {
+func (m *GetRequest) GetDataUri() string {
 	if m != nil {
-		return m.CmdName
+		return m.DataUri
 	}
 	return ""
 }
 
-func (m *GetRequest) GetArgs() []string {
-	if m != nil {
-		return m.Args
-	}
-	return nil
-}
-
 type GetResponse struct {
-	Message              string   `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Content              []byte   `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -80,7 +72,7 @@ func (m *GetResponse) Reset()         { *m = GetResponse{} }
 func (m *GetResponse) String() string { return proto.CompactTextString(m) }
 func (*GetResponse) ProtoMessage()    {}
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rpcGetMessage_37d52ece13f8079a, []int{1}
+	return fileDescriptor_rpcGetMessage_088438f80c9b508c, []int{1}
 }
 func (m *GetResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetResponse.Unmarshal(m, b)
@@ -100,11 +92,11 @@ func (m *GetResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetResponse proto.InternalMessageInfo
 
-func (m *GetResponse) GetMessage() string {
+func (m *GetResponse) GetContent() []byte {
 	if m != nil {
-		return m.Message
+		return m.Content
 	}
-	return ""
+	return nil
 }
 
 func init() {
@@ -124,7 +116,7 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type GetTaskClient interface {
-	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (GetTask_GetClient, error)
 }
 
 type getTaskClient struct {
@@ -135,70 +127,96 @@ func NewGetTaskClient(cc *grpc.ClientConn) GetTaskClient {
 	return &getTaskClient{cc}
 }
 
-func (c *getTaskClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
-	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, "/pb.GetTask/Get", in, out, opts...)
+func (c *getTaskClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (GetTask_GetClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_GetTask_serviceDesc.Streams[0], "/pb.GetTask/Get", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &getTaskGetClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type GetTask_GetClient interface {
+	Recv() (*GetResponse, error)
+	grpc.ClientStream
+}
+
+type getTaskGetClient struct {
+	grpc.ClientStream
+}
+
+func (x *getTaskGetClient) Recv() (*GetResponse, error) {
+	m := new(GetResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // GetTaskServer is the server API for GetTask service.
 type GetTaskServer interface {
-	Get(context.Context, *GetRequest) (*GetResponse, error)
+	Get(*GetRequest, GetTask_GetServer) error
 }
 
 func RegisterGetTaskServer(s *grpc.Server, srv GetTaskServer) {
 	s.RegisterService(&_GetTask_serviceDesc, srv)
 }
 
-func _GetTask_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _GetTask_Get_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(GetTaskServer).Get(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.GetTask/Get",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GetTaskServer).Get(ctx, req.(*GetRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(GetTaskServer).Get(m, &getTaskGetServer{stream})
+}
+
+type GetTask_GetServer interface {
+	Send(*GetResponse) error
+	grpc.ServerStream
+}
+
+type getTaskGetServer struct {
+	grpc.ServerStream
+}
+
+func (x *getTaskGetServer) Send(m *GetResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 var _GetTask_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.GetTask",
 	HandlerType: (*GetTaskServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "Get",
-			Handler:    _GetTask_Get_Handler,
+			StreamName:    "Get",
+			Handler:       _GetTask_Get_Handler,
+			ServerStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "rpcGetMessage.proto",
 }
 
-func init() { proto.RegisterFile("rpcGetMessage.proto", fileDescriptor_rpcGetMessage_37d52ece13f8079a) }
+func init() { proto.RegisterFile("rpcGetMessage.proto", fileDescriptor_rpcGetMessage_088438f80c9b508c) }
 
-var fileDescriptor_rpcGetMessage_37d52ece13f8079a = []byte{
-	// 196 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x8f, 0x41, 0x4b, 0x87, 0x40,
-	0x10, 0x47, 0xf3, 0xff, 0x8f, 0xc4, 0x89, 0x0a, 0xb6, 0x8b, 0x04, 0x81, 0x78, 0xc9, 0xd3, 0x10,
-	0x79, 0xeb, 0xe8, 0x65, 0x0f, 0x51, 0xc4, 0xd2, 0x17, 0xd8, 0x5d, 0x07, 0x91, 0x5a, 0x77, 0x73,
-	0xc6, 0xef, 0x1f, 0x69, 0x56, 0xb7, 0x79, 0x87, 0xf7, 0x1b, 0x1e, 0x5c, 0xcf, 0xc9, 0x6b, 0x92,
-	0x67, 0x62, 0xb6, 0x03, 0x61, 0x9a, 0xa3, 0x44, 0x75, 0x48, 0xae, 0x7e, 0x04, 0xd0, 0x24, 0x86,
-	0x3e, 0x17, 0x62, 0x51, 0x25, 0xe4, 0x3e, 0xf4, 0x2f, 0x36, 0x50, 0x99, 0x55, 0x59, 0x53, 0x98,
-	0x1d, 0x95, 0x82, 0x53, 0x3b, 0x0f, 0x5c, 0x1e, 0xaa, 0x63, 0x53, 0x98, 0xf5, 0xae, 0xef, 0xe0,
-	0x7c, 0x75, 0x39, 0xc5, 0x89, 0xe9, 0x5b, 0x0e, 0xdb, 0xfe, 0x2e, 0xff, 0xe0, 0x43, 0x0b, 0xb9,
-	0x26, 0x79, 0xb3, 0xfc, 0xae, 0x1a, 0x38, 0x6a, 0x12, 0x75, 0x89, 0xc9, 0xe1, 0xdf, 0xe3, 0x9b,
-	0xab, 0x5f, 0xde, 0xc6, 0xea, 0x93, 0xee, 0x1e, 0x6e, 0x7d, 0x0c, 0x38, 0x39, 0xc6, 0x29, 0xf6,
-	0x84, 0x8b, 0x8c, 0x1f, 0x8c, 0x3e, 0xf4, 0x4f, 0xa3, 0x30, 0x26, 0xd7, 0x5d, 0x98, 0xff, 0x4d,
-	0xaf, 0x99, 0x3b, 0x5b, 0xb3, 0xda, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0xdc, 0xa1, 0x06, 0xfb,
-	0xed, 0x00, 0x00, 0x00,
+var fileDescriptor_rpcGetMessage_088438f80c9b508c = []byte{
+	// 191 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x8f, 0xcd, 0x4a, 0xc3, 0x40,
+	0x14, 0x46, 0x1d, 0x05, 0x83, 0xd7, 0x3f, 0x18, 0x37, 0x41, 0x10, 0x24, 0x0b, 0x15, 0x17, 0x97,
+	0xa0, 0xf8, 0x02, 0xd9, 0xcc, 0x42, 0x04, 0x19, 0xda, 0x07, 0x98, 0x99, 0x5c, 0x4a, 0x68, 0x33,
+	0x33, 0xcd, 0xbd, 0x79, 0xff, 0xd2, 0x94, 0xb4, 0x5d, 0x1e, 0x38, 0x7c, 0x1f, 0x07, 0x9e, 0x86,
+	0x1c, 0x0c, 0xc9, 0x1f, 0x31, 0xbb, 0x15, 0x61, 0x1e, 0x92, 0x24, 0x7d, 0x99, 0x7d, 0xf5, 0x06,
+	0x60, 0x48, 0x2c, 0x6d, 0x47, 0x62, 0xd1, 0x25, 0x14, 0xad, 0x13, 0xb7, 0x1c, 0xba, 0x52, 0xbd,
+	0xaa, 0x8f, 0x1b, 0x3b, 0x63, 0xf5, 0x0e, 0xb7, 0x93, 0xc7, 0x39, 0x45, 0xa6, 0xbd, 0x18, 0x52,
+	0x14, 0x8a, 0x32, 0x89, 0x77, 0x76, 0xc6, 0xaf, 0x1f, 0x28, 0x0c, 0xc9, 0xc2, 0xf1, 0x5a, 0x7f,
+	0xc2, 0x95, 0x21, 0xd1, 0x0f, 0x98, 0x3d, 0x9e, 0x4e, 0x9e, 0x1f, 0x8f, 0x7c, 0x18, 0xab, 0x2e,
+	0x6a, 0xd5, 0xd4, 0xf0, 0x12, 0x52, 0x8f, 0xd1, 0x33, 0xc6, 0xd4, 0x12, 0x8e, 0xd2, 0x6d, 0x18,
+	0x43, 0xdf, 0xfe, 0x76, 0xc2, 0x98, 0x7d, 0x73, 0x6f, 0xcf, 0x0b, 0xfe, 0x95, 0xbf, 0x9e, 0x22,
+	0xbe, 0x77, 0x01, 0x00, 0x00, 0xff, 0xff, 0xd9, 0xe1, 0x9e, 0x0e, 0xdb, 0x00, 0x00, 0x00,
 }
