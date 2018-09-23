@@ -152,6 +152,10 @@ func (c *Cid) Bytes() []byte {
 	}
 }
 
+func (c *Cid) Type() uint64 {
+	return c.Code
+}
+
 func (c *Cid) bytesV0() []byte {
 	return []byte(c.Hash)
 }

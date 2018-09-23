@@ -26,8 +26,8 @@ var (
 	DiskUsageCalcTimeout 	= 5 * time.Minute
 )
 var (
-	ErrDatastoreExists       = errors.New("dataStore already exists")
-	ErrDatastoreDoesNotExist = errors.New("dataStore directory does not exist")
+	ErrDataStoreExists       = errors.New("dataStore already exists")
+	ErrDataStoreDoesNotExist = errors.New("dataStore directory does not exist")
 	ErrShardingFileMissing   = fmt.Errorf("%s file not found in datastore", SHARDING_FN)
 )
 

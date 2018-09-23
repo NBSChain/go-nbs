@@ -46,6 +46,9 @@ func newNbsDagService() (*NbsDAGService, error) {
 
 	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
+
+	ipld.Register(cid.DagProtobuf, ipld.DecodeProtobufBlock)
+
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,
@@ -76,8 +79,24 @@ func (service *NbsDAGService) Has(c *cid.Cid) bool {
 *		DAGService interface implements.
 *
 *****************************************************************/
-func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
-	return nil, nil
+func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
+
+	err := cid.ValidateCid(cidObj) // hash security
+	if err != nil {
+		return nil, err
+	}
+
+	key := cid.NewKeyFromBinary(cidObj.Bytes())
+
+	data, err := service.dataStore.Get(key)
+
+	if err == dataStore.ErrNotFound{
+		return bitswap.GetSwapInstance().GetBlock(cidObj)
+	}else if err != nil{
+		return nil, err
+	}
+
+	return ipld.Decode(data, cidObj)
 }
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil

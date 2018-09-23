@@ -13,6 +13,7 @@ func (service *getService) Get(request *pb.GetRequest, stream pb.GetTask_GetServ
 
 	dataHash := request.DataUri
 
+	//TODO:: didn't consider the naming system request right now.
 	cidKey, err := cid.IsValidPath(dataHash)
 	if err != nil{
 		return err

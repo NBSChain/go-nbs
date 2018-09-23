@@ -273,6 +273,30 @@ func NewNode() *ProtoDagNode {
 	}
 }
 
+
+func (n *ProtoDagNode) unmarshal(encoded []byte) error {
+	var pbn pb.PBNode
+	if err := pbn.Unmarshal(encoded); err != nil {
+		return fmt.Errorf("unmarshal failed. %v", err)
+	}
+
+	pbnl := pbn.GetLinks()
+	n.links = make([]*DagLink, len(pbnl))
+	for i, l := range pbnl {
+		n.links[i] = &DagLink{Name: l.GetName(), Size: l.GetTsize()}
+		c, err := cid.Cast(l.GetHash())
+		if err != nil {
+			return fmt.Errorf("link hash #%d is not valid multihash. %v", i, err)
+		}
+		n.links[i].Cid = c
+	}
+	sort.Stable(LinkSlice(n.links)) // keep links sorted
+
+	n.data = pbn.GetData()
+	n.encoded = encoded
+	return nil
+}
+
 /*****************************************************************
 *
 *		ProtoDagNode implements.
