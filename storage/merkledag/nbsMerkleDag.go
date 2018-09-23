@@ -45,12 +45,12 @@ type NbsDAGService struct {
 func newNbsDagService() (*NbsDAGService, error) {
 
 	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
-
+	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,
 		bloom:		&bf,
-		dataStore:	dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock),
+		dataStore:	ds,
 	}, nil
 }
 

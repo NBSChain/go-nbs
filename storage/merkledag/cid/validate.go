@@ -1,7 +1,6 @@
 package cid
 
 import (
-	"encoding/base32"
 	"fmt"
 	"github.com/multiformats/go-multihash"
 )
@@ -54,34 +53,9 @@ func ValidateCid(c *Cid) error {
 		return ErrPossiblyInsecureHashFunction
 	}
 
-	if c.HashType != multihash.ID && c.HashType < minimumHashLength {
+	if c.HashType != multihash.ID && c.HashLength() < minimumHashLength {
 		return ErrBelowMinimumHashLength
 	}
 
 	return nil
-}
-
-func NewKeyFromBinary(rawKey []byte) string {
-	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
-	buf := make([]byte, 1 + encoder.EncodedLen(len(rawKey)))
-	buf[0] = '/'
-	encoder.Encode(buf[1:], rawKey)
-	return string(buf)
-}
-
-func BinaryFromDsKey(k string) ([]byte, error) {
-	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
-	return encoder.DecodeString(k[1:])
-}
-
-func CidToDsKey(k *Cid) string {
-	return NewKeyFromBinary(k.Bytes())
-}
-
-func DsKeyToCid(dsKey string) (*Cid, error) {
-	kb, err := BinaryFromDsKey(dsKey)
-	if err != nil {
-		return nil, err
-	}
-	return Cast(kb)
 }

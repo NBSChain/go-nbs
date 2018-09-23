@@ -39,9 +39,9 @@ func NewServiceKey(fullPath string) ServiceType{
 	}
 
 	routers := strings.Split(fullPath, "/")
-	if len(routers) <= 1{
-		return ServiceTypeROOT
-	}
+	//if len(routers) <= 1{
+	//	return ServiceTypeROOT
+	//}
 
 	/*TODO::
 	*Solve top level right now, I didn't find the necessary

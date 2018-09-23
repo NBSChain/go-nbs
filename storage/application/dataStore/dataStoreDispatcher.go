@@ -42,6 +42,7 @@ type ServiceRoutingMap struct {
 func newDispatcher() (*ServiceRoutingMap, error) {
 
 	serviceMap := new(ServiceRoutingMap)
+	serviceMap.serviceRouter = make(map[ServiceType]DataStore)
 
 	levelDbMount, err := newLevelDB( &opt.Options{
 		Filter: filter.NewBloomFilter(10),

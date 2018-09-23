@@ -1,6 +1,7 @@
 package cid
 
 import (
+	"encoding/base32"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -108,6 +109,21 @@ type Cid struct {
 	Hash     multihash.Multihash
 }
 
+func (c *Cid) HashLength() int {
+	if c.HashLen != -1 {
+		return c.HashLen
+	}
+
+	if len(c.Hash) == 0{
+		return -1
+	}
+
+	dec, _ := multihash.Decode(c.Hash)
+	c.HashLen = dec.Length
+
+	return c.HashLen
+
+}
 func (c *Cid) String() string {
 
 	switch c.Version {
@@ -221,3 +237,29 @@ func uvError(read int) error {
 		return nil
 	}
 }
+
+func NewKeyFromBinary(rawKey []byte) string {
+	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
+	buf := make([]byte, 1 + encoder.EncodedLen(len(rawKey)))
+	buf[0] = '/'
+	encoder.Encode(buf[1:], rawKey)
+	return string(buf)
+}
+
+func BinaryFromDsKey(k string) ([]byte, error) {
+	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
+	return encoder.DecodeString(k[1:])
+}
+
+func CidToDsKey(k *Cid) string {
+	return NewKeyFromBinary(k.Bytes())
+}
+
+func DsKeyToCid(dsKey string) (*Cid, error) {
+	kb, err := BinaryFromDsKey(dsKey)
+	if err != nil {
+		return nil, err
+	}
+	return Cast(kb)
+}
+
