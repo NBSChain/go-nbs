@@ -37,9 +37,9 @@ func newNetwork() *NbsNetwork {
 	if err != nil {
 		panic(err)
 	}
-	logger.Info("Create host  %s\n", newHost.Addrs())
+	//logger.Info("Create host  %s\n", newHost.Addrs())
 
-	network.Host = newHost
+	network.Host = newHost.(host.Host)
 
 	return network
 }

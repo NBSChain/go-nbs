@@ -11,6 +11,13 @@
 
 ## Install
 ```
+for windows:
+	set http_proxy=http://127.0.0.1:1080//shadowsocks
+	set https_proxy=http://127.0.0.1:080
+for linuxs:
+	export http_proxy=http://127.0.0.1:1080//shadowsocks
+	export https_proxy=http://127.0.0.1:080
+
 go get github.com/NBSChain/go-nbs
 cd go-nbs/
 make
