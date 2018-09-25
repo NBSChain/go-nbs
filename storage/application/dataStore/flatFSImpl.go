@@ -26,8 +26,8 @@ var (
 	DiskUsageCalcTimeout 	= 5 * time.Minute
 )
 var (
-	ErrDatastoreExists       = errors.New("dataStore already exists")
-	ErrDatastoreDoesNotExist = errors.New("dataStore directory does not exist")
+	ErrDataStoreExists       = errors.New("dataStore already exists")
+	ErrDataStoreDoesNotExist = errors.New("dataStore directory does not exist")
 	ErrShardingFileMissing   = fmt.Errorf("%s file not found in datastore", SHARDING_FN)
 )
 
@@ -152,7 +152,13 @@ func (fs *FlatFileDataStore) checkpointLoop() {
 
 func (fs *FlatFileDataStore) encode(key string) (dir, file string) {
 
-	noSlash	:= key[1:]
+	var noSlash string
+
+	if key[0] == '/'{
+		noSlash	= key[1:]
+	}else{
+		noSlash = key
+	}
 
 	dir 	= filepath.Join(fs.path, fs.getDir(noSlash))
 

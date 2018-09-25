@@ -21,6 +21,7 @@ type Resolver interface {
 }
 
 type Block interface {
+	Data()		[]byte
 	RawData() 	[]byte
 	Cid() 		*cid.Cid
 	String() 	string
@@ -99,6 +100,10 @@ func MakeLink(n DagNode) (*DagLink, error) {
 func (node *ProtoDagNode) RawData() []byte {
 	node.EncodeProtoBuf(false)
 	return node.encoded
+}
+
+func (node *ProtoDagNode) Data() []byte {
+	return node.data
 }
 
 func (node *ProtoDagNode) Cid() *cid.Cid {
@@ -271,6 +276,30 @@ func NewNode() *ProtoDagNode {
 	return &ProtoDagNode{
 		linkCache: make(map[string]int),
 	}
+}
+
+
+func (n *ProtoDagNode) unmarshal(encoded []byte) error {
+	var pbn pb.PBNode
+	if err := pbn.Unmarshal(encoded); err != nil {
+		return fmt.Errorf("unmarshal failed. %v", err)
+	}
+
+	pbnl := pbn.GetLinks()
+	n.links = make([]*DagLink, len(pbnl))
+	for i, l := range pbnl {
+		n.links[i] = &DagLink{Name: l.GetName(), Size: l.GetTsize()}
+		c, err := cid.Cast(l.GetHash())
+		if err != nil {
+			return fmt.Errorf("link hash #%d is not valid multihash. %v", i, err)
+		}
+		n.links[i].Cid = c
+	}
+	sort.Stable(LinkSlice(n.links))
+
+	n.data = pbn.GetData()
+	n.encoded = encoded
+	return nil
 }
 
 /*****************************************************************

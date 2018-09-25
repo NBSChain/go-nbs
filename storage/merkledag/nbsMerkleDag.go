@@ -46,6 +46,9 @@ func newNbsDagService() (*NbsDAGService, error) {
 
 	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
+
+	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
+
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,
@@ -76,8 +79,24 @@ func (service *NbsDAGService) Has(c *cid.Cid) bool {
 *		DAGService interface implements.
 *
 *****************************************************************/
-func (service *NbsDAGService) Get(*cid.Cid) (ipld.DagNode, error) {
-	return nil, nil
+func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
+
+	err := cid.ValidateCid(cidObj)
+	if err != nil {
+		return nil, err
+	}
+
+	key := cid.NewKeyFromBinary(cidObj.Bytes())
+
+	data, err := service.dataStore.Get(key)
+
+	if err == dataStore.ErrNotFound{
+		return bitswap.GetSwapInstance().GetDagNode(cidObj)
+	}else if err != nil{
+		return nil, err
+	}
+
+	return ipld.Decode(data, cidObj)
 }
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
@@ -106,7 +125,7 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().HasBlock(node); err != nil{//TODO:: we need to optimize this part.
+	if err := bitswap.GetSwapInstance().HasNode(node); err != nil{ //TODO:: we need to optimize this part.
 		logger.Error(err)
 		return err
 	}
@@ -159,7 +178,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 	for _, node := range toPut{
 		service.bloom.AddTS(node.Cid().Bytes())
 
-		if err := bitSwap.HasBlock(node); err != nil{//TODO:: we need to optimize this part.
+		if err := bitSwap.HasNode(node); err != nil{ //TODO:: we need to optimize this part.
 			logger.Error(err)
 		}
 	}

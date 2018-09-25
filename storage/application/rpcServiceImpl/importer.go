@@ -73,16 +73,16 @@ func ImportFile(importer FileImporter) error {
 
 /*****************************************************************
 *
-*		ImportNode
+*		DagDataBridge
 *
 *****************************************************************/
 
-type ImportNode struct {
+type DagDataBridge struct {
 	dag    *ipld.ProtoDagNode
 	format *unixfs_pb.Data
 }
 
-func (node *ImportNode) AddChild(adder *Adder, child *ImportNode, dataSize int64) error {
+func (node *DagDataBridge) AddChild(adder *Adder, child *DagDataBridge, dataSize int64) error {
 
 	err := node.dag.AddNodeLink("", child.dag)
 
@@ -99,15 +99,15 @@ func (node *ImportNode) AddChild(adder *Adder, child *ImportNode, dataSize int64
 	return adder.batch.Add(child.dag)
 }
 
-func (node *ImportNode) NumChildren() int {
+func (node *DagDataBridge) NumChildren() int {
 	return len(node.format.Blocksizes)
 }
 
-func (node *ImportNode) FileSize() int64 {
+func (node *DagDataBridge) FileSize() int64 {
 	return int64(node.format.GetFilesize())
 }
 
-func (node *ImportNode) Commit() error {
+func (node *DagDataBridge) Commit() error {
 
 	fileData, err := proto.Marshal(node.format)
 	if err != nil {
@@ -117,4 +117,8 @@ func (node *ImportNode) Commit() error {
 	node.dag.SetData(fileData)
 
 	return nil
+}
+
+func (node *DagDataBridge) Type() unixfs_pb.Data_DataType {
+	return node.format.GetType()
 }

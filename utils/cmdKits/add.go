@@ -18,19 +18,16 @@ func init() {
 }
 
 var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add file to nbs network",
-	Long:  `Add file to cache and find the peers to store it.`,
-	Run:   addFileCmd,
+	Use:   	"add",
+	Short: 	"Add file to nbs network",
+	Long:  	`Add file to cache and find the peers to store it.`,
+	Run:   	addFileCmd,
+	Args:	cobra.MinimumNArgs(1),
 }
 
 func addFileCmd(cmd *cobra.Command, args []string) {
 
 	logger.Info("Add command args:(", args, ")-->", cmd.CommandPath())
-
-	if len(args) == 0 {
-		logger.Fatal("You should specify the file target to add.")
-	}
 
 	fileName := args[0]
 
