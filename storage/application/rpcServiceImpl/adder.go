@@ -104,9 +104,9 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 	return adder.AddNodeAndClose(root)
 }
 
-func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode {
+func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *DagDataBridge {
 
-	node := new(ImportNode)
+	node := new(DagDataBridge)
 
 	node.dag = ipld.NewNode()
 
@@ -117,7 +117,7 @@ func (adder *Adder) newImportNode(nodeType unixfs_pb.Data_DataType) *ImportNode 
 	return node
 }
 
-func (adder *Adder) leafNodeWithData(node *ImportNode) (int64, error) {
+func (adder *Adder) leafNodeWithData(node *DagDataBridge) (int64, error) {
 
 	data := adder.nextData
 
@@ -138,7 +138,7 @@ func (adder *Adder) leafNodeWithData(node *ImportNode) (int64, error) {
 	return dataLen, nil
 }
 
-func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
+func (adder *Adder) fillNodeRec(node *DagDataBridge, depth int) (int64, error) {
 
 	if depth < 1 {
 		return 0, errors.New("attempt to fillNode at depth < 1")
@@ -193,7 +193,7 @@ func (adder *Adder) fillNodeRec(node *ImportNode, depth int) (int64, error) {
 	return resultFileSize, nil
 }
 
-func (adder *Adder) AddNodeAndClose(node *ImportNode) (ipld.DagNode, error) {
+func (adder *Adder) AddNodeAndClose(node *DagDataBridge) (ipld.DagNode, error) {
 
 	dagNode := node.dag
 

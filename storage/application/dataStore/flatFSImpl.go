@@ -152,7 +152,13 @@ func (fs *FlatFileDataStore) checkpointLoop() {
 
 func (fs *FlatFileDataStore) encode(key string) (dir, file string) {
 
-	noSlash	:= key[1:]
+	var noSlash string
+
+	if key[0] == '/'{
+		noSlash	= key[1:]
+	}else{
+		noSlash = key
+	}
 
 	dir 	= filepath.Join(fs.path, fs.getDir(noSlash))
 

@@ -10,15 +10,15 @@ import (
 )
 
 type Fetcher interface {
-	GetBlock(*cid.Cid) (ipld.DagNode, error)
-	GetBlocks([]*cid.Cid) (<-chan ipld.DagNode, error)
+	GetDagNode(*cid.Cid) (ipld.DagNode, error)
+	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
 }
 
 type Exchange interface {
 
 	Fetcher
 
-	HasBlock(ipld.DagNode) error
+	HasNode(ipld.DagNode) error
 
 	IsOnline() bool
 
@@ -31,12 +31,15 @@ var parentContext 	context.Context
 var logger 		= utils.GetLogInstance()
 
 func GetSwapInstance() Exchange {
+
 	once.Do(func() {
 		parentContext = context.Background()
+
 		bs, err := newBitSwap()
 		if err != nil {
 			panic(err)
 		}
+
 		logger.Info("bitSwap start to run......\n")
 		instance = bs
 	})
@@ -51,14 +54,14 @@ func newBitSwap() (*bitSwap,error){
 type bitSwap struct {
 }
 
-func (bs *bitSwap) GetBlock(*cid.Cid) (ipld.DagNode, error){
+func (bs *bitSwap) GetDagNode(*cid.Cid) (ipld.DagNode, error){
 	return nil, nil
 }
-func (bs *bitSwap) GetBlocks([]*cid.Cid) (<-chan ipld.DagNode, error){
+func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
 	return nil, nil
 }
 
-func (bs *bitSwap) HasBlock(node ipld.DagNode) error{
+func (bs *bitSwap) HasNode(node ipld.DagNode) error{
 	return nil
 }
 

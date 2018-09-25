@@ -58,7 +58,7 @@ func Register(code uint64, decoder DecodeBlockFunc) {
 	DefaultBlockDecoder.Register(code, decoder)
 }
 
-func DecodeProtobuf(encoded []byte) (*ProtoDagNode, error) {
+func DecodeProtoBuf(encoded []byte) (*ProtoDagNode, error) {
 	n := new(ProtoDagNode)
 	err := n.unmarshal(encoded)
 	if err != nil {
@@ -67,13 +67,13 @@ func DecodeProtobuf(encoded []byte) (*ProtoDagNode, error) {
 	return n, nil
 }
 
-func DecodeProtobufBlock(b []byte, c *cid.Cid) (DagNode, error) {
+func DecodeProtoBufBlock(b []byte, c *cid.Cid) (DagNode, error) {
 
 	if c.Type() != cid.DagProtobuf {
 		return nil, fmt.Errorf("this function can only decode protobuf nodes")
 	}
 
-	decnd, err := DecodeProtobuf(b)
+	decnd, err := DecodeProtoBuf(b)
 	if err != nil {
 		if strings.Contains(err.Error(), "Unmarshal failed") {
 			return nil, fmt.Errorf("the block referred to by '%s' was not a valid merkledag node", c)

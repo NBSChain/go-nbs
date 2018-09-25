@@ -21,6 +21,7 @@ type Resolver interface {
 }
 
 type Block interface {
+	Data()		[]byte
 	RawData() 	[]byte
 	Cid() 		*cid.Cid
 	String() 	string
@@ -99,6 +100,10 @@ func MakeLink(n DagNode) (*DagLink, error) {
 func (node *ProtoDagNode) RawData() []byte {
 	node.EncodeProtoBuf(false)
 	return node.encoded
+}
+
+func (node *ProtoDagNode) Data() []byte {
+	return node.data
 }
 
 func (node *ProtoDagNode) Cid() *cid.Cid {
@@ -290,7 +295,7 @@ func (n *ProtoDagNode) unmarshal(encoded []byte) error {
 		}
 		n.links[i].Cid = c
 	}
-	sort.Stable(LinkSlice(n.links)) // keep links sorted
+	sort.Stable(LinkSlice(n.links))
 
 	n.data = pbn.GetData()
 	n.encoded = encoded
