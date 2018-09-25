@@ -17,13 +17,14 @@ type UrlResolver interface {
 var ErrIsNotData = errors.New("this dag node is not a file")
 
 type nbsUrlResolver struct {
-	rootNode	*DagDataBridge//ipld.DagNode
+	rootNode	*DagDataBridge
 	position	int
 	links		[]*ipld.DagLink
+	parentUris	[]string	//TODO:: try to suport multi directory resolve.
 }
 
 
-func ReadStreamData(cidKey *cid.Cid)  (UrlResolver, error){
+func ReadStreamData(cidKey *cid.Cid, uris []string)  (UrlResolver, error){
 
 	dagService := merkledag.GetDagInstance()
 	node, err := dagService.Get(cidKey)
@@ -45,6 +46,7 @@ func ReadStreamData(cidKey *cid.Cid)  (UrlResolver, error){
 		rootNode:	bridgeNode,
 		links:		node.Links(),
 		position:	0,
+		parentUris:	uris,
 	}, nil
 }
 
