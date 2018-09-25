@@ -3,9 +3,11 @@
 
 package pb
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 import (
 	context "golang.org/x/net/context"
@@ -38,6 +40,7 @@ var FileType_name = map[int32]string{
 	2: "DIRECTORY",
 	3: "SYSTEMLINK",
 }
+
 var FileType_value = map[string]int32{
 	"FILE":       0,
 	"LARGEFILE":  1,
@@ -48,8 +51,9 @@ var FileType_value = map[string]int32{
 func (x FileType) String() string {
 	return proto.EnumName(FileType_name, int32(x))
 }
+
 func (FileType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_rpcAddMsg_1460588f8a868d68, []int{0}
+	return fileDescriptor_f5acc0f250d5865c, []int{0}
 }
 
 type FileChunk struct {
@@ -63,16 +67,17 @@ func (m *FileChunk) Reset()         { *m = FileChunk{} }
 func (m *FileChunk) String() string { return proto.CompactTextString(m) }
 func (*FileChunk) ProtoMessage()    {}
 func (*FileChunk) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rpcAddMsg_1460588f8a868d68, []int{0}
+	return fileDescriptor_f5acc0f250d5865c, []int{0}
 }
+
 func (m *FileChunk) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_FileChunk.Unmarshal(m, b)
 }
 func (m *FileChunk) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_FileChunk.Marshal(b, m, deterministic)
 }
-func (dst *FileChunk) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FileChunk.Merge(dst, src)
+func (m *FileChunk) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FileChunk.Merge(m, src)
 }
 func (m *FileChunk) XXX_Size() int {
 	return xxx_messageInfo_FileChunk.Size(m)
@@ -106,16 +111,17 @@ func (m *AddRequest) Reset()         { *m = AddRequest{} }
 func (m *AddRequest) String() string { return proto.CompactTextString(m) }
 func (*AddRequest) ProtoMessage()    {}
 func (*AddRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rpcAddMsg_1460588f8a868d68, []int{1}
+	return fileDescriptor_f5acc0f250d5865c, []int{1}
 }
+
 func (m *AddRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddRequest.Unmarshal(m, b)
 }
 func (m *AddRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AddRequest.Marshal(b, m, deterministic)
 }
-func (dst *AddRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddRequest.Merge(dst, src)
+func (m *AddRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AddRequest.Merge(m, src)
 }
 func (m *AddRequest) XXX_Size() int {
 	return xxx_messageInfo_AddRequest.Size(m)
@@ -184,16 +190,17 @@ func (m *AddResponse) Reset()         { *m = AddResponse{} }
 func (m *AddResponse) String() string { return proto.CompactTextString(m) }
 func (*AddResponse) ProtoMessage()    {}
 func (*AddResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_rpcAddMsg_1460588f8a868d68, []int{2}
+	return fileDescriptor_f5acc0f250d5865c, []int{2}
 }
+
 func (m *AddResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddResponse.Unmarshal(m, b)
 }
 func (m *AddResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_AddResponse.Marshal(b, m, deterministic)
 }
-func (dst *AddResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AddResponse.Merge(dst, src)
+func (m *AddResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AddResponse.Merge(m, src)
 }
 func (m *AddResponse) XXX_Size() int {
 	return xxx_messageInfo_AddResponse.Size(m)
@@ -247,10 +254,10 @@ func (m *AddResponse) GetSize() string {
 }
 
 func init() {
+	proto.RegisterEnum("pb.FileType", FileType_name, FileType_value)
 	proto.RegisterType((*FileChunk)(nil), "pb.FileChunk")
 	proto.RegisterType((*AddRequest)(nil), "pb.AddRequest")
 	proto.RegisterType((*AddResponse)(nil), "pb.AddResponse")
-	proto.RegisterEnum("pb.FileType", FileType_name, FileType_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -393,9 +400,9 @@ var _AddTask_serviceDesc = grpc.ServiceDesc{
 	Metadata: "rpcAddMsg.proto",
 }
 
-func init() { proto.RegisterFile("rpcAddMsg.proto", fileDescriptor_rpcAddMsg_1460588f8a868d68) }
+func init() { proto.RegisterFile("rpcAddMsg.proto", fileDescriptor_f5acc0f250d5865c) }
 
-var fileDescriptor_rpcAddMsg_1460588f8a868d68 = []byte{
+var fileDescriptor_f5acc0f250d5865c = []byte{
 	// 421 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x92, 0xdf, 0x6a, 0xdb, 0x30,
 	0x14, 0xc6, 0xab, 0x38, 0x49, 0xe3, 0xb3, 0x24, 0x0d, 0x62, 0x17, 0xa6, 0x6c, 0x10, 0x0c, 0x03,
