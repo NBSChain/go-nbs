@@ -9,9 +9,10 @@ import "google.golang.org/grpc/reflection"
 import "net"
 import "github.com/NBSChain/go-nbs/utils"
 
-const SplitterSize 		= 1 << 18	   //256K
-const BigFileThreshold int64 	= 50 << 20  	   //50M
-const BigFileChunkSize int64 	= SplitterSize << 2//1M
+const SplitterSize 		= 1 << 18	   	//256K
+const BigFileThreshold 	int64 	= 50 << 20  	   	//50M
+const BigFileChunkSize 	int64 	= SplitterSize << 2	//1M
+const MaxFIleSize 	int 	= 10 << 30		//10G
 
 var   logger 			= utils.GetLogInstance()
 
@@ -26,7 +27,7 @@ func StartCmdService() {
 		logger.Fatalf("Failed to listen: %v", err)
 	}
 
-	theServer := grpc.NewServer()
+	theServer := grpc.NewServer(grpc.MaxRecvMsgSize(MaxFIleSize), grpc.MaxSendMsgSize(MaxFIleSize))
 
 	pb.RegisterAddTaskServer(theServer, &addService{
 		fileAddTask: make(map[string]*pb.AddRequest),

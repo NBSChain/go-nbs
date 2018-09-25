@@ -3,11 +3,9 @@
 
 package unixfs_pb
 
-import (
-	fmt "fmt"
-	proto "github.com/golang/protobuf/proto"
-	math "math"
-)
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -39,7 +37,6 @@ var Data_DataType_name = map[int32]string{
 	4: "Symlink",
 	5: "HAMTShard",
 }
-
 var Data_DataType_value = map[string]int32{
 	"Raw":       0,
 	"Directory": 1,
@@ -54,11 +51,9 @@ func (x Data_DataType) Enum() *Data_DataType {
 	*p = x
 	return p
 }
-
 func (x Data_DataType) String() string {
 	return proto.EnumName(Data_DataType_name, int32(x))
 }
-
 func (x *Data_DataType) UnmarshalJSON(data []byte) error {
 	value, err := proto.UnmarshalJSONEnum(Data_DataType_value, data, "Data_DataType")
 	if err != nil {
@@ -67,9 +62,8 @@ func (x *Data_DataType) UnmarshalJSON(data []byte) error {
 	*x = Data_DataType(value)
 	return nil
 }
-
 func (Data_DataType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_e2fd76cc44dfc7c3, []int{0, 0}
+	return fileDescriptor_unixfs_3db5950575d8bde2, []int{0, 0}
 }
 
 type Data struct {
@@ -88,17 +82,16 @@ func (m *Data) Reset()         { *m = Data{} }
 func (m *Data) String() string { return proto.CompactTextString(m) }
 func (*Data) ProtoMessage()    {}
 func (*Data) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e2fd76cc44dfc7c3, []int{0}
+	return fileDescriptor_unixfs_3db5950575d8bde2, []int{0}
 }
-
 func (m *Data) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Data.Unmarshal(m, b)
 }
 func (m *Data) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Data.Marshal(b, m, deterministic)
 }
-func (m *Data) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Data.Merge(m, src)
+func (dst *Data) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Data.Merge(dst, src)
 }
 func (m *Data) XXX_Size() int {
 	return xxx_messageInfo_Data.Size(m)
@@ -162,17 +155,16 @@ func (m *Metadata) Reset()         { *m = Metadata{} }
 func (m *Metadata) String() string { return proto.CompactTextString(m) }
 func (*Metadata) ProtoMessage()    {}
 func (*Metadata) Descriptor() ([]byte, []int) {
-	return fileDescriptor_e2fd76cc44dfc7c3, []int{1}
+	return fileDescriptor_unixfs_3db5950575d8bde2, []int{1}
 }
-
 func (m *Metadata) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Metadata.Unmarshal(m, b)
 }
 func (m *Metadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_Metadata.Marshal(b, m, deterministic)
 }
-func (m *Metadata) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Metadata.Merge(m, src)
+func (dst *Metadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Metadata.Merge(dst, src)
 }
 func (m *Metadata) XXX_Size() int {
 	return xxx_messageInfo_Metadata.Size(m)
@@ -191,14 +183,14 @@ func (m *Metadata) GetMimeType() string {
 }
 
 func init() {
-	proto.RegisterEnum("unixfs.pb.Data_DataType", Data_DataType_name, Data_DataType_value)
 	proto.RegisterType((*Data)(nil), "unixfs.pb.Data")
 	proto.RegisterType((*Metadata)(nil), "unixfs.pb.Metadata")
+	proto.RegisterEnum("unixfs.pb.Data_DataType", Data_DataType_name, Data_DataType_value)
 }
 
-func init() { proto.RegisterFile("unixfs.proto", fileDescriptor_e2fd76cc44dfc7c3) }
+func init() { proto.RegisterFile("unixfs.proto", fileDescriptor_unixfs_3db5950575d8bde2) }
 
-var fileDescriptor_e2fd76cc44dfc7c3 = []byte{
+var fileDescriptor_unixfs_3db5950575d8bde2 = []byte{
 	// 254 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xb1, 0x6a, 0xeb, 0x30,
 	0x18, 0x85, 0xaf, 0x6c, 0x25, 0xb1, 0xff, 0xeb, 0x16, 0xf1, 0x0f, 0x45, 0x74, 0x28, 0xc6, 0x43,

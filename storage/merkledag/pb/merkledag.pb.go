@@ -3,12 +3,10 @@
 
 package merkledag_pb
 
-import (
-	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/golang/protobuf/proto"
-	math "math"
-)
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -34,17 +32,16 @@ func (m *PBLink) Reset()         { *m = PBLink{} }
 func (m *PBLink) String() string { return proto.CompactTextString(m) }
 func (*PBLink) ProtoMessage()    {}
 func (*PBLink) Descriptor() ([]byte, []int) {
-	return fileDescriptor_10837cc3557cec00, []int{0}
+	return fileDescriptor_merkledag_908c922b98612911, []int{0}
 }
-
 func (m *PBLink) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PBLink.Unmarshal(m, b)
 }
 func (m *PBLink) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PBLink.Marshal(b, m, deterministic)
 }
-func (m *PBLink) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PBLink.Merge(m, src)
+func (dst *PBLink) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PBLink.Merge(dst, src)
 }
 func (m *PBLink) XXX_Size() int {
 	return xxx_messageInfo_PBLink.Size(m)
@@ -88,17 +85,16 @@ func (m *PBNode) Reset()         { *m = PBNode{} }
 func (m *PBNode) String() string { return proto.CompactTextString(m) }
 func (*PBNode) ProtoMessage()    {}
 func (*PBNode) Descriptor() ([]byte, []int) {
-	return fileDescriptor_10837cc3557cec00, []int{1}
+	return fileDescriptor_merkledag_908c922b98612911, []int{1}
 }
-
 func (m *PBNode) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_PBNode.Unmarshal(m, b)
 }
 func (m *PBNode) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_PBNode.Marshal(b, m, deterministic)
 }
-func (m *PBNode) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PBNode.Merge(m, src)
+func (dst *PBNode) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PBNode.Merge(dst, src)
 }
 func (m *PBNode) XXX_Size() int {
 	return xxx_messageInfo_PBNode.Size(m)
@@ -128,9 +124,9 @@ func init() {
 	proto.RegisterType((*PBNode)(nil), "merkledag.pb.PBNode")
 }
 
-func init() { proto.RegisterFile("merkledag.proto", fileDescriptor_10837cc3557cec00) }
+func init() { proto.RegisterFile("merkledag.proto", fileDescriptor_merkledag_908c922b98612911) }
 
-var fileDescriptor_10837cc3557cec00 = []byte{
+var fileDescriptor_merkledag_908c922b98612911 = []byte{
 	// 232 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0xcf, 0x4d, 0x2d, 0xca,
 	0xce, 0x49, 0x4d, 0x49, 0x4c, 0xd7, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x41, 0x12, 0x48,

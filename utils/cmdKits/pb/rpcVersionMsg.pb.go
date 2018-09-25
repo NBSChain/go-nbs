@@ -3,11 +3,9 @@
 
 package pb
 
-import (
-	fmt "fmt"
-	proto "github.com/golang/protobuf/proto"
-	math "math"
-)
+import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
+import math "math"
 
 import (
 	context "golang.org/x/net/context"
@@ -37,17 +35,16 @@ func (m *VersionRequest) Reset()         { *m = VersionRequest{} }
 func (m *VersionRequest) String() string { return proto.CompactTextString(m) }
 func (*VersionRequest) ProtoMessage()    {}
 func (*VersionRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_691d697efa63b0aa, []int{0}
+	return fileDescriptor_rpcVersionMsg_fe3cea0b8721b3bb, []int{0}
 }
-
 func (m *VersionRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionRequest.Unmarshal(m, b)
 }
 func (m *VersionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VersionRequest.Marshal(b, m, deterministic)
 }
-func (m *VersionRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VersionRequest.Merge(m, src)
+func (dst *VersionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionRequest.Merge(dst, src)
 }
 func (m *VersionRequest) XXX_Size() int {
 	return xxx_messageInfo_VersionRequest.Size(m)
@@ -83,17 +80,16 @@ func (m *VersionResponse) Reset()         { *m = VersionResponse{} }
 func (m *VersionResponse) String() string { return proto.CompactTextString(m) }
 func (*VersionResponse) ProtoMessage()    {}
 func (*VersionResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_691d697efa63b0aa, []int{1}
+	return fileDescriptor_rpcVersionMsg_fe3cea0b8721b3bb, []int{1}
 }
-
 func (m *VersionResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VersionResponse.Unmarshal(m, b)
 }
 func (m *VersionResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	return xxx_messageInfo_VersionResponse.Marshal(b, m, deterministic)
 }
-func (m *VersionResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_VersionResponse.Merge(m, src)
+func (dst *VersionResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_VersionResponse.Merge(dst, src)
 }
 func (m *VersionResponse) XXX_Size() int {
 	return xxx_messageInfo_VersionResponse.Size(m)
@@ -188,9 +184,9 @@ var _VersionTask_serviceDesc = grpc.ServiceDesc{
 	Metadata: "rpcVersionMsg.proto",
 }
 
-func init() { proto.RegisterFile("rpcVersionMsg.proto", fileDescriptor_691d697efa63b0aa) }
+func init() { proto.RegisterFile("rpcVersionMsg.proto", fileDescriptor_rpcVersionMsg_fe3cea0b8721b3bb) }
 
-var fileDescriptor_691d697efa63b0aa = []byte{
+var fileDescriptor_rpcVersionMsg_fe3cea0b8721b3bb = []byte{
 	// 211 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x8f, 0xbf, 0x4b, 0xc4, 0x40,
 	0x10, 0x85, 0xcd, 0x29, 0x27, 0x37, 0xa2, 0xe2, 0x1c, 0x48, 0x10, 0x84, 0x23, 0xd5, 0xd9, 0x4c,
