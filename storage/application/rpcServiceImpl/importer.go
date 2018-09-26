@@ -58,7 +58,7 @@ func ImportFile(importer FileImporter) error {
 		return err
 	}
 
-	logger.Info("rootNode:->", rootNode.String())
+	logger.Info("currentNode:->", rootNode.String())
 
 	adder.AddNode(rootNode, importer.FileName())
 
