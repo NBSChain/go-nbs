@@ -14,13 +14,15 @@ type UrlResolver interface {
 	io.Closer
 	Next() ([]byte, error)
 }
+
 var ErrIsNotFileData = errors.New("this dag node is not a file")
 
+
 type nbsUrlResolver struct {
-	currentNode *DagDataBridge
-	position    int
-	links       []*ipld.DagLink
-	parentUris  []string	//TODO:: try to suport multi directory resolve.
+	rootNode	ipld.DagNode
+	currentNode 	chan ipld.DagNode
+	readingErr 	chan error
+	parentUris 	[]string	//TODO:: try to suport multi directory resolve.
 }
 
 //TODO:: rawData should be ok later.
@@ -32,23 +34,53 @@ func ReadStreamData(cidKey *cid.Cid, uris []string)  (UrlResolver, error){
 		return nil, err
 	}
 
-	bridgeNode, err := parseToBridgeNode(node)
-	if err != nil{
-		return nil, err
-	}
-
 	resolver := &nbsUrlResolver{
-		currentNode: bridgeNode,
-		position:    0,
-		parentUris:  uris,
+		rootNode:	node,
+		currentNode:   	make(chan ipld.DagNode),
+		readingErr:	make(chan error),
+		parentUris: 	uris,
 	}
 
-	if len(node.Links()) > 0 {
-		resolver.links = make([]*ipld.DagLink, len(node.Links()))
-		copy(resolver.links, node.Links())
-	}
+	go resolver.createReader(node)
 
 	return resolver, nil
+}
+
+func (resolver *nbsUrlResolver) createReader(rootNode ipld.DagNode)  {
+
+	resolver.traverseNode(rootNode)
+
+	close(resolver.currentNode)
+
+	resolver.readingErr<-io.EOF
+
+	logger.Info("*************>>")
+}
+
+func (resolver *nbsUrlResolver) traverseNode(rootNode ipld.DagNode){
+
+	links := rootNode.Links()
+
+	dagService := merkledag.GetDagInstance()
+
+	if links == nil || len(links) == 0{
+		logger.Info("+++++++++++>",rootNode.String())
+		resolver.currentNode<-rootNode
+		return
+
+	}else{
+		for _, link := range links{
+			node, err := dagService.Get(link.Cid)
+			if err != nil{
+				logger.Error(err)
+				resolver.readingErr<-err
+				return
+			}else{
+				resolver.traverseNode(node)
+			}
+		}
+		logger.Debug(rootNode.String())
+	}
 }
 
 func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
@@ -75,44 +107,28 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 	return bridgeNode, nil
 }
 
-//TODO::try to support more than 2 depth for command "get"
 func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 
-	//It's a leaf node
-	if len(resolver.links) == 0{
+	select {
 
-		data := resolver.currentNode.format.Data
+	case node, ok := <-resolver.currentNode:
 
-		if data == nil{
+		if !ok{
 			return nil, io.EOF
-		}else{
-			resolver.currentNode.format.Data = nil
-			return data, nil
 		}
-	}
 
-	if resolver.position >= len(resolver.links){
-		return nil, io.EOF
-	}
+		bridgeNode, err := parseToBridgeNode(node)
+		if err != nil{
+			return nil, err
+		}
+		logger.Info("--------->",node.String())
+		return bridgeNode.format.Data, err
 
-
-	dagService := merkledag.GetDagInstance()
-
-	link := resolver.links[resolver.position]
-	node, err := dagService.Get(link.Cid)
-	if err != nil{
+	case err := <-resolver.readingErr:
+		logger.Info(err.Error())
+		logger.Info("*************>>")
 		return nil, err
 	}
-
-	curNode, err := parseToBridgeNode(node)
-	if err != nil{
-		return nil ,err
-	}
-
-	resolver.currentNode = curNode
-	resolver.position++
-
-	return curNode.format.Data, nil
 }
 
 func (resolver *nbsUrlResolver) Close() error{

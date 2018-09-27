@@ -191,12 +191,14 @@ func (fs *FlatFileDataStore) makeDir(dir string) error {
 	return nil
 }
 
-func (fs *FlatFileDataStore) putAsync(key string, value []byte, errorNum *int32)  {
+func (fs *FlatFileDataStore) putAsync(key string, value []byte, errorNum *int32, wg *sync.WaitGroup)  {
+	defer wg.Done()
 	if err := fs.Put(key, value); err != nil{
 		atomic.AddInt32(errorNum, 1)
 	}
 }
-func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32)  {
+func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32, wg *sync.WaitGroup)  {
+	defer wg.Done()
 	if err := fs.Delete(key); err != nil {
 		atomic.AddInt32(errorNum, 1)
 	}
@@ -209,6 +211,8 @@ func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32)  {
 func (fs *FlatFileDataStore) Put(key string, value []byte) error{
 
 	dir, path := fs.encode(key)
+
+	logger.Info(">>>Put<<<", path)
 
 	if err := fs.makeDir(dir); err != nil {
 		return err
@@ -244,6 +248,7 @@ func (fs *FlatFileDataStore) Get(key string) ([]byte, error){
 
 func (fs *FlatFileDataStore) Has(key string) (bool, error){
 	_, path := fs.encode(key)
+	logger.Info(">>>Has<<<", path)
 	_, err := os.Stat(path)
 	return err == nil, err
 }
@@ -288,17 +293,18 @@ func (fsb *flatFileBatch) Commit() error {
 
 	var errorNum int32 = 0
 
+	var wg sync.WaitGroup
 	for key, value := range fsb.puts{
-		go fsb.dataStore.putAsync(key, value, &errorNum)
-	}
-
-	if errorNum > 0{
-		return ErrCommit
+		wg.Add(1)
+		go fsb.dataStore.putAsync(key, value, &errorNum, &wg)
 	}
 
 	for k := range fsb.deletes {
-		go fsb.dataStore.deleteAsync(k, &errorNum)
+		wg.Add(1)
+		go fsb.dataStore.deleteAsync(k, &errorNum, &wg)
 	}
+
+	wg.Wait()
 
 	if errorNum > 0{
 		return ErrCommit

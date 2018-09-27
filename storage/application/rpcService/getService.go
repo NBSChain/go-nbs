@@ -35,6 +35,10 @@ func (service *getService) Get(request *pb.GetRequest, stream pb.GetTask_GetServ
 			}
 		}
 
+		if data == nil{
+			break
+		}
+
 		response := &pb.GetResponse{
 			Content:data,
 		}

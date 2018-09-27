@@ -28,7 +28,7 @@ func GetDagInstance() DAGService {
 			panic(err)
 		}
 
-		logger.Info("router start to run......\n")
+		logger.Info("dag service start to run......\n")
 		instance = router
 	})
 
@@ -176,6 +176,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 	bitSwap := bitswap.GetSwapInstance()
 
 	for _, node := range toPut{
+
 		service.bloom.AddTS(node.Cid().Bytes())
 
 		if err := bitSwap.HasNode(node); err != nil{ //TODO:: we need to optimize this part.
