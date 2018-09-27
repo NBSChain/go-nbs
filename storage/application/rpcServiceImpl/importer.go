@@ -10,12 +10,14 @@ import (
 	"io"
 )
 
-const BlockSizeLimit = 1048576 // 1 MB
+const BlockSizeLimit 		= 1048576 // 1 MB
 
-const roughLinkBlockSize = 1 << 13 // 8KB
-const roughLinkSize = 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
-const adderOutChanSize = 8
-const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
+const roughLinkBlockSize 	= 1 << 13 // 8KB
+const roughLinkSize 		= 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
+const adderOutChanSize 		= 8
+//const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
+
+const DefaultLinksPerBlock = 2
 
 var logger = utils.GetLogInstance()
 
@@ -81,11 +83,7 @@ func (node *DagDataBridge) AddChild(adder *Adder, child *DagDataBridge, dataSize
 		return err
 	}
 
-	logger.Debug("===3=== newRoot->", node.dag.String())
-
 	node.format.AddBlockSize(dataSize)
-
-	logger.Debug("===4=== newRoot->", node.dag.String())
 
 	return adder.batch.Add(child.dag)
 }

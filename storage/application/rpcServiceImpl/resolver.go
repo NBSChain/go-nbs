@@ -75,7 +75,7 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 	return bridgeNode, nil
 }
 
-
+//TODO::try to support more than 2 depth for command "get"
 func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 
 	//It's a leaf node
