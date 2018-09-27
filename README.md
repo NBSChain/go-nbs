@@ -9,8 +9,14 @@
 - [Contribute](#contribute)
 - [License](#license)
 
+
+###Before you begin
+Install [grpc](https://grpc.io/docs/quickstart/go.html)    
+
 ## Install
 ```
+
+
 //shadowsocks
 for windows:
 	set http_proxy=http://127.0.0.1:1080
@@ -35,5 +41,4 @@ make
 ## Contribute
     Coming...
 ## License
-
     MIT © Protocol Labs, Inc.
