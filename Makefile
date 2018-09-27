@@ -1,6 +1,6 @@
 SHELL=PATH='$(PATH)' /bin/sh
 
-PLATFORM := $(shell uname -o)
+PLATFORM := $(shell uname -a)
 
 
 EXTEND := .exe
