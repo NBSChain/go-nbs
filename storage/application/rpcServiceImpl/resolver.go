@@ -40,7 +40,7 @@ func ReadStreamData(cidKey *cid.Cid, uris []string)  (UrlResolver, error){
 	return &nbsUrlResolver{
 		currentNode: bridgeNode,
 		links:       node.Links(),
-		position:    0,
+		position:    -1,//-1 means start form self ,not sub nodes from links.
 		parentUris:  uris,
 	}, nil
 }
@@ -71,16 +71,21 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 
 func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 
-	dagService := merkledag.GetDagInstance()
-
 	if resolver.position >= len(resolver.links){
 		return nil, io.EOF
 	}
 
 	result := resolver.currentNode.format.Data
 
-	link := resolver.links[resolver.position]
 	resolver.position++
+	if resolver.position >= len(resolver.links){
+		resolver.currentNode = nil
+		return result, nil
+	}
+
+	link := resolver.links[resolver.position]
+
+	dagService := merkledag.GetDagInstance()
 
 	node, err := dagService.Get(link.Cid)
 	if err != nil{
