@@ -116,5 +116,6 @@ func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 }
 
 func (resolver *nbsUrlResolver) Close() error{
+	//TODO::
 	return nil
 }

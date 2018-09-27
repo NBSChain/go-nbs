@@ -42,5 +42,7 @@ func (service *getService) Get(request *pb.GetRequest, stream pb.GetTask_GetServ
 		stream.Send(response)
 	}
 
+	resolver.Close()
+
 	return nil
 }
