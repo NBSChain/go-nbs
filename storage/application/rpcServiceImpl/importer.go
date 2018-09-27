@@ -17,15 +17,6 @@ const roughLinkSize = 34 + 8 + 5   // sha256 multihash + size + no name + protob
 const adderOutChanSize = 8
 const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
 
-const (
-	TRaw       = unixfs_pb.Data_Raw
-	TFile      = unixfs_pb.Data_File
-	TDirectory = unixfs_pb.Data_Directory
-	TMetadata  = unixfs_pb.Data_Metadata
-	TSymlink   = unixfs_pb.Data_Symlink
-	THAMTShard = unixfs_pb.Data_HAMTShard
-)
-
 var logger = utils.GetLogInstance()
 
 type FileImporter interface {
@@ -58,7 +49,7 @@ func ImportFile(importer FileImporter) error {
 		return err
 	}
 
-	logger.Info("rootNode:->", rootNode.String())
+	logger.Info("currentNode:->", rootNode.String())
 
 	adder.AddNode(rootNode, importer.FileName())
 

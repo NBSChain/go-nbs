@@ -152,7 +152,7 @@ func (node *ProtoDagNode) Copy() DagNode {
 }
 
 func (node *ProtoDagNode) Links() []*DagLink {
-	return nil
+	return node.links
 }
 
 func (node *ProtoDagNode) Size() (int64, error) {
