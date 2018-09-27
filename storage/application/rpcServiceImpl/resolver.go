@@ -37,12 +37,15 @@ func ReadStreamData(cidKey *cid.Cid, uris []string)  (UrlResolver, error){
 		return nil, err
 	}
 
-	return &nbsUrlResolver{
+	resolver := &nbsUrlResolver{
 		currentNode: bridgeNode,
-		links:       node.Links(),
 		position:    -1,//-1 means start form self ,not sub nodes from links.
 		parentUris:  uris,
-	}, nil
+	}
+	resolver.links = make([]*ipld.DagLink, len(node.Links()))
+	copy(resolver.links, node.Links())
+
+	return resolver, nil
 }
 
 func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
@@ -60,8 +63,8 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 	if err != nil {
 		return nil, err
 	}
-
-	if bridgeNode.Type() != TFile{
+//TODO:: data_directory
+	if bridgeNode.Type() != unixfs_pb.Data_File{
 		return nil, ErrIsNotFileData
 	}
 
@@ -75,7 +78,11 @@ func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 		return nil, io.EOF
 	}
 
+	//TODO:: need to check what we can do if result is nil.
 	result := resolver.currentNode.format.Data
+
+	dataType := *resolver.currentNode.format.Type
+	logger.Info("data type is :", dataType)
 
 	resolver.position++
 	if resolver.position >= len(resolver.links){
@@ -86,7 +93,6 @@ func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 	link := resolver.links[resolver.position]
 
 	dagService := merkledag.GetDagInstance()
-
 	node, err := dagService.Get(link.Cid)
 	if err != nil{
 		return nil, err

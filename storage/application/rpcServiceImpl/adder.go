@@ -73,7 +73,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 		return nil, errors.New("don't build empty node. ")
 	}
 
-	root := adder.newImportNode(TFile)
+	root := adder.newImportNode(unixfs_pb.Data_File)
 	fileSize, err := adder.leafNodeWithData(root)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 
 	for depth := 1; adder.hasNext(); depth++ {
 
-		newRoot := adder.newImportNode(TFile)
+		newRoot := adder.newImportNode(unixfs_pb.Data_File)
 
 		logger.Debug("===1===depth: ", depth, " newRoot->", newRoot.dag.String())
 
@@ -149,7 +149,7 @@ func (adder *Adder) fillNodeRec(node *DagDataBridge, depth int) (int64, error) {
 
 	for node.NumChildren() < DefaultLinksPerBlock && adder.hasNext() {
 
-		childNode := adder.newImportNode(TFile)
+		childNode := adder.newImportNode(unixfs_pb.Data_File)
 
 		if depth == 1 {
 
