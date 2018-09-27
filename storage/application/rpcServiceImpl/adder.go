@@ -3,7 +3,6 @@ package rpcServiceImpl
 import (
 	"errors"
 	"github.com/NBSChain/go-nbs/storage/application/pb"
-	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
@@ -23,7 +22,7 @@ type Adder struct {
 	rootDir  *Directory
 	importer FileImporter
 	nextData []byte
-	batch    *merkledag.Batch
+	batch    *Batch
 }
 
 /*******************************************************************************
@@ -79,17 +78,13 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 		return nil, err
 	}
 
-	logger.Debug("start leaf node->", root.dag.String())
+	logger.Info("start leaf node->", root.dag.String())
 
 	for depth := 1; adder.hasNext(); depth++ {
 
 		newRoot := adder.newImportNode(unixfs_pb.Data_File)
 
-		logger.Debug("===1===depth: ", depth, " newRoot->", newRoot.dag.String())
-
 		newRoot.AddChild(adder, root, fileSize)
-
-		logger.Debug("===2===depth: ", depth, " newRoot->", newRoot.dag.String())
 
 		fileSize, err = adder.fillNodeRec(newRoot, depth)
 		if err != nil {
@@ -98,7 +93,7 @@ func (adder *Adder) buildNodeLayout() (ipld.DagNode, error) {
 
 		root = newRoot
 
-		logger.Debug("root->", root.dag.String())
+		logger.Info("root->", root.dag.String())
 	}
 
 	return adder.AddNodeAndClose(root)
@@ -176,11 +171,7 @@ func (adder *Adder) fillNodeRec(node *DagDataBridge, depth int) (int64, error) {
 			return 0, err
 		}
 
-		err = adder.batch.Add(childNode.dag)
-		if err != nil {
-			return 0, err
-		}
-
+		logger.Debug("===3===depth: ", depth, " childNode->", childNode.dag.String())
 	}
 
 	resultFileSize := node.FileSize()

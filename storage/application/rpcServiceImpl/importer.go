@@ -2,7 +2,6 @@ package rpcServiceImpl
 
 import (
 	"github.com/NBSChain/go-nbs/storage/application/pb"
-	"github.com/NBSChain/go-nbs/storage/merkledag"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
@@ -10,12 +9,13 @@ import (
 	"io"
 )
 
-const BlockSizeLimit = 1048576 // 1 MB
+const BlockSizeLimit 		= 1048576 // 1 MB
 
-const roughLinkBlockSize = 1 << 13 // 8KB
-const roughLinkSize = 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
-const adderOutChanSize = 8
+const roughLinkBlockSize 	= 1 << 13 // 8KB
+const roughLinkSize 		= 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
+const adderOutChanSize 		= 8
 const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
+//const DefaultLinksPerBlock = 2
 
 var logger = utils.GetLogInstance()
 
@@ -40,7 +40,7 @@ func ImportFile(importer FileImporter) error {
 
 	adder := &Adder{
 		importer: importer,
-		batch:    merkledag.NewBatch(),
+		batch:    NewBatch(),
 		rootDir:  NewDir(),
 	}
 
@@ -49,7 +49,7 @@ func ImportFile(importer FileImporter) error {
 		return err
 	}
 
-	logger.Info("currentNode:->", rootNode.String())
+	logger.Info("rootNode:->", rootNode.String())
 
 	adder.AddNode(rootNode, importer.FileName())
 
@@ -81,11 +81,7 @@ func (node *DagDataBridge) AddChild(adder *Adder, child *DagDataBridge, dataSize
 		return err
 	}
 
-	logger.Debug("===3=== newRoot->", node.dag.String())
-
 	node.format.AddBlockSize(dataSize)
-
-	logger.Debug("===4=== newRoot->", node.dag.String())
 
 	return adder.batch.Add(child.dag)
 }
