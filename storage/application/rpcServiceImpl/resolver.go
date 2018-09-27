@@ -39,11 +39,14 @@ func ReadStreamData(cidKey *cid.Cid, uris []string)  (UrlResolver, error){
 
 	resolver := &nbsUrlResolver{
 		currentNode: bridgeNode,
-		position:    -1,//-1 means start form self ,not sub nodes from links.
+		position:    0,
 		parentUris:  uris,
 	}
-	resolver.links = make([]*ipld.DagLink, len(node.Links()))
-	copy(resolver.links, node.Links())
+
+	if len(node.Links()) > 0 {
+		resolver.links = make([]*ipld.DagLink, len(node.Links()))
+		copy(resolver.links, node.Links())
+	}
 
 	return resolver, nil
 }
@@ -63,7 +66,8 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 	if err != nil {
 		return nil, err
 	}
-//TODO:: data_directory
+
+	//TODO:: data_directory
 	if bridgeNode.Type() != unixfs_pb.Data_File{
 		return nil, ErrIsNotFileData
 	}
@@ -74,25 +78,27 @@ func parseToBridgeNode(node ipld.DagNode) (*DagDataBridge, error)  {
 
 func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 
+	//It's a leaf node
+	if len(resolver.links) == 0{
+
+		data := resolver.currentNode.format.Data
+
+		if data == nil{
+			return nil, io.EOF
+		}else{
+			resolver.currentNode.format.Data = nil
+			return data, nil
+		}
+	}
+
 	if resolver.position >= len(resolver.links){
 		return nil, io.EOF
 	}
 
-	//TODO:: need to check what we can do if result is nil.
-	result := resolver.currentNode.format.Data
-
-	dataType := *resolver.currentNode.format.Type
-	logger.Info("data type is :", dataType)
-
-	resolver.position++
-	if resolver.position >= len(resolver.links){
-		resolver.currentNode = nil
-		return result, nil
-	}
-
-	link := resolver.links[resolver.position]
 
 	dagService := merkledag.GetDagInstance()
+
+	link := resolver.links[resolver.position]
 	node, err := dagService.Get(link.Cid)
 	if err != nil{
 		return nil, err
@@ -104,8 +110,9 @@ func (resolver *nbsUrlResolver) Next() ([]byte, error)  {
 	}
 
 	resolver.currentNode = curNode
+	resolver.position++
 
-	return result, nil
+	return curNode.format.Data, nil
 }
 
 func (resolver *nbsUrlResolver) Close() error{
