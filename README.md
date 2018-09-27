@@ -37,6 +37,11 @@ make
     nbs
     //add file in new commd window
     nbs add 1.jpg
+    //get file by hash
+    nbs get <HASH>
+    nbs get <HASH> -o <target file name>
+    //for help
+    nbs --help or nbs -h
 ```
 ## Contribute
     Coming...
