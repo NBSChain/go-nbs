@@ -39,24 +39,10 @@ func NewServiceKey(fullPath string) ServiceType{
 	}
 
 	routers := strings.Split(fullPath, "/")
-	//if len(routers) <= 1{
-	//	return ServiceTypeROOT
-	//}
 
 	/*TODO::
 	*Solve top level right now, I didn't find the necessary
 	*of complicate service routing.
-
-	paraLen := len(routers)
-	parameter := routers[paraLen-1:]
-	currentCode := ServiceTypeROOT
-	for _, item := range routers{
-		router := ServiceDictionary[item]
-
-		if router != nil{
-			currentCode = router.code
-		}
-	}
 	*/
 
 	topLevelServiceKey := routers[0]
