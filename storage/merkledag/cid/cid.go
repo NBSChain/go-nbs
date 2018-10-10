@@ -160,6 +160,10 @@ func (c *Cid) bytesV0() []byte {
 	return []byte(c.Hash)
 }
 
+func (c *Cid) KeyString() string {
+	return string(c.Bytes())
+}
+
 func (c *Cid) bytesV1() []byte {
 
 	// two 8 bytes (max) numbers plus hash
@@ -270,6 +274,8 @@ func uvError(read int) error {
 		return nil
 	}
 }
+
+
 
 func NewKeyFromBinary(rawKey []byte) string {
 	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)

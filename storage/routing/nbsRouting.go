@@ -2,6 +2,8 @@ package routing
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/application/dataStore"
+	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/libp2p/go-libp2p-peer"
@@ -11,6 +13,7 @@ import (
 
 type NbsDHT struct {
 	peerId peer.ID
+	localDataStore	dataStore.DataStore
 }
 
 var instance 		*NbsDHT
@@ -58,4 +61,13 @@ func (*NbsDHT) PutValue(key string, value []byte) chan error {
 
 func (*NbsDHT) GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, error) {
 	return nil, nil, nil
+}
+
+
+//----------收到数据之后存储在本地---
+func (dht *NbsDHT) saveData(key string, value []byte){
+
+	dataBlockKey := cid.NewKeyFromBinary([]byte(key))
+
+	dht.localDataStore.Put(dataBlockKey, value)
 }
