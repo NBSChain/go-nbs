@@ -44,28 +44,18 @@ func newNbsDht() (*NbsDHT, error) {
 }
 
 //----------->routing interface implementation<-----------//
-func (*NbsDHT) Ping(context.Context, peer.ID) error {
+func (*NbsDHT) Ping(peer peerstore.PeerInfo) Pong{
 	return nil
 }
 
-func (*NbsDHT) FindPeer(context.Context, peer.ID) (peerstore.PeerInfo, error) {
-	return peerstore.PeerInfo{}, nil
-}
-
-func (*NbsDHT) PutValue(context.Context, string, []byte) error {
-	return nil
-}
-
-func (*NbsDHT) GetValue(context.Context, string) ([]byte, error) {
+func (*NbsDHT) FindPeer(key string) (chan []peerstore.PeerInfo, error){
 	return nil, nil
 }
 
-func (router *NbsDHT) Run() {
+func (*NbsDHT) PutValue(key string, value []byte) chan error {
+	return nil
+}
 
-	logger.Info("routing start running.\n")
-
-	select {
-	case <-parentContext.Done():
-		logger.Info("routing node done!\n")
-	}
+func (*NbsDHT) GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, error) {
+	return nil, nil, nil
 }

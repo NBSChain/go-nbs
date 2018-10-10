@@ -5,25 +5,36 @@ import (
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
-	"io"
+	"github.com/libp2p/go-libp2p-peer"
 	"sync"
 )
 
-type Fetcher interface {
-	GetDagNode(*cid.Cid) (ipld.DagNode, error)
-	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
-}
-
 type Exchange interface {
 
-	Fetcher
+	GetDagNode(*cid.Cid) (ipld.DagNode, error)
+
+	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
 
 	HasNode(ipld.DagNode) error
-
-	IsOnline() bool
-
-	io.Closer
 }
+
+type SwapLedger interface {
+
+	Score() float32
+
+	Threshold() float32
+}
+
+
+type LedgerEngine interface {
+
+	ReceiveData(fromNode peer.ID, data []byte) SwapLedger
+
+	SupportData(toNode peer.ID, data []byte) SwapLedger
+
+	GetLedger(nodeId peer.ID) SwapLedger
+}
+
 
 var instance 		*bitSwap
 var once 		sync.Once
@@ -57,6 +68,7 @@ type bitSwap struct {
 func (bs *bitSwap) GetDagNode(*cid.Cid) (ipld.DagNode, error){
 	return nil, nil
 }
+
 func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
 	return nil, nil
 }
@@ -65,9 +77,6 @@ func (bs *bitSwap) HasNode(node ipld.DagNode) error{
 	return nil
 }
 
-func (bs *bitSwap) IsOnline() bool{
-	return false
-}
 func (bs *bitSwap) Close() error{
 	return nil
 }

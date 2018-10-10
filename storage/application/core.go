@@ -1,7 +1,6 @@
 package application
 
 import (
-	"github.com/NBSChain/go-nbs/storage/routing"
 	"github.com/NBSChain/go-nbs/utils"
 )
 
@@ -16,9 +15,6 @@ type NbsStorageNode struct {
 }
 
 func (*NbsStorageNode) Online() error {
-
-	router := routing.GetInstance()
-	router.Run()
 
 	return nil
 }

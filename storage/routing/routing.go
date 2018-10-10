@@ -1,19 +1,22 @@
 package routing
 
 import (
-	"context"
-	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
 )
 
 type Routing interface {
-	Ping(context.Context, peer.ID) error
 
-	FindPeer(context.Context, peer.ID) (peerstore.PeerInfo, error)
+	Ping(peer peerstore.PeerInfo) Pong
 
-	PutValue(context.Context, string, []byte) error
+	FindPeer(key string) (chan []peerstore.PeerInfo, error)//return k peers most closet to key
 
-	GetValue(context.Context, string) ([]byte, error)
+	PutValue(key string, value []byte) chan error
 
-	Run()
+	GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, error)//return value or k peers most closet to key
 }
+
+type Pong interface {
+	Status() bool
+	//TODO::more details
+}
+
