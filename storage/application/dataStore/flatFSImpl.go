@@ -248,7 +248,6 @@ func (fs *FlatFileDataStore) Get(key string) ([]byte, error){
 
 func (fs *FlatFileDataStore) Has(key string) (bool, error){
 	_, path := fs.encode(key)
-	logger.Info(">>>Has<<<", path)
 	_, err := os.Stat(path)
 	return err == nil, err
 }

@@ -16,9 +16,10 @@ var instance 			*NbsDAGService
 var once 			sync.Once
 var parentContext 		context.Context
 var logger 			= utils.GetLogInstance()
-const HasBloomFilterSize	=  1 << 22
+const HasBloomFilterSize	= 1 << 22
 const HasBloomFilterHashes	= 7
 
+//Can only process Block data right now.
 func GetDagInstance() DAGService {
 	once.Do(func() {
 		parentContext 	= context.Background()
@@ -47,6 +48,7 @@ func newNbsDagService() (*NbsDAGService, error) {
 	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
 
+	//TODO:: try to support multi protocol buffer coder.
 	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
 
 	return &NbsDAGService{
@@ -86,7 +88,7 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 		return nil, err
 	}
 
-	key := cid.NewKeyFromBinary(cidObj.Bytes())
+	key := cid.CidToDsKey(cidObj)
 
 	data, err := service.dataStore.Get(key)
 
@@ -98,6 +100,7 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 
 	return ipld.Decode(data, cidObj)
 }
+
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
@@ -119,13 +122,13 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return nil
 	}
 
-	key := cid.NewKeyFromBinary(cidObj.Bytes())
+	key := cid.CidToDsKey(cidObj)
 	if err := service.dataStore.Put(key, node.RawData()); err != nil{
 		logger.Error(err)
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().HasNode(node); err != nil{ //TODO:: we need to optimize this part.
+	if err := bitswap.GetSwapInstance().SaveToNetPeer([]ipld.DagNode{node}); err != nil{
 		logger.Error(err)
 		return err
 	}
@@ -162,7 +165,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 
 			toPut = append(toPut, node)
 
-			key := cid.NewKeyFromBinary(cidObj.Bytes())
+			key := cid.CidToDsKey(cidObj)
 			if err := dataBatch.Put(key, node.RawData()); err != nil{
 				return err
 			}
@@ -175,13 +178,12 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 
 	bitSwap := bitswap.GetSwapInstance()
 
+	if err := bitSwap.SaveToNetPeer(toPut); err != nil{
+		logger.Error(err)
+	}
+
 	for _, node := range toPut{
-
 		service.bloom.AddTS(node.Cid().Bytes())
-
-		if err := bitSwap.HasNode(node); err != nil{ //TODO:: we need to optimize this part.
-			logger.Error(err)
-		}
 	}
 
 	return nil

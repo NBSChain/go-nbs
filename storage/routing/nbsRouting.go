@@ -13,10 +13,10 @@ type NbsDHT struct {
 	peerId peer.ID
 }
 
-var instance *NbsDHT
-var once sync.Once
-var parentContext context.Context
-var logger = utils.GetLogInstance()
+var instance 		*NbsDHT
+var once 		sync.Once
+var parentContext 	context.Context
+var logger 		= utils.GetLogInstance()
 
 func GetInstance() Routing {
 	once.Do(func() {
