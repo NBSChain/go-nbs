@@ -11,7 +11,7 @@ import (
 
 var logger 			= utils.GetLogInstance()
 //const MaxBroadCastCache		= 1 << 20
-const KeysToBroadNoPerRound 	= 1 << 4
+const KeysToBroadNoPerRound 	= 1 << 6
 const ExchangeParamPrefix	= "keys_to_be_broadcast"
 const MaxTimeToPutBlocks 	= 3
 const IdleTimeForRest		= 100
@@ -62,9 +62,9 @@ func (broadcast *BroadCaster) BroadcastRunLoop()  {
 		return
 	}
 
-
 	for {
 		time.Sleep(time.Millisecond * IdleTimeForRest)
+
 		nodesWorkLoad := broadcast.popCache(KeysToBroadNoPerRound)
 		if len(nodesWorkLoad) == 0{
 			time.Sleep(time.Second)
@@ -73,27 +73,48 @@ func (broadcast *BroadCaster) BroadcastRunLoop()  {
 
 		logger.Info("start to broad cast blocks to target peers ......")
 
-		callbackQueue := make(map[string]ipld.DagNode)
+		broadcast.startBroadCast(nodesWorkLoad)
 
-		var waitSignal sync.WaitGroup
-		for _, node := range nodesWorkLoad{
-			waitSignal.Add(1)
-			go broadcast.sendOnNoe(node, &waitSignal, callbackQueue)
-		}
-		waitSignal.Wait()
-
-		if len(callbackQueue) == 0{
-			continue
-		}
-
-		remainders := make([]ipld.DagNode, len(callbackQueue))
-		for _, node := range callbackQueue{
-			remainders = append(remainders, node)
-		}
-
-		broadcast.Cache(remainders)
+		go broadcast.syncCurrentCache()
 	}
 }
+
+func (broadcast *BroadCaster) syncCurrentCache(){
+
+	remainders := make([]string, len(broadcast.broadcastCache))
+
+	for key := range broadcast.broadcastCache{
+		remainders = append(remainders, key)
+	}
+
+	broadcast.saveBroadcastKeysToStore(remainders)
+}
+
+func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNode)  {
+	callbackQueue := make(map[string]ipld.DagNode)
+
+	var waitSignal sync.WaitGroup
+
+	for _, node := range nodesWorkLoad{
+		waitSignal.Add(1)
+		go broadcast.sendOnNoe(node, &waitSignal, callbackQueue)
+	}
+
+	waitSignal.Wait()
+
+	if len(callbackQueue) == 0{
+		return
+	}
+
+	broadcast.Lock()
+	defer broadcast.Unlock()
+
+	for key, node := range callbackQueue{
+		broadcast.broadcastCache[key] = node
+	}
+}
+
+
 
 func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode,
 	waiter *sync.WaitGroup, callbackQueue map[string]ipld.DagNode){

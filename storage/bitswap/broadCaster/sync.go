@@ -37,8 +37,7 @@ func (broadcast *BroadCaster) saveBroadcastKeysToStore(keys []string) error  {
 	broadcast.keystoreLock.Lock()
 	defer broadcast.keystoreLock.Unlock()
 
-	keyStores := &bitswap_pb.BroadCastKey{}
-	keyStores.Key = append(keyStores.Key, keys...)
+	keyStores := &bitswap_pb.BroadCastKey{Keys:keys}
 
 	newBytesOfKeys, err := proto.Marshal(keyStores)
 	if err != nil{
@@ -65,7 +64,7 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 	broadcast.Lock()
 	defer broadcast.Unlock()
 
-	for _, key := range savedKeys.Key{
+	for _, key := range savedKeys.Keys{
 
 		cid, err := cid.DsKeyToCid(key)
 		if err != nil{
