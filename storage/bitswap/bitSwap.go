@@ -58,15 +58,7 @@ func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
 
 func (bs *bitSwap) SaveToNetPeer(nodes []ipld.DagNode) error{
 
-	keys := make([]string, len(nodes))
-
-	for _, node := range nodes{
-		cidObj := node.Cid()
-		key := cid.CidToDsKey(cidObj)
-		keys = append(keys, key)
-	}
-
-	bs.broadCaster.Cache(nodes, keys)
+	bs.broadCaster.Cache(nodes)
 
 	return nil
 }

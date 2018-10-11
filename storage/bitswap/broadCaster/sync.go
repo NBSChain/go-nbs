@@ -28,12 +28,19 @@ func (broadcast *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey
 	return savedKeys, nil
 }
 
-func (broadcast *BroadCaster) saveBroadcastKeysToStore() error  {
+func (broadcast *BroadCaster) saveBroadcastKeysToStore(keys []string) error  {
+
+	if len(keys) == 0{
+		return nil
+	}
 
 	broadcast.keystoreLock.Lock()
 	defer broadcast.keystoreLock.Unlock()
 
-	newBytesOfKeys, err := proto.Marshal(broadcast.keystoreCache)
+	keyStores := &bitswap_pb.BroadCastKey{}
+	keyStores.Key = append(keyStores.Key, keys...)
+
+	newBytesOfKeys, err := proto.Marshal(keyStores)
 	if err != nil{
 		logger.Warning("failed(3) to get serialize broadcast keys.")
 		return err
@@ -55,8 +62,8 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 		return err
 	}
 
-	nodes 		:= make([]ipld.DagNode, len(savedKeys.Key))
-	availableKeys 	:= make([]string, len(savedKeys.Key))
+	broadcast.Lock()
+	defer broadcast.Unlock()
 
 	for _, key := range savedKeys.Key{
 
@@ -78,33 +85,49 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 			continue
 		}
 
-		nodes 		= append(nodes, node)
-		availableKeys 	= append(availableKeys, key)
+		broadcast.broadcastCache[key] = node
 	}
-
-	broadcast.pushCache(nodes, availableKeys)
 
 	return nil
 }
 
-func (broadcast *BroadCaster) pushCache(nodes []ipld.DagNode, keys []string) {
+func (broadcast *BroadCaster) pushCache(nodes []ipld.DagNode) []string{
+
 	if len(nodes) == 0{
-		return
+		return nil
 	}
 
 	broadcast.Lock()
-	broadcast.broadcastCache 	= append(broadcast.broadcastCache, nodes...)
-	broadcast.keystoreCache.Key 	= append(broadcast.keystoreCache.Key, keys...)
-	broadcast.Unlock()
+	defer broadcast.Unlock()
+
+	keys := make([]string, len(nodes))
+	for _, node := range nodes{
+		cidObj := node.Cid()
+		key := cid.CidToDsKey(cidObj)
+		broadcast.broadcastCache[key] = node
+		keys = append(keys, key)
+	}
+
+	return keys
 }
 
-func (broadcast *BroadCaster) popCache(size int) []ipld.DagNode{
+func (broadcast *BroadCaster) popCache(size int) map[string]ipld.DagNode{
 
 	broadcast.Lock()
-	nodes 				:= broadcast.broadcastCache[:size]
-	broadcast.broadcastCache 	= broadcast.broadcastCache[size:]
-	broadcast.keystoreCache.Key 	= broadcast.keystoreCache.Key[size:]
-	broadcast.Unlock()
+	defer broadcast.Unlock()
+
+	nodes := make(map[string]ipld.DagNode)
+
+	for key, node := range broadcast.broadcastCache{
+
+		nodes[key] = node
+
+		delete(broadcast.broadcastCache, key)
+
+		if size -= 1; size <= 0{
+			break
+		}
+	}
 
 	return nodes
 }
