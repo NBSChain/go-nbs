@@ -64,7 +64,7 @@ func (*NbsDHT) GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, err
 }
 
 
-//----------收到数据之后存储在本地---
+//----------收到数据之后存储在本地,保存本数据是自己的职责，应该增加一个flag来说明这个数据不能被回收掉.---
 func (dht *NbsDHT) saveData(key string, value []byte){
 
 	dataBlockKey := cid.NewKeyFromBinary([]byte(key))

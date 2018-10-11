@@ -7,11 +7,11 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (bs *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey, error){
+func (broadcast *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey, error){
 
 	savedKeys := &bitswap_pb.BroadCastKey{}
 
-	bytesOfKeys, err := bs.broadcastKeyStore.Get(ExchangeParamPrefix)
+	bytesOfKeys, err := broadcast.broadcastKeyStore.Get(ExchangeParamPrefix)
 	if err != nil{
 		logger.Warning("failed(1) to get saved broadcast keys.")
 		return nil, err
@@ -26,7 +26,7 @@ func (bs *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey, error
 	return savedKeys, nil
 }
 
-func (bs *BroadCaster) saveBroadcastKeysToStore(savedKeys *bitswap_pb.BroadCastKey) error  {
+func (broadcast *BroadCaster) saveBroadcastKeysToStore(savedKeys *bitswap_pb.BroadCastKey) error  {
 
 	newBytesOfKeys, err := proto.Marshal(savedKeys)
 	if err != nil{
@@ -34,7 +34,7 @@ func (bs *BroadCaster) saveBroadcastKeysToStore(savedKeys *bitswap_pb.BroadCastK
 		return err
 	}
 
-	if err := bs.broadcastKeyStore.Put(ExchangeParamPrefix, newBytesOfKeys); err != nil{
+	if err := broadcast.broadcastKeyStore.Put(ExchangeParamPrefix, newBytesOfKeys); err != nil{
 		logger.Warning("failed(4) to save broadcast keys.")
 		return err
 	}
@@ -42,13 +42,13 @@ func (bs *BroadCaster) saveBroadcastKeysToStore(savedKeys *bitswap_pb.BroadCastK
 	return nil
 }
 
-func (bs *BroadCaster) SyncKeys(keys []string) {
+func (broadcast *BroadCaster) SyncKeys(keys []string) {
 
 	if len(keys) == 0{
 		return
 	}
 
-	savedKeys, err := bs.loadSavedBroadcastKeys()
+	savedKeys, err := broadcast.loadSavedBroadcastKeys()
 	if err != nil{
 		logger.Warning("loadSavedBroadcastKeys failed")
 		return
@@ -56,16 +56,16 @@ func (bs *BroadCaster) SyncKeys(keys []string) {
 
 	savedKeys.Key = append(savedKeys.Key, keys...)
 
-	if err = bs.saveBroadcastKeysToStore(savedKeys); err != nil{
+	if err = broadcast.saveBroadcastKeysToStore(savedKeys); err != nil{
 
 		logger.Warning("saveBroadcastKeysToStore failed")
 		return
 	}
 }
 
-func (bs *BroadCaster) reloadBroadcastKeysToCache() error{
+func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 
-	savedKeys, err := bs.loadSavedBroadcastKeys()
+	savedKeys, err := broadcast.loadSavedBroadcastKeys()
 
 	if err != nil{
 		return err
@@ -81,7 +81,7 @@ func (bs *BroadCaster) reloadBroadcastKeysToCache() error{
 			continue
 		}
 
-		data, err := bs.blockDataStore.Get(key)
+		data, err := broadcast.blockDataStore.Get(key)
 		if err != nil{
 			logger.Warningf("get data from local store failed:%s", err.Error())
 			continue
@@ -96,11 +96,9 @@ func (bs *BroadCaster) reloadBroadcastKeysToCache() error{
 		nodes = append(nodes, node)
 	}
 
-	bs.Lock()
-
-	defer bs.Unlock()
-
-	bs.broadcastCache = append(bs.broadcastCache, nodes...)
+	broadcast.cacheLock.Lock()
+	broadcast.broadcastCache = append(broadcast.broadcastCache, nodes...)
+	broadcast.cacheLock.Unlock()
 
 	return nil
 }

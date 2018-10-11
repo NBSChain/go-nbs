@@ -1,24 +1,30 @@
 package broadCaster
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/storage/routing"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
+	"time"
 )
 
 var logger 			= utils.GetLogInstance()
 const MaxBroadCastCache		= 1 << 20
-const KeysToBroadNoPerRound 	= 1 << 4
+const KeysToBroadNoPerRound 	= 1 << 6
 const ExchangeParamPrefix	= "keys_to_be_broadcast"
+const MaxTimeToPutBlocks 	= 3
 
 type BroadCaster struct {
 
-	sync.Mutex//broadcast cache locker.
+	cacheLock		sync.Mutex
 	broadcastCache    	[]ipld.DagNode
+	keystoreLock		sync.Mutex
 	broadcastKeyStore 	dataStore.DataStore
 	blockDataStore    	dataStore.DataStore
+	callbackQueue		map[string]ipld.DagNode
+	callbackResult		map[string]error
 	workerSignal      	chan struct{}
 }
 
@@ -31,61 +37,101 @@ func NewBroadCaster()  *BroadCaster {
 		broadcastCache:    	make([]ipld.DagNode, 0, MaxBroadCastCache),
 		broadcastKeyStore: 	keyStore,
 		blockDataStore:		blockStore,
+		callbackQueue:		make(map[string]ipld.DagNode),
+		callbackResult:		make(map[string]error),
 		workerSignal:      	make(chan struct{}),
 	}
 }
 
-func (bs *BroadCaster) Cache(nodes []ipld.DagNode)  {
-	bs.Lock()
-	defer bs.Unlock()
-
-	//TODO:: Max size of broadcast cache
-	bs.broadcastCache = append(bs.broadcastCache, nodes...)
+/********************************************************************
+*
+*		TODO:: Max size of broadcast cache
+*
+********************************************************************/
+func (broadcast *BroadCaster) Cache(nodes []ipld.DagNode)  {
+	broadcast.cacheLock.Lock()
+	broadcast.broadcastCache = append(broadcast.broadcastCache, nodes...)
+	broadcast.cacheLock.Unlock()
 }
 
+func (broadcast *BroadCaster) broadcastRunLoop()  {
 
-func (bs *BroadCaster) broadcastRunLoop()  {
-
-	if err := bs.reloadBroadcastKeysToCache(); err != nil{
+	if err := broadcast.reloadBroadcastKeysToCache(); err != nil{
 		logger.Error(err)
 		return
 	}
 
-	for{
+	for {
 		select {
-			case <-bs.workerSignal:
-				bs.doBroadCast()
+			case <-broadcast.workerSignal:
+				broadcast.doBroadCast()
 		}
 	}
 }
 
-func (bs *BroadCaster) doBroadCast()  {
+
+func (broadcast *BroadCaster) doBroadCast()  {
 
 	size := KeysToBroadNoPerRound
 
-	if ok := len(bs.broadcastCache) < KeysToBroadNoPerRound; ok{
-		size = len(bs.broadcastCache)
+	if ok := len(broadcast.broadcastCache) < KeysToBroadNoPerRound; ok{
+		size = len(broadcast.broadcastCache)
 	}
 
-	nodes := bs.broadcastCache[:size]
+	broadcast.cacheLock.Lock()
+	nodes := broadcast.broadcastCache[:size]
+	broadcast.broadcastCache = broadcast.broadcastCache[size:]
+	broadcast.cacheLock.Unlock()
 
 	var waitSignal sync.WaitGroup
 
+	broadcast.callbackQueue = make(map[string]ipld.DagNode)
+	broadcast.callbackResult = make(map[string]error)
+
 	for _, node := range nodes{
 		waitSignal.Add(1)
-		bs.sendOnNoe(node, &waitSignal)
+		go broadcast.sendOnNoe(node, &waitSignal)
 	}
 
 	waitSignal.Wait()
 
-	//bs.broadcastCache = bs.broadcastCache[size:]
-	//
-	//bs.remove
+	remainder := make([]ipld.DagNode, size)
+	for key, err := range broadcast.callbackResult{
+		if err != nil{
+			remindNode := broadcast.callbackQueue[key]
+			remainder = append(remainder, remindNode)
+		}
+	}
+
+	if len(remainder) == 0{
+		return
+	}
+
+	broadcast.cacheLock.Lock()
+	broadcast.broadcastCache = append(broadcast.broadcastCache, remainder...)
+	broadcast.cacheLock.Unlock()
+
+	//savedKeys := &bitswap_pb.BroadCastKey{
+	//	Key:	broadcast.broadcastCache,
+	//}
 }
 
-func (bs *BroadCaster) sendOnNoe(node ipld.DagNode, waiter *sync.WaitGroup){
+func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode, waiter *sync.WaitGroup){
 
-	router := routing.GetInstance()
+	defer  waiter.Done()
 
-	router.PutValue(node.Cid().KeyString(), node.RawData())
+	key := node.Cid().KeyString()
+	broadcast.callbackQueue[key] = node
+
+	errorChan := routing.GetInstance().PutValue(key, node.RawData())
+
+	select {
+		case err := <-errorChan:
+			broadcast.callbackResult[key] = err
+			logger.Info("saved data to net work finished", key, err)
+
+		case <-time.After(time.Second * MaxTimeToPutBlocks):
+			err := fmt.Errorf("failed to put block onto network:key=%s", key)
+			broadcast.callbackResult[key] = err
+	}
 }
