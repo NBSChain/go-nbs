@@ -1,7 +1,6 @@
 package broadCaster
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/storage/routing"
@@ -12,9 +11,10 @@ import (
 
 var logger 			= utils.GetLogInstance()
 //const MaxBroadCastCache		= 1 << 20
-const KeysToBroadNoPerRound 	= 1 << 6
+const KeysToBroadNoPerRound 	= 1 << 4
 const ExchangeParamPrefix	= "keys_to_be_broadcast"
 const MaxTimeToPutBlocks 	= 3
+const IdleTimeForRest		= 100
 
 type BroadCaster struct {
 
@@ -28,11 +28,6 @@ type BroadCaster struct {
 
 	/*used to get block data from local store.*/
 	blockDataStore    	dataStore.DataStore
-
-	/*used to run loop work to call back process.*/
-	callbackQueue		map[string]ipld.DagNode
-	callbackResult		map[string]error
-	workerSignal      	chan struct{}
 }
 
 func NewBroadCaster()  *BroadCaster {
@@ -44,9 +39,6 @@ func NewBroadCaster()  *BroadCaster {
 		broadcastCache:  	make(map[string]ipld.DagNode),
 		keyStoreService: 	keyStore,
 		blockDataStore:  	blockStore,
-		callbackQueue:   	make(map[string]ipld.DagNode),
-		callbackResult:  	make(map[string]error),
-		workerSignal:    	make(chan struct{}),
 	}
 }
 
@@ -60,8 +52,6 @@ func (broadcast *BroadCaster) Cache(nodes []ipld.DagNode)  {
 	keys := broadcast.pushCache(nodes)
 
 	go broadcast.saveBroadcastKeysToStore(keys)
-
-	broadcast.workerSignal<- struct{}{}
 }
 
 func (broadcast *BroadCaster) BroadcastRunLoop()  {
@@ -72,70 +62,56 @@ func (broadcast *BroadCaster) BroadcastRunLoop()  {
 		return
 	}
 
+
 	for {
-		select {
-			case <-broadcast.workerSignal:
-				broadcast.doBroadCast()
-		}
-	}
-}
-
-
-func (broadcast *BroadCaster) doBroadCast() {
-
-	size := KeysToBroadNoPerRound
-	if ok := len(broadcast.broadcastCache) < KeysToBroadNoPerRound; ok{
-		size = len(broadcast.broadcastCache)
-	}
-
-	if size == 0{
-		logger.Info("broad cast list is empty right now")
-		return
-	}
-
-
-	broadcast.callbackResult = make(map[string]error)
-
-	var waitSignal sync.WaitGroup
-
-	broadcast.callbackQueue = broadcast.popCache(size)
-
-	for _, node := range broadcast.callbackQueue{
-		waitSignal.Add(1)
-		go broadcast.sendOnNoe(node, &waitSignal)
-	}
-
-	waitSignal.Wait()
-
-	remainders := make([]ipld.DagNode, size)
-	for key, err := range broadcast.callbackResult{
-
-		if err == nil{
+		time.Sleep(time.Millisecond * IdleTimeForRest)
+		nodesWorkLoad := broadcast.popCache(KeysToBroadNoPerRound)
+		if len(nodesWorkLoad) == 0{
+			time.Sleep(time.Second)
 			continue
 		}
 
-		node := broadcast.callbackQueue[key]
-		remainders = append(remainders, node)
-	}
+		logger.Info("start to broad cast blocks to target peers ......")
 
-	broadcast.Cache(remainders)
+		callbackQueue := make(map[string]ipld.DagNode)
+
+		var waitSignal sync.WaitGroup
+		for _, node := range nodesWorkLoad{
+			waitSignal.Add(1)
+			go broadcast.sendOnNoe(node, &waitSignal, callbackQueue)
+		}
+		waitSignal.Wait()
+
+		if len(callbackQueue) == 0{
+			continue
+		}
+
+		remainders := make([]ipld.DagNode, len(callbackQueue))
+		for _, node := range callbackQueue{
+			remainders = append(remainders, node)
+		}
+
+		broadcast.Cache(remainders)
+	}
 }
 
-func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode, waiter *sync.WaitGroup){
+func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode,
+	waiter *sync.WaitGroup, callbackQueue map[string]ipld.DagNode){
 
 	defer  waiter.Done()
 
 	key := node.Cid().KeyString()
-
 	errorChan := routing.GetInstance().PutValue(key, node.RawData())
 
 	select {
 		case err := <-errorChan:
-			broadcast.callbackResult[key] = err
-			logger.Info("saved data to net work finished", key, err)
+			if err != nil{
+				callbackQueue[key] = node
+				logger.Info("saved data to net work finished", key, err)
+			}
 
 		case <-time.After(time.Second * MaxTimeToPutBlocks):
-			err := fmt.Errorf("failed to put block onto network:key=%s", key)
-			broadcast.callbackResult[key] = err
+			logger.Error("failed to put block onto network:key", key)
+			callbackQueue[key] = node
 	}
 }

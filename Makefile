@@ -23,7 +23,7 @@ EXENAME := nbs$(EXTEND)
 all: pbs build
 
 build:
-	go build -o $(EXENAME)
+	go build -race -o $(EXENAME)
 
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
