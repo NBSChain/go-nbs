@@ -8,10 +8,12 @@ import (
 )
 
 func (broadcast *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey, error){
+	broadcast.keystoreLock.Lock()
+	defer broadcast.keystoreLock.Unlock()
 
 	savedKeys := &bitswap_pb.BroadCastKey{}
 
-	bytesOfKeys, err := broadcast.broadcastKeyStore.Get(ExchangeParamPrefix)
+	bytesOfKeys, err := broadcast.keyStoreService.Get(ExchangeParamPrefix)
 	if err != nil{
 		logger.Warning("failed(1) to get saved broadcast keys.")
 		return nil, err
@@ -26,41 +28,23 @@ func (broadcast *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey
 	return savedKeys, nil
 }
 
-func (broadcast *BroadCaster) saveBroadcastKeysToStore(savedKeys *bitswap_pb.BroadCastKey) error  {
+func (broadcast *BroadCaster) saveBroadcastKeysToStore() error  {
 
-	newBytesOfKeys, err := proto.Marshal(savedKeys)
+	broadcast.keystoreLock.Lock()
+	defer broadcast.keystoreLock.Unlock()
+
+	newBytesOfKeys, err := proto.Marshal(broadcast.keystoreCache)
 	if err != nil{
 		logger.Warning("failed(3) to get serialize broadcast keys.")
 		return err
 	}
 
-	if err := broadcast.broadcastKeyStore.Put(ExchangeParamPrefix, newBytesOfKeys); err != nil{
+	if err := broadcast.keyStoreService.Put(ExchangeParamPrefix, newBytesOfKeys); err != nil{
 		logger.Warning("failed(4) to save broadcast keys.")
 		return err
 	}
 
 	return nil
-}
-
-func (broadcast *BroadCaster) SyncKeys(keys []string) {
-
-	if len(keys) == 0{
-		return
-	}
-
-	savedKeys, err := broadcast.loadSavedBroadcastKeys()
-	if err != nil{
-		logger.Warning("loadSavedBroadcastKeys failed")
-		return
-	}
-
-	savedKeys.Key = append(savedKeys.Key, keys...)
-
-	if err = broadcast.saveBroadcastKeysToStore(savedKeys); err != nil{
-
-		logger.Warning("saveBroadcastKeysToStore failed")
-		return
-	}
 }
 
 func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
@@ -71,7 +55,8 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 		return err
 	}
 
-	nodes := make([]ipld.DagNode, len(savedKeys.Key))
+	nodes 		:= make([]ipld.DagNode, len(savedKeys.Key))
+	availableKeys 	:= make([]string, len(savedKeys.Key))
 
 	for _, key := range savedKeys.Key{
 
@@ -93,12 +78,33 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 			continue
 		}
 
-		nodes = append(nodes, node)
+		nodes 		= append(nodes, node)
+		availableKeys 	= append(availableKeys, key)
 	}
 
-	broadcast.cacheLock.Lock()
-	broadcast.broadcastCache = append(broadcast.broadcastCache, nodes...)
-	broadcast.cacheLock.Unlock()
+	broadcast.pushCache(nodes, availableKeys)
 
 	return nil
+}
+
+func (broadcast *BroadCaster) pushCache(nodes []ipld.DagNode, keys []string) {
+	if len(nodes) == 0{
+		return
+	}
+
+	broadcast.Lock()
+	broadcast.broadcastCache 	= append(broadcast.broadcastCache, nodes...)
+	broadcast.keystoreCache.Key 	= append(broadcast.keystoreCache.Key, keys...)
+	broadcast.Unlock()
+}
+
+func (broadcast *BroadCaster) popCache(size int) []ipld.DagNode{
+
+	broadcast.Lock()
+	nodes 				:= broadcast.broadcastCache[:size]
+	broadcast.broadcastCache 	= broadcast.broadcastCache[size:]
+	broadcast.keystoreCache.Key 	= broadcast.keystoreCache.Key[size:]
+	broadcast.Unlock()
+
+	return nodes
 }

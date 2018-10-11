@@ -24,7 +24,8 @@ func GetSwapInstance() Exchange {
 			panic(err)
 		}
 
-		logger.Info("bitSwap start to run......\n")
+		go bs.broadCaster.BroadcastRunLoop()
+
 		instance = bs
 	})
 
@@ -57,8 +58,6 @@ func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
 
 func (bs *bitSwap) SaveToNetPeer(nodes []ipld.DagNode) error{
 
-	bs.broadCaster.Cache(nodes)
-
 	keys := make([]string, len(nodes))
 
 	for _, node := range nodes{
@@ -67,7 +66,7 @@ func (bs *bitSwap) SaveToNetPeer(nodes []ipld.DagNode) error{
 		keys = append(keys, key)
 	}
 
-	go bs.broadCaster.SyncKeys(keys)
+	bs.broadCaster.Cache(nodes, keys)
 
 	return nil
 }
