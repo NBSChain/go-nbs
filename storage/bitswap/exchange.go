@@ -12,7 +12,7 @@ type Exchange interface {
 
 	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
 
-	SaveToNetPeer([]ipld.DagNode) error
+	SaveToNetPeer(map[string]ipld.DagNode) error
 }
 
 type SwapLedger interface {

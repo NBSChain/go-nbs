@@ -128,7 +128,7 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().SaveToNetPeer([]ipld.DagNode{node}); err != nil{
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(map[string]ipld.DagNode{key:node}); err != nil{
 		logger.Error(err)
 		return err
 	}
@@ -147,7 +147,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		return nil
 	}
 
-	toPut 		:= make([]ipld.DagNode, 0, len(nodeArr))
+	toPut 		:= make(map[string]ipld.DagNode)
 	dataBatch, err 	:= service.dataStore.Batch()
 	if err != nil{
 		return err
@@ -163,12 +163,12 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		if !service.checkFirst ||
 			(service.checkFirst && !service.Has(cidObj)){
 
-			toPut = append(toPut, node)
-
 			key := cid.CidToDsKey(cidObj)
 			if err := dataBatch.Put(key, node.RawData()); err != nil{
 				return err
 			}
+
+			toPut[key] = node
 		}
 	}
 
@@ -176,9 +176,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		return err
 	}
 
-	bitSwap := bitswap.GetSwapInstance()
-
-	if err := bitSwap.SaveToNetPeer(toPut); err != nil{
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(toPut); err != nil{
 		logger.Error(err)
 	}
 

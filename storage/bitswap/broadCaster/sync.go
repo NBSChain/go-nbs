@@ -90,24 +90,20 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 	return nil
 }
 
-func (broadcast *BroadCaster) pushCache(nodes []ipld.DagNode) []string{
+func (broadcast *BroadCaster) PushCache(nodes map[string]ipld.DagNode){
+
+	//TODO:: Max size of broadcast cache
 
 	if len(nodes) == 0{
-		return nil
+		return
 	}
 
 	broadcast.Lock()
 	defer broadcast.Unlock()
 
-	keys := make([]string, len(nodes))
-	for _, node := range nodes{
-		cidObj := node.Cid()
-		key := cid.CidToDsKey(cidObj)
+	for key, node := range nodes{
 		broadcast.broadcastCache[key] = node
-		keys = append(keys, key)
 	}
-
-	return keys
 }
 
 func (broadcast *BroadCaster) popCache(size int) map[string]ipld.DagNode{

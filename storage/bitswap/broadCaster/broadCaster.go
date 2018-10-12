@@ -14,7 +14,8 @@ var logger 			= utils.GetLogInstance()
 const KeysToBroadNoPerRound 	= 1 << 6
 const ExchangeParamPrefix	= "keys_to_be_broadcast"
 const MaxTimeToPutBlocks 	= 3
-const IdleTimeForRest		= 100
+const RestTimeForWorking = 100
+const RestTimeForIdle		= 5
 
 type BroadCaster struct {
 
@@ -44,30 +45,24 @@ func NewBroadCaster()  *BroadCaster {
 
 /********************************************************************
 *
-*		TODO:: Max size of broadcast cache
+*
 *
 ********************************************************************/
-func (broadcast *BroadCaster) Cache(nodes []ipld.DagNode)  {
-
-	keys := broadcast.pushCache(nodes)
-
-	go broadcast.saveBroadcastKeysToStore(keys)
-}
-
 func (broadcast *BroadCaster) BroadcastRunLoop()  {
 
 	logger.Info("exchange layer start to ")
 	if err := broadcast.reloadBroadcastKeysToCache(); err != nil{
-		logger.Error(err)
+		logger.Panic(err)
 		return
 	}
 
 	for {
-		time.Sleep(time.Millisecond * IdleTimeForRest)
+		time.Sleep(time.Millisecond * RestTimeForWorking)
 
 		nodesWorkLoad := broadcast.popCache(KeysToBroadNoPerRound)
 		if len(nodesWorkLoad) == 0{
-			time.Sleep(time.Second)
+			logger.Debug("no data to broadcast")
+			time.Sleep(time.Second * RestTimeForIdle)
 			continue
 		}
 
@@ -75,11 +70,13 @@ func (broadcast *BroadCaster) BroadcastRunLoop()  {
 
 		broadcast.startBroadCast(nodesWorkLoad)
 
-		go broadcast.syncCurrentCache()
+		go broadcast.SyncCurrentCache()
 	}
 }
 
-func (broadcast *BroadCaster) syncCurrentCache(){
+func (broadcast *BroadCaster) SyncCurrentCache(){
+
+	broadcast.Lock()
 
 	remainders := make([]string, len(broadcast.broadcastCache))
 
@@ -87,10 +84,13 @@ func (broadcast *BroadCaster) syncCurrentCache(){
 		remainders = append(remainders, key)
 	}
 
+	broadcast.Unlock()
+
 	broadcast.saveBroadcastKeysToStore(remainders)
 }
 
 func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNode)  {
+
 	callbackQueue := make(map[string]ipld.DagNode)
 
 	var waitSignal sync.WaitGroup
@@ -114,8 +114,6 @@ func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNo
 	}
 }
 
-
-
 func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode,
 	waiter *sync.WaitGroup, callbackQueue map[string]ipld.DagNode){
 
@@ -128,11 +126,11 @@ func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode,
 		case err := <-errorChan:
 			if err != nil{
 				callbackQueue[key] = node
-				logger.Info("saved data to net work finished", key, err)
+				logger.Warning("saved data to net work finished", key, err)
 			}
 
 		case <-time.After(time.Second * MaxTimeToPutBlocks):
-			logger.Error("failed to put block onto network:key", key)
+			logger.Warning("failed to put block onto network:key", key)
 			callbackQueue[key] = node
 	}
 }

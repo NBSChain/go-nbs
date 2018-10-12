@@ -56,9 +56,11 @@ func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
 	return nil, nil
 }
 
-func (bs *bitSwap) SaveToNetPeer(nodes []ipld.DagNode) error{
+func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error{
 
-	bs.broadCaster.Cache(nodes)
+	bs.broadCaster.PushCache(nodes)
+
+	go bs.broadCaster.SyncCurrentCache()
 
 	return nil
 }
