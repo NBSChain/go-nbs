@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
@@ -8,15 +9,24 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore"
 )
 
+const MaxPeerEachSearch  	= 3
 const MaxWaitingKeySize		= 1 << 20
 const MaxDepthForRouting  	= 20
+var ErrNotFound 		= fmt.Errorf("can't find the target block data")
 
 type Fetcher struct {
+	workCancel	context.CancelFunc
+	findCtx		context.Context
 	wantList	[]string
 }
 
 func NewRouterFetcher() *Fetcher{
+
+	ctx, cal := context.WithCancel(context.Background())
+
 	return &Fetcher{
+		workCancel:	cal,
+		findCtx:	ctx,
 		wantList:	make([]string, 0, MaxWaitingKeySize),
 	}
 }
@@ -31,13 +41,23 @@ func (getter *Fetcher)  GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error)  {
 	if err != nil{
 		return nil, err
 	}
+	peerSize := len(peers)
+	if peerSize == 0{
+		return nil, ErrNotFound
+	}
 
-	data, peers, err := getter.findValueFromPeers(key, peers, MaxDepthForRouting)
+	if peerSize > MaxPeerEachSearch{
+		peerSize = MaxPeerEachSearch
+	}
+
+	targetPeers := peers[:peerSize]
+
+	data, peers, err := getter.findValueFromPeers(key, targetPeers, MaxDepthForRouting)
 	if data != nil{
 		return ipld.Decode(data, cidObj)
 	}
 
-	return nil, fmt.Errorf("can't find the target block data")
+	return nil, ErrNotFound
 }
 
 func (getter *Fetcher) findValueFromPeers(key string,
