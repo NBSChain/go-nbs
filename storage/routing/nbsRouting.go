@@ -58,7 +58,7 @@ func (*NbsDHT) PutValue(key string, value []byte) chan error {
 	return nil
 }
 
-func (*NbsDHT) GetValue(peer peerstore.PeerInfo,  key string) ([]byte, []peerstore.PeerInfo, error) {
+func (*NbsDHT) GetValue(peer []peerstore.PeerInfo,  key string) ([]byte, []peerstore.PeerInfo, error) {
 	return nil, nil, nil
 }
 

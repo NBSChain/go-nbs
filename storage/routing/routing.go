@@ -12,7 +12,7 @@ type Routing interface {
 
 	PutValue(key string, value []byte) chan error
 
-	GetValue(peer peerstore.PeerInfo, key string) ([]byte, []peerstore.PeerInfo, error)//return value or k peers most closet to key
+	GetValue(peer []peerstore.PeerInfo, key string) ([]byte, []peerstore.PeerInfo, error)//return value or k peers most closet to key
 }
 
 type Pong interface {

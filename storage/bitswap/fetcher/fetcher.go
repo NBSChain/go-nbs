@@ -1,7 +1,6 @@
 package fetcher
 
 import (
-	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
@@ -15,73 +14,72 @@ const MaxDepthForRouting  	= 20
 var ErrNotFound 		= fmt.Errorf("can't find the target block data")
 
 type Fetcher struct {
-	workCancel	context.CancelFunc
-	findCtx		context.Context
-	wantList	[]string
+	wantList      []string
 }
 
 func NewRouterFetcher() *Fetcher{
 
-	ctx, cal := context.WithCancel(context.Background())
-
 	return &Fetcher{
-		workCancel:	cal,
-		findCtx:	ctx,
 		wantList:	make([]string, 0, MaxWaitingKeySize),
 	}
 }
 
-func (getter *Fetcher)  GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error)  {
 
-	router := routing.GetInstance()
+/*****************************************************************
+*
+*		interface GetDagNode implements.
+*
+*****************************************************************/
+
+func (getter *Fetcher)  GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error)  {
 
 	key := cid.CovertCidToDataStoreKey(cidObj)
 
-	peers, err := router.FindPeer(key)
+	peers, err := routing.GetInstance().FindPeer(key)
+
 	if err != nil{
 		return nil, err
 	}
-	peerSize := len(peers)
-	if peerSize == 0{
+
+	if len(peers) == 0{
 		return nil, ErrNotFound
 	}
 
-	if peerSize > MaxPeerEachSearch{
-		peerSize = MaxPeerEachSearch
+	data, err := getter.findValueFromPeers(key, peers, MaxDepthForRouting)
+	if err != nil{
+		return nil, err
 	}
 
-	targetPeers := peers[:peerSize]
-
-	data, peers, err := getter.findValueFromPeers(key, targetPeers, MaxDepthForRouting)
-	if data != nil{
-		return ipld.Decode(data, cidObj)
-	}
-
-	return nil, ErrNotFound
+	return ipld.Decode(data, cidObj)
 }
 
 func (getter *Fetcher) findValueFromPeers(key string,
-	peers []peerstore.PeerInfo, depth int) ([]byte, []peerstore.PeerInfo, error){
+	peers []peerstore.PeerInfo, depth int) ([]byte, error){
 
-	if depth -= 1; depth == 0{
-		return nil, nil , fmt.Errorf("fail to find the data of key till end")
+	if peerSize := len(peers); peerSize > MaxPeerEachSearch{
+		peerSize = MaxPeerEachSearch
+		peers = peers[:peerSize]
 	}
 
-	router := routing.GetInstance()
-
-	for _, peerInfo := range peers{
-
-		data, newPeers, err := router.GetValue(peerInfo, key)
-		if err != nil{
-			return nil, nil, err
-		}
-
-		if data != nil{
-			return data, nil, nil
-		}
-
-		return getter.findValueFromPeers(key, newPeers, depth)
+	data, newPeers, err := routing.GetInstance().GetValue(peers, key)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil, nil
+	if data != nil{
+		return data, nil
+	}
+
+	if depth -= 1; depth < 0 || len(newPeers) == 0{
+		return nil, ErrNotFound
+	}
+
+	return getter.findValueFromPeers(key, newPeers, depth)
 }
+
+
+/*****************************************************************
+*
+*		interface GetDagNodes implements.
+*
+*****************************************************************/
