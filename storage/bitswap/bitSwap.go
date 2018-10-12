@@ -3,6 +3,7 @@ package bitswap
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/bitswap/broadCaster"
+	"github.com/NBSChain/go-nbs/storage/bitswap/fetcher"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
@@ -40,16 +41,18 @@ func GetSwapInstance() Exchange {
 func newBitSwap() (*bitSwap,error){
 
 	return &bitSwap{
-		broadCaster:       broadCaster.NewBroadCaster(),
+		broadCaster:	broadCaster.NewBroadCaster(),
+		wantManager:	fetcher.NewRouterFetcher(),
 	}, nil
 }
 
 type bitSwap struct {
-	broadCaster *broadCaster.BroadCaster
+	broadCaster 	*broadCaster.BroadCaster
+	wantManager 	*fetcher.Fetcher
 }
 
-func (bs *bitSwap) GetDagNode(*cid.Cid) (ipld.DagNode, error){
-	return nil, nil
+func (bs *bitSwap) GetDagNode(cidObj *cid.Cid) (ipld.DagNode, error){
+	return bs.wantManager.GetNodeSync(cidObj)
 }
 
 func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){

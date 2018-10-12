@@ -88,7 +88,7 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 		return nil, err
 	}
 
-	key := cid.CidToDsKey(cidObj)
+	key := cid.CovertCidToDataStoreKey(cidObj)
 
 	data, err := service.dataStore.Get(key)
 
@@ -122,7 +122,7 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return nil
 	}
 
-	key := cid.CidToDsKey(cidObj)
+	key := cid.CovertCidToDataStoreKey(cidObj)
 	if err := service.dataStore.Put(key, node.RawData()); err != nil{
 		logger.Error(err)
 		return err
@@ -163,7 +163,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		if !service.checkFirst ||
 			(service.checkFirst && !service.Has(cidObj)){
 
-			key := cid.CidToDsKey(cidObj)
+			key := cid.CovertCidToDataStoreKey(cidObj)
 			if err := dataBatch.Put(key, node.RawData()); err != nil{
 				return err
 			}

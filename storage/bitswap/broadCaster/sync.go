@@ -66,7 +66,7 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 
 	for _, key := range savedKeys.Keys{
 
-		cid, err := cid.DsKeyToCid(key)
+		cid, err := cid.CovertDataStoreKeyToCid(key)
 		if err != nil{
 			logger.Warningf("convert string to cid object failed:%s", err.Error())
 			continue

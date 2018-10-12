@@ -3,7 +3,6 @@ package routing
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
-	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/libp2p/go-libp2p-peer"
@@ -51,7 +50,7 @@ func (*NbsDHT) Ping(peer peerstore.PeerInfo) Pong{
 	return nil
 }
 
-func (*NbsDHT) FindPeer(key string) (chan []peerstore.PeerInfo, error){
+func (*NbsDHT) FindPeer(key string) ([]peerstore.PeerInfo, error){
 	return nil, nil
 }
 
@@ -59,15 +58,10 @@ func (*NbsDHT) PutValue(key string, value []byte) chan error {
 	return nil
 }
 
-func (*NbsDHT) GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, error) {
+func (*NbsDHT) GetValue(peer peerstore.PeerInfo,  key string) ([]byte, []peerstore.PeerInfo, error) {
 	return nil, nil, nil
 }
 
-
-//----------收到数据之后存储在本地,保存本数据是自己的职责，应该增加一个flag来说明这个数据不能被回收掉.---
 func (dht *NbsDHT) saveData(key string, value []byte){
-
-	dataBlockKey := cid.NewKeyFromBinary([]byte(key))
-
-	dht.localDataStore.Put(dataBlockKey, value)
+	dht.localDataStore.Put(key, value)
 }

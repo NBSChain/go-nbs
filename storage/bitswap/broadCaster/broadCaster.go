@@ -31,7 +31,7 @@ type BroadCaster struct {
 	blockDataStore    	dataStore.DataStore
 }
 
-func NewBroadCaster()  *BroadCaster {
+func NewBroadCaster() *BroadCaster {
 
 	keyStore  := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeLocalParam)
 	blockStore:= dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
@@ -95,9 +95,9 @@ func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNo
 
 	var waitSignal sync.WaitGroup
 
-	for _, node := range nodesWorkLoad{
+	for key, node := range nodesWorkLoad{
 		waitSignal.Add(1)
-		go broadcast.sendOnNoe(node, &waitSignal, callbackQueue)
+		go broadcast.sendOnNoe(key, node, &waitSignal, callbackQueue)
 	}
 
 	waitSignal.Wait()
@@ -114,12 +114,11 @@ func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNo
 	}
 }
 
-func (broadcast *BroadCaster) sendOnNoe(node ipld.DagNode,
+func (broadcast *BroadCaster) sendOnNoe(key string, node ipld.DagNode,
 	waiter *sync.WaitGroup, callbackQueue map[string]ipld.DagNode){
 
 	defer  waiter.Done()
 
-	key := node.Cid().KeyString()
 	errorChan := routing.GetInstance().PutValue(key, node.RawData())
 
 	select {

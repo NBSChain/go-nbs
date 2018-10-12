@@ -8,11 +8,11 @@ type Routing interface {
 
 	Ping(peer peerstore.PeerInfo) Pong
 
-	FindPeer(key string) (chan []peerstore.PeerInfo, error)//return k peers most closet to key
+	FindPeer(key string) ([]peerstore.PeerInfo, error)//return k peers most closet to key
 
 	PutValue(key string, value []byte) chan error
 
-	GetValue(key string) (chan []byte, chan []peerstore.PeerInfo, error)//return value or k peers most closet to key
+	GetValue(peer peerstore.PeerInfo, key string) ([]byte, []peerstore.PeerInfo, error)//return value or k peers most closet to key
 }
 
 type Pong interface {

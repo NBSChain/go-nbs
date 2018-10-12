@@ -160,10 +160,6 @@ func (c *Cid) bytesV0() []byte {
 	return []byte(c.Hash)
 }
 
-func (c *Cid) KeyString() string {
-	return string(c.Bytes())
-}
-
 func (c *Cid) bytesV1() []byte {
 
 	// two 8 bytes (max) numbers plus hash
@@ -290,11 +286,11 @@ func BinaryFromDsKey(k string) ([]byte, error) {
 	return encoder.DecodeString(k[1:])
 }
 
-func CidToDsKey(k *Cid) string {
+func CovertCidToDataStoreKey(k *Cid) string {
 	return NewKeyFromBinary(k.Bytes())
 }
 
-func DsKeyToCid(dsKey string) (*Cid, error) {
+func CovertDataStoreKeyToCid(dsKey string) (*Cid, error) {
 	kb, err := BinaryFromDsKey(dsKey)
 	if err != nil {
 		return nil, err
