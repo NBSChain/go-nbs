@@ -257,6 +257,7 @@ func (fs *FlatFileDataStore) Delete(key string) error{
 	return os.Remove(path)
 }
 
+//TODO::
 func (fs *FlatFileDataStore) Query(q Query) (Results, error){
 	return nil, nil
 }
@@ -288,6 +289,7 @@ func (fsb *flatFileBatch) Put(key string, value []byte) error {
 	return nil
 }
 
+//TODO:: we need more error to identify the whole process
 func (fsb *flatFileBatch) Commit() error {
 
 	var errorNum int32 = 0

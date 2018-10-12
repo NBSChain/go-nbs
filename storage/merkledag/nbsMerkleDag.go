@@ -3,7 +3,6 @@ package merkledag
 import (
 	"context"
 	"errors"
-	"github.com/AndreasBriese/bbloom"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/bitswap"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
@@ -16,8 +15,11 @@ var instance 			*NbsDAGService
 var once 			sync.Once
 var parentContext 		context.Context
 var logger 			= utils.GetLogInstance()
-const HasBloomFilterSize	= 1 << 22
-const HasBloomFilterHashes	= 7
+
+func init(){
+	//TODO:: try to support multi protocol buffer coder.
+	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
+}
 
 //Can only process Block data right now.
 func GetDagInstance() DAGService {
@@ -39,41 +41,28 @@ func GetDagInstance() DAGService {
 type NbsDAGService struct {
 	rehash     	bool
 	checkFirst 	bool
-	bloom		*bbloom.Bloom
 	dataStore	dataStore.DataStore
 }
 
 func newNbsDagService() (*NbsDAGService, error) {
 
-	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
 
-	//TODO:: try to support multi protocol buffer coder.
-	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
-
+	cachedDataStore := dataStore.NewBloomDataStore(ds)
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,
-		bloom:		&bf,
-		dataStore:	ds,
+		dataStore:	cachedDataStore,
 	}, nil
 }
 
 func (service *NbsDAGService) Has(c *cid.Cid) bool {
 
-	key := c.Bytes()
-	if ok := service.bloom.HasTS(key); ok{
-		return true
-	}
+	keyCoded := cid.NewKeyFromBinary( c.Bytes())
 
-	keyCoded := cid.NewKeyFromBinary(key)
+	ok, _ := service.dataStore.Has(keyCoded)
 
-	if ok, _ := service.dataStore.Has(keyCoded); ok{
-		service.bloom.AddTS(key)
-		return true
-	}
-
-	return false
+	return ok
 }
 
 /*****************************************************************
@@ -178,10 +167,6 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 
 	if err := bitswap.GetSwapInstance().SaveToNetPeer(toPut); err != nil{
 		logger.Error(err)
-	}
-
-	for _, node := range toPut{
-		service.bloom.AddTS(node.Cid().Bytes())
 	}
 
 	return nil
