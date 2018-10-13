@@ -17,13 +17,15 @@ type Exchange interface {
 	GetDagNodes(context.Context, []*cid.Cid) (<-chan fetcher.AsyncResult)
 
 	SaveToNetPeer(map[string]ipld.DagNode) error
+
+	GetLedgerEngine() LedgerEngine
 }
 
 type SwapLedger interface {
 
-	Score() float32
+	Score() float64
 
-	Threshold() float32
+	Threshold() float64
 }
 
 

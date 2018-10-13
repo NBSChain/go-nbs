@@ -3,6 +3,7 @@ package bitswap
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/bitswap/broadCaster"
+	"github.com/NBSChain/go-nbs/storage/bitswap/engine"
 	"github.com/NBSChain/go-nbs/storage/bitswap/fetcher"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
@@ -43,12 +44,14 @@ func newBitSwap() (*bitSwap,error){
 	return &bitSwap{
 		broadCaster:	broadCaster.NewBroadCaster(),
 		wantManager:	fetcher.NewRouterFetcher(),
+		ledgerEngine:	engine.NewLedgerEngine(),
 	}, nil
 }
 
 type bitSwap struct {
 	broadCaster 	*broadCaster.BroadCaster
 	wantManager 	*fetcher.Fetcher
+	ledgerEngine	LedgerEngine
 }
 
 func (bs *bitSwap) GetDagNode(cidObj *cid.Cid) (ipld.DagNode, error){
@@ -66,4 +69,8 @@ func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error{
 	go bs.broadCaster.SyncCurrentCache()
 
 	return nil
+}
+
+func (bs *bitSwap) GetLedgerEngine() LedgerEngine{
+	return bs.ledgerEngine
 }
