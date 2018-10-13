@@ -14,6 +14,7 @@ import (
 const MaxPeerEachSearch  	= 3
 const MaxItemPerRound		= 10
 const MaxIdleTime		= 100
+const MaxRestTime		= 10
 const MaxDepthForRouting  	= 20
 var ErrNotFound 		= fmt.Errorf("can't find the target block data")
 
@@ -31,6 +32,7 @@ type wantItem struct {
 type Fetcher struct {
 	sync.Mutex
 	sessionID	uint
+	runningTask	int
 	wantQueue	map[uint]*wantItem
 }
 
@@ -125,18 +127,23 @@ func (getter *Fetcher) FetchRunLoop() {
 			continue
 		}
 
-		noOneRound := MaxItemPerRound
+		if getter.runningTask > MaxItemPerRound{
+			time.Sleep(time.Millisecond * MaxRestTime)
+			continue
+		}
 
 		getter.Lock()
+
 		for sessionID, item := range getter.wantQueue{
-			if noOneRound -= 1; noOneRound < 0{
-				break
-			}
 
 			go getter.getNodeArrayAsync(item)
 			delete(getter.wantQueue, sessionID)
 
+			if getter.runningTask++;getter.runningTask > MaxItemPerRound{
+				break
+			}
 		}
+
 		getter.Unlock()
 	}
 }
@@ -144,11 +151,16 @@ func (getter *Fetcher) FetchRunLoop() {
 func (getter *Fetcher) getNodeArrayAsync(item *wantItem){
 
 	for _, cidObj := range item.waitingItem{
-
 		node, err := getter.GetNodeSync(cidObj)
 		item.resultNodeChan<- AsyncResult{
 			node: node,
 			err:  err,
 		}
 	}
+
+	close(item.resultNodeChan)
+
+	getter.Lock()
+	getter.runningTask--
+	getter.Unlock()
 }
