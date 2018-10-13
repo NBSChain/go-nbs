@@ -1,16 +1,20 @@
 package bitswap
 
 import (
+	"context"
+	"github.com/NBSChain/go-nbs/storage/bitswap/fetcher"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/libp2p/go-libp2p-peer"
 )
 
+
+
 type Exchange interface {
 
 	GetDagNode(*cid.Cid) (ipld.DagNode, error)
 
-	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
+	GetDagNodes(context.Context, []*cid.Cid) (<-chan fetcher.AsyncResult)
 
 	SaveToNetPeer(map[string]ipld.DagNode) error
 }

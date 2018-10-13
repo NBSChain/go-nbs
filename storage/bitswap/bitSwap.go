@@ -26,7 +26,7 @@ func GetSwapInstance() Exchange {
 		}
 
 		go bs.broadCaster.BroadcastRunLoop()
-
+		go bs.wantManager.FetchRunLoop()
 		instance = bs
 	})
 
@@ -55,8 +55,8 @@ func (bs *bitSwap) GetDagNode(cidObj *cid.Cid) (ipld.DagNode, error){
 	return bs.wantManager.GetNodeSync(cidObj)
 }
 
-func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
-	return nil, nil
+func (bs *bitSwap) GetDagNodes(ctx context.Context, cidArr []*cid.Cid) <- chan fetcher.AsyncResult {
+	return bs.wantManager.CacheRequest(ctx, cidArr)
 }
 
 func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error{
