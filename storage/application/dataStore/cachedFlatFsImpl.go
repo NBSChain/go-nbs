@@ -1,7 +1,7 @@
 package dataStore
 
 import (
-
+	"sync"
 )
 /*
 //Hope some day I can find the right palce to use this bloom technology cause I love it so much.
@@ -13,6 +13,7 @@ import (
 
 
 type cachedFlatFsDataStore struct {
+	sync.Mutex
 	cacheSet  map[string]struct{}
 	dataStore DataStore
 }
@@ -32,6 +33,8 @@ func NewBloomDataStore(ds DataStore) DataStore{
 *****************************************************************/
 func (bs *cachedFlatFsDataStore) Put(key string, value []byte) (err error){
 
+	bs.Lock()
+	defer bs.Unlock()
 	if err = bs.dataStore.Put(key, value); err != nil{
 		bs.cacheSet[key] = struct {}{}
 	}
@@ -44,7 +47,9 @@ func (bs *cachedFlatFsDataStore) Get(key string) ([]byte, error){
 	data, err := bs.dataStore.Get(key)
 
 	if _, has := bs.cacheSet[key]; !has && err == nil {
+		bs.Lock()
 		bs.cacheSet[key] = struct{}{}
+		bs.Unlock()
 	}
 
 	return data, err
@@ -58,7 +63,9 @@ func (bs *cachedFlatFsDataStore) Has(key string) (bool, error){
 
 	has, err := bs.dataStore.Has(key)
 	if has {
+		bs.Lock()
 		bs.cacheSet[key] = struct{}{}
+		bs.Unlock()
 	}
 
 	return has,err
@@ -66,6 +73,8 @@ func (bs *cachedFlatFsDataStore) Has(key string) (bool, error){
 
 func (bs *cachedFlatFsDataStore) Delete(key string) (err error){
 
+	bs.Lock()
+	defer bs.Unlock()
 	if err = bs.dataStore.Delete(key); err == nil{
 		delete(bs.cacheSet ,key)
 	}

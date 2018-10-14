@@ -1,13 +1,20 @@
 package engine
 
 import (
-	"github.com/NBSChain/go-nbs/storage/bitswap"
 	"github.com/libp2p/go-libp2p-peer"
 	"math"
 	"sync"
 )
 
-//TODO::change the mathmatic function.
+type SwapLedger interface {
+
+	Score() float64
+
+	Threshold() float64
+}
+
+
+//TODO::change the mathematic function.
 const LedgerThreshold = 0.1
 
 type swapLedger struct {
@@ -35,6 +42,7 @@ func NewLedgerEngine()  *ledgerEngine{
 func (l swapLedger) Score() float64{
 	return l.score
 }
+
 func (l swapLedger) Threshold() float64{
 	return LedgerThreshold
 }
@@ -60,7 +68,7 @@ func (l swapLedger) calculateScore(){
 *
 *****************************************************************/
 
-func (engine *ledgerEngine) ReceiveData(fromNode peer.ID, data []byte) bitswap.SwapLedger{
+func (engine *ledgerEngine) ReceiveData(fromNode peer.ID, data []byte) SwapLedger{
 
 	engine.Lock()
 	defer engine.Unlock()
@@ -72,7 +80,7 @@ func (engine *ledgerEngine) ReceiveData(fromNode peer.ID, data []byte) bitswap.S
 	return ledger
 }
 
-func (engine *ledgerEngine) SupportData(toNode peer.ID, data []byte) (bitswap.SwapLedger){
+func (engine *ledgerEngine) SupportData(toNode peer.ID, data []byte) (SwapLedger){
 
 	engine.Lock()
 	defer engine.Unlock()
@@ -84,7 +92,7 @@ func (engine *ledgerEngine) SupportData(toNode peer.ID, data []byte) (bitswap.Sw
 	return ledger
 }
 
-func (engine *ledgerEngine) GetLedger(nodeId peer.ID) bitswap.SwapLedger{
+func (engine *ledgerEngine) GetLedger(nodeId peer.ID) SwapLedger{
 
 	if l, ok := engine.ledger[nodeId]; ok{
 		return l

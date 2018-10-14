@@ -56,7 +56,6 @@ func (broadcast *BroadCaster) saveBroadcastKeysToStore(keys []string) error  {
 func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 
 	savedKeys, err := broadcast.loadSavedBroadcastKeys()
-
 	if err != nil{
 		return err
 	}
@@ -93,7 +92,6 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 func (broadcast *BroadCaster) PushCache(nodes map[string]ipld.DagNode){
 
 	//TODO:: Max size of broadcast cache
-
 	if len(nodes) == 0{
 		return
 	}
@@ -114,7 +112,6 @@ func (broadcast *BroadCaster) popCache(size int) map[string]ipld.DagNode{
 	nodes := make(map[string]ipld.DagNode)
 
 	for key, node := range broadcast.broadcastCache{
-
 		nodes[key] = node
 
 		delete(broadcast.broadcastCache, key)

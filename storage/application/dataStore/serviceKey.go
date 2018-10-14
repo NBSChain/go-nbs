@@ -4,8 +4,8 @@ import "strings"
 type ServiceType int32
 
 const RootServiceURL 	= "/"
-const BLOCKServiceURL 	= "/blocks"
-const LocalParamKeyURL	= "/localParam"
+const BLOCKServiceURL 	= "blocks"
+const LocalParamKeyURL	= "localParam"
 
 const (
 	ServiceTypeROOT       	ServiceType = 0x01

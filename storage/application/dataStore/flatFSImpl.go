@@ -212,7 +212,7 @@ func (fs *FlatFileDataStore) Put(key string, value []byte) error{
 
 	dir, path := fs.encode(key)
 
-	logger.Info(">>>Put<<<", path)
+	logger.Debug(">>>Put<<<", path)
 
 	if err := fs.makeDir(dir); err != nil {
 		return err

@@ -49,6 +49,7 @@ func newNbsDagService() (*NbsDAGService, error) {
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
 
 	cachedDataStore := dataStore.NewBloomDataStore(ds)
+
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,

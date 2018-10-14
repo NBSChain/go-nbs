@@ -2,6 +2,7 @@ package bitswap
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/bitswap/engine"
 	"github.com/NBSChain/go-nbs/storage/bitswap/fetcher"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
@@ -21,19 +22,12 @@ type Exchange interface {
 	GetLedgerEngine() LedgerEngine
 }
 
-type SwapLedger interface {
-
-	Score() float64
-
-	Threshold() float64
-}
-
 
 type LedgerEngine interface {
 
-	ReceiveData(fromNode peer.ID, data []byte) SwapLedger
+	ReceiveData(fromNode peer.ID, data []byte) engine.SwapLedger
 
-	SupportData(toNode peer.ID, data []byte) SwapLedger
+	SupportData(toNode peer.ID, data []byte) engine.SwapLedger
 
-	GetLedger(nodeId peer.ID) SwapLedger
+	GetLedger(nodeId peer.ID) engine.SwapLedger
 }

@@ -52,7 +52,7 @@ func (broadcast *BroadCaster) BroadcastRunLoop()  {
 
 	logger.Info("exchange layer start to ")
 	if err := broadcast.reloadBroadcastKeysToCache(); err != nil{
-		logger.Panic(err)
+		logger.Error(err)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (broadcast *BroadCaster) SyncCurrentCache(){
 
 	broadcast.Lock()
 
-	remainders := make([]string, len(broadcast.broadcastCache))
+	remainders := make([]string, 0, len(broadcast.broadcastCache))
 
 	for key := range broadcast.broadcastCache{
 		remainders = append(remainders, key)
