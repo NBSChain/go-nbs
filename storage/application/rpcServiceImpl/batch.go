@@ -35,7 +35,6 @@ func (batch *Batch) Add(node ipld.DagNode) error {
 		batch.nodes =  make([]ipld.DagNode, 0, MaxNodes)
 	}
 
-	logger.Warning(node.String())
 	return nil
 }
 
@@ -44,7 +43,6 @@ func (batch *Batch) Commit() error {
 	if batch.commitResult != nil {
 		return batch.commitResult
 	}
-	logger.Warning("commit and cancel")
 
 	go batch.subCommit()
 

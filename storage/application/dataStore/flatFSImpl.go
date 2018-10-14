@@ -212,7 +212,7 @@ func (fs *FlatFileDataStore) Put(key string, value []byte) error{
 
 	dir, path := fs.encode(key)
 
-	logger.Info(">>>Put<<<", path)
+	logger.Debug(">>>Put<<<", path)
 
 	if err := fs.makeDir(dir); err != nil {
 		return err
@@ -248,7 +248,6 @@ func (fs *FlatFileDataStore) Get(key string) ([]byte, error){
 
 func (fs *FlatFileDataStore) Has(key string) (bool, error){
 	_, path := fs.encode(key)
-	logger.Info(">>>Has<<<", path)
 	_, err := os.Stat(path)
 	return err == nil, err
 }
@@ -258,6 +257,7 @@ func (fs *FlatFileDataStore) Delete(key string) error{
 	return os.Remove(path)
 }
 
+//TODO::
 func (fs *FlatFileDataStore) Query(q Query) (Results, error){
 	return nil, nil
 }
@@ -289,6 +289,7 @@ func (fsb *flatFileBatch) Put(key string, value []byte) error {
 	return nil
 }
 
+//TODO:: we need more error to identify the whole process
 func (fsb *flatFileBatch) Commit() error {
 
 	var errorNum int32 = 0

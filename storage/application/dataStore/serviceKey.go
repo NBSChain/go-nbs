@@ -3,31 +3,41 @@ package dataStore
 import "strings"
 type ServiceType int32
 
+const RootServiceURL 	= "/"
+const BLOCKServiceURL 	= "blocks"
+const LocalParamKeyURL	= "localParam"
+
 const (
-	ServiceTypeROOT  ServiceType = 0x01
-	ServiceTypeBlock ServiceType = 0x0101
+	ServiceTypeROOT       	ServiceType = 0x01
+	ServiceTypeBlock      	ServiceType = 0x0101
+	ServiceTypeLocalParam 	ServiceType = 0x0102
 )
 
 var ServiceDictionary  = map[string]*RouterInfo{
-	"/":{
-		key:       "/",
+	RootServiceURL:{
 		code:      ServiceTypeROOT,
 		subRouter: nil,
 	},
-	"blocks":{
-		key:       "blocks",
+	BLOCKServiceURL:{
 		code:      ServiceTypeBlock,
+		subRouter: nil,
+	},
+	LocalParamKeyURL:{
+		code:      ServiceTypeLocalParam,
 		subRouter: nil,
 	},
 }
 
 type RouterInfo struct {
-	key		string
 	code		ServiceType
 	subRouter	map[string]*RouterInfo
 }
 
-//TODO::check first level right now.
+/*TODO::
+check first level right now.
+*Solve top level right now, I didn't find the necessary
+*of complicate service routing.
+*/
 func NewServiceKey(fullPath string) ServiceType{
 
 	if len(fullPath) <= 1{
@@ -39,25 +49,7 @@ func NewServiceKey(fullPath string) ServiceType{
 	}
 
 	routers := strings.Split(fullPath, "/")
-	//if len(routers) <= 1{
-	//	return ServiceTypeROOT
-	//}
 
-	/*TODO::
-	*Solve top level right now, I didn't find the necessary
-	*of complicate service routing.
-
-	paraLen := len(routers)
-	parameter := routers[paraLen-1:]
-	currentCode := ServiceTypeROOT
-	for _, item := range routers{
-		router := ServiceDictionary[item]
-
-		if router != nil{
-			currentCode = router.code
-		}
-	}
-	*/
 
 	topLevelServiceKey := routers[0]
 	service := ServiceDictionary[topLevelServiceKey]

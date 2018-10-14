@@ -2,72 +2,32 @@ package bitswap
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/bitswap/engine"
+	"github.com/NBSChain/go-nbs/storage/bitswap/fetcher"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
-	"github.com/NBSChain/go-nbs/utils"
-	"io"
-	"sync"
+	"github.com/libp2p/go-libp2p-peer"
 )
 
-type Fetcher interface {
-	GetDagNode(*cid.Cid) (ipld.DagNode, error)
-	GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error)
-}
+
 
 type Exchange interface {
 
-	Fetcher
+	GetDagNode(*cid.Cid) (ipld.DagNode, error)
 
-	HasNode(ipld.DagNode) error
+	GetDagNodes(context.Context, []*cid.Cid) (<-chan fetcher.AsyncResult)
 
-	IsOnline() bool
+	SaveToNetPeer(map[string]ipld.DagNode) error
 
-	io.Closer
+	GetLedgerEngine() LedgerEngine
 }
 
-var instance 		*bitSwap
-var once 		sync.Once
-var parentContext 	context.Context
-var logger 		= utils.GetLogInstance()
 
-func GetSwapInstance() Exchange {
+type LedgerEngine interface {
 
-	once.Do(func() {
-		parentContext = context.Background()
+	ReceiveData(fromNode peer.ID, data []byte) engine.SwapLedger
 
-		bs, err := newBitSwap()
-		if err != nil {
-			panic(err)
-		}
+	SupportData(toNode peer.ID, data []byte) engine.SwapLedger
 
-		logger.Info("bitSwap start to run......\n")
-		instance = bs
-	})
-
-	return instance
-}
-
-func newBitSwap() (*bitSwap,error){
-	return &bitSwap{}, nil
-}
-
-type bitSwap struct {
-}
-
-func (bs *bitSwap) GetDagNode(*cid.Cid) (ipld.DagNode, error){
-	return nil, nil
-}
-func (bs *bitSwap) GetDagNodes([]*cid.Cid) (<-chan ipld.DagNode, error){
-	return nil, nil
-}
-
-func (bs *bitSwap) HasNode(node ipld.DagNode) error{
-	return nil
-}
-
-func (bs *bitSwap) IsOnline() bool{
-	return false
-}
-func (bs *bitSwap) Close() error{
-	return nil
+	GetLedger(nodeId peer.ID) engine.SwapLedger
 }

@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package bitswap.pb;
+
+message BroadCastKey {
+    repeated string keys = 1;
+}

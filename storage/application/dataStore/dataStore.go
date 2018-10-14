@@ -4,11 +4,8 @@ package dataStore
 *		DataStore interface and implements.
 *
 *****************************************************************/
-const RootServiceURL 	= "/"
-const BLOCKServiceURL 	= "/blocks"
-
-
 type DataStore interface {
+
 	Put(key string, value []byte) error
 
 	Get(key string) ([]byte, error)

@@ -271,6 +271,8 @@ func uvError(read int) error {
 	}
 }
 
+
+
 func NewKeyFromBinary(rawKey []byte) string {
 	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
 	buf := make([]byte, 1 + encoder.EncodedLen(len(rawKey)))
@@ -284,11 +286,11 @@ func BinaryFromDsKey(k string) ([]byte, error) {
 	return encoder.DecodeString(k[1:])
 }
 
-func CidToDsKey(k *Cid) string {
+func CovertCidToDataStoreKey(k *Cid) string {
 	return NewKeyFromBinary(k.Bytes())
 }
 
-func DsKeyToCid(dsKey string) (*Cid, error) {
+func CovertDataStoreKeyToCid(dsKey string) (*Cid, error) {
 	kb, err := BinaryFromDsKey(dsKey)
 	if err != nil {
 		return nil, err

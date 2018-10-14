@@ -3,7 +3,6 @@ package merkledag
 import (
 	"context"
 	"errors"
-	"github.com/AndreasBriese/bbloom"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/bitswap"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
@@ -16,9 +15,13 @@ var instance 			*NbsDAGService
 var once 			sync.Once
 var parentContext 		context.Context
 var logger 			= utils.GetLogInstance()
-const HasBloomFilterSize	=  1 << 22
-const HasBloomFilterHashes	= 7
 
+func init(){
+	//TODO:: try to support multi protocol buffer coder.
+	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
+}
+
+//Can only process Block data right now.
 func GetDagInstance() DAGService {
 	once.Do(func() {
 		parentContext 	= context.Background()
@@ -38,40 +41,29 @@ func GetDagInstance() DAGService {
 type NbsDAGService struct {
 	rehash     	bool
 	checkFirst 	bool
-	bloom		*bbloom.Bloom
 	dataStore	dataStore.DataStore
 }
 
 func newNbsDagService() (*NbsDAGService, error) {
 
-	bf := bbloom.New(float64(HasBloomFilterSize), float64(HasBloomFilterHashes))
 	ds := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeBlock)
 
-	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
+	cachedDataStore := dataStore.NewBloomDataStore(ds)
 
 	return &NbsDAGService{
 		checkFirst: 	true,
 		rehash:     	false,
-		bloom:		&bf,
-		dataStore:	ds,
+		dataStore:	cachedDataStore,
 	}, nil
 }
 
 func (service *NbsDAGService) Has(c *cid.Cid) bool {
 
-	key := c.Bytes()
-	if ok := service.bloom.HasTS(key); ok{
-		return true
-	}
+	keyCoded := cid.NewKeyFromBinary( c.Bytes())
 
-	keyCoded := cid.NewKeyFromBinary(key)
+	ok, _ := service.dataStore.Has(keyCoded)
 
-	if ok, _ := service.dataStore.Has(keyCoded); ok{
-		service.bloom.AddTS(key)
-		return true
-	}
-
-	return false
+	return ok
 }
 
 /*****************************************************************
@@ -86,7 +78,7 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 		return nil, err
 	}
 
-	key := cid.NewKeyFromBinary(cidObj.Bytes())
+	key := cid.CovertCidToDataStoreKey(cidObj)
 
 	data, err := service.dataStore.Get(key)
 
@@ -98,6 +90,7 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 
 	return ipld.Decode(data, cidObj)
 }
+
 func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
@@ -119,13 +112,13 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return nil
 	}
 
-	key := cid.NewKeyFromBinary(cidObj.Bytes())
+	key := cid.CovertCidToDataStoreKey(cidObj)
 	if err := service.dataStore.Put(key, node.RawData()); err != nil{
 		logger.Error(err)
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().HasNode(node); err != nil{ //TODO:: we need to optimize this part.
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(map[string]ipld.DagNode{key:node}); err != nil{
 		logger.Error(err)
 		return err
 	}
@@ -144,7 +137,7 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		return nil
 	}
 
-	toPut 		:= make([]ipld.DagNode, 0, len(nodeArr))
+	toPut 		:= make(map[string]ipld.DagNode)
 	dataBatch, err 	:= service.dataStore.Batch()
 	if err != nil{
 		return err
@@ -160,12 +153,12 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		if !service.checkFirst ||
 			(service.checkFirst && !service.Has(cidObj)){
 
-			toPut = append(toPut, node)
-
-			key := cid.NewKeyFromBinary(cidObj.Bytes())
+			key := cid.CovertCidToDataStoreKey(cidObj)
 			if err := dataBatch.Put(key, node.RawData()); err != nil{
 				return err
 			}
+
+			toPut[key] = node
 		}
 	}
 
@@ -173,15 +166,8 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		return err
 	}
 
-	bitSwap := bitswap.GetSwapInstance()
-
-	for _, node := range toPut{
-
-		service.bloom.AddTS(node.Cid().Bytes())
-
-		if err := bitSwap.HasNode(node); err != nil{ //TODO:: we need to optimize this part.
-			logger.Error(err)
-		}
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(toPut); err != nil{
+		logger.Error(err)
 	}
 
 	return nil

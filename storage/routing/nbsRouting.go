@@ -2,6 +2,7 @@ package routing
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/libp2p/go-libp2p-peer"
@@ -11,12 +12,13 @@ import (
 
 type NbsDHT struct {
 	peerId peer.ID
+	localDataStore	dataStore.DataStore
 }
 
-var instance *NbsDHT
-var once sync.Once
-var parentContext context.Context
-var logger = utils.GetLogInstance()
+var instance 		*NbsDHT
+var once 		sync.Once
+var parentContext 	context.Context
+var logger 		= utils.GetLogInstance()
 
 func GetInstance() Routing {
 	once.Do(func() {
@@ -44,28 +46,22 @@ func newNbsDht() (*NbsDHT, error) {
 }
 
 //----------->routing interface implementation<-----------//
-func (*NbsDHT) Ping(context.Context, peer.ID) error {
+func (*NbsDHT) Ping(peer peerstore.PeerInfo) Pong{
 	return nil
 }
 
-func (*NbsDHT) FindPeer(context.Context, peer.ID) (peerstore.PeerInfo, error) {
-	return peerstore.PeerInfo{}, nil
-}
-
-func (*NbsDHT) PutValue(context.Context, string, []byte) error {
-	return nil
-}
-
-func (*NbsDHT) GetValue(context.Context, string) ([]byte, error) {
+func (*NbsDHT) FindPeer(key string) ([]peerstore.PeerInfo, error){
 	return nil, nil
 }
 
-func (router *NbsDHT) Run() {
+func (*NbsDHT) PutValue(key string, value []byte) chan error {
+	return nil
+}
 
-	logger.Info("routing start running.\n")
+func (*NbsDHT) GetValue(peer []peerstore.PeerInfo,  key string) ([]byte, []peerstore.PeerInfo, error) {
+	return nil, nil, nil
+}
 
-	select {
-	case <-parentContext.Done():
-		logger.Info("routing node done!\n")
-	}
+func (dht *NbsDHT) saveData(key string, value []byte){
+	dht.localDataStore.Put(key, value)
 }
