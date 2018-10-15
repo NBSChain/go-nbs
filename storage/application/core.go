@@ -1,6 +1,9 @@
 package application
 
 import (
+	"github.com/NBSChain/go-nbs/storage/bitswap"
+	"github.com/NBSChain/go-nbs/storage/merkledag"
+	"github.com/NBSChain/go-nbs/storage/routing"
 	"github.com/NBSChain/go-nbs/utils"
 )
 
@@ -15,6 +18,13 @@ type NbsStorageNode struct {
 }
 
 func (*NbsStorageNode) Online() error {
+
+	//naming
+	merkledag.GetDagInstance()
+
+	bitswap.GetSwapInstance()
+
+	routing.GetInstance()
 
 	return nil
 }

@@ -86,6 +86,7 @@ func (broadcast *BroadCaster) reloadBroadcastKeysToCache() error{
 		broadcast.broadcastCache[key] = node
 	}
 
+	logger.Info("There're some keys loaded from persistent storage:", len(broadcast.broadcastCache))
 	return nil
 }
 

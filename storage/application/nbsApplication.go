@@ -42,9 +42,9 @@ func (app *NbsApplication) Start() error {
 
 	logger.Info("Application starting......")
 
-	rpcService.StartCmdService()
-
 	instance.node.Online()
+
+	rpcService.StartCmdService()
 
 	return nil
 }
