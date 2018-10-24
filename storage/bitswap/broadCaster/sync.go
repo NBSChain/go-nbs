@@ -15,13 +15,13 @@ func (broadcast *BroadCaster) loadSavedBroadcastKeys() (*bitswap_pb.BroadCastKey
 
 	bytesOfKeys, err := broadcast.keyStoreService.Get(ExchangeParamPrefix)
 	if err != nil{
-		logger.Warning("failed(1) to get saved broadcast keys.")
+		logger.Warning("failed(1) to get saved broadcast keys.", err)
 		return nil, err
 	}
 
 	if err := proto.UnmarshalMerge(bytesOfKeys, savedKeys); err != nil{
 
-		logger.Warning("failed(2) to get parse broadcast keys.")
+		logger.Warning("failed(2) to get parse broadcast keys.", err)
 		return nil, err
 	}
 
@@ -41,12 +41,12 @@ func (broadcast *BroadCaster) saveBroadcastKeysToStore(keys []string) error  {
 
 	newBytesOfKeys, err := proto.Marshal(keyStores)
 	if err != nil{
-		logger.Warning("failed(3) to get serialize broadcast keys.")
+		logger.Warning("failed(3) to get serialize broadcast keys.", err)
 		return err
 	}
 
 	if err := broadcast.keyStoreService.Put(ExchangeParamPrefix, newBytesOfKeys); err != nil{
-		logger.Warning("failed(4) to save broadcast keys.")
+		logger.Warning("failed(4) to save broadcast keys.", err)
 		return err
 	}
 
