@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package bitswap.pb;
+
+message ledger {
+    string id           = 1;
+    double received     = 2;
+    double score        = 3;
+    double sent         = 4;
+    string updateTime   = 5;
+}
+
+message ledgerSet{
+    repeated ledger ledgers = 1;
+}

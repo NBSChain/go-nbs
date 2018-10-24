@@ -8,13 +8,14 @@ import (
 )
 
 type Configure struct {
-	BaseDir        	string
-	LevelDBDir     	string
-	BlocksDir	string
-	ShardFun	string
-	LogFileName    	string
-	CmdServicePort 	string
-	CurrentVersion 	string
+	BaseDir        string
+	LevelDBDir     string
+	BlocksDir      string
+	ShardFun       string
+	LogFileName    string
+	CmdServicePort string
+	CurrentVersion string
+	SysTimeFormat  string
 }
 
 const cmdServicePort = "6080"
@@ -49,11 +50,12 @@ func initConfig() *Configure {
 	return &Configure{
 		BaseDir:        baseDir,
 		LevelDBDir:     levelDBDir,
-		BlocksDir:     	blockStoreDir,
-		ShardFun:	"/repo/flatfs/shard/v1/next-to-last/2",
+		BlocksDir:      blockStoreDir,
+		ShardFun:       "/repo/flatfs/shard/v1/next-to-last/2",
 		LogFileName:    logFileName,
-		CmdServicePort:	cmdServicePort,
+		CmdServicePort: cmdServicePort,
 		CurrentVersion: currentVersion,
+		SysTimeFormat:  "2006-01-02 15:04:05",
 	}
 }
 

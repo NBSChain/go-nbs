@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
+//const MaxBroadCastCache	= 1 << 20
 var logger 			= utils.GetLogInstance()
-//const MaxBroadCastCache		= 1 << 20
 const KeysToBroadNoPerRound 	= 1 << 6
 const ExchangeParamPrefix	= "keys_to_be_broadcast"
 const MaxTimeToPutBlocks 	= 3
-const RestTimeForWorking = 100
+const RestTimeForWorking 	= 100
 const RestTimeForIdle		= 5
 
 type BroadCaster struct {
@@ -29,6 +29,11 @@ type BroadCaster struct {
 
 	/*used to get block data from local store.*/
 	blockDataStore    	dataStore.DataStore
+}
+
+type broadcastResult struct {
+	sync.Mutex
+	resultsQueue	map[string]ipld.DagNode
 }
 
 func NewBroadCaster() *BroadCaster {
@@ -50,7 +55,8 @@ func NewBroadCaster() *BroadCaster {
 ********************************************************************/
 func (broadcast *BroadCaster) BroadcastRunLoop()  {
 
-	logger.Info("exchange layer start to ")
+	logger.Info("exchange layer start to work......")
+
 	if err := broadcast.reloadBroadcastKeysToCache(); err != nil{
 		logger.Error(err)
 		return
@@ -91,7 +97,9 @@ func (broadcast *BroadCaster) SyncCurrentCache(){
 
 func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNode)  {
 
-	callbackQueue := make(map[string]ipld.DagNode)
+	callbackQueue := &broadcastResult{
+		resultsQueue:	make(map[string]ipld.DagNode),
+	}
 
 	var waitSignal sync.WaitGroup
 
@@ -102,20 +110,20 @@ func (broadcast *BroadCaster) startBroadCast(nodesWorkLoad map[string]ipld.DagNo
 
 	waitSignal.Wait()
 
-	if len(callbackQueue) == 0{
+	if len(callbackQueue.resultsQueue) == 0{
 		return
 	}
 
 	broadcast.Lock()
 	defer broadcast.Unlock()
 
-	for key, node := range callbackQueue{
+	for key, node := range callbackQueue.resultsQueue{
 		broadcast.broadcastCache[key] = node
 	}
 }
 
 func (broadcast *BroadCaster) sendOnNoe(key string, node ipld.DagNode,
-	waiter *sync.WaitGroup, callbackQueue map[string]ipld.DagNode){
+	waiter *sync.WaitGroup, callbackQueue *broadcastResult){
 
 	defer  waiter.Done()
 
@@ -124,12 +132,26 @@ func (broadcast *BroadCaster) sendOnNoe(key string, node ipld.DagNode,
 	select {
 		case err := <-errorChan:
 			if err != nil{
-				callbackQueue[key] = node
-				logger.Warning("saved data to net work finished", key, err)
+				callbackQueue.pushItem(key, node)
+				logger.Warning("saved data to network with error ", key, err)
 			}
 
 		case <-time.After(time.Second * MaxTimeToPutBlocks):
-			logger.Warning("failed to put block onto network:key", key)
-			callbackQueue[key] = node
+			callbackQueue.pushItem(key, node)
+			logger.Warning("timeout, failed to put block onto network:key", key)
 	}
+}
+
+/********************************************************************
+*
+*
+*
+********************************************************************/
+func (queue *broadcastResult) pushItem(key string, node ipld.DagNode)  {
+
+	queue.Lock()
+
+	queue.resultsQueue[key] = node
+
+	queue.Unlock()
 }

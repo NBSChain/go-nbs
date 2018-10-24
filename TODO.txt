@@ -1,0 +1,8 @@
+garbage collection
+ping data
+mark data as temp
+key pair generation
+all initial things in one time.
+control the size of logs.
+control the size of local storage.
+chatting function.
