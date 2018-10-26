@@ -1,4 +1,4 @@
-package cmdKits
+package console
 
 import (
 	"fmt"

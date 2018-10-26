@@ -1,9 +1,9 @@
-package cmdKits
+package console
 
 import (
 	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"

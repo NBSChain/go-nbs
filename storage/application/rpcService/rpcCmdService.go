@@ -1,7 +1,7 @@
 package rpcService
 
 import (
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"golang.org/x/net/context"
 )
 import "google.golang.org/grpc"

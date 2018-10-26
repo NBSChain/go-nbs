@@ -3,7 +3,7 @@ package rpcService
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"os"
 	"path/filepath"
 	"testing"

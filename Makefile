@@ -28,7 +28,7 @@ build:
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
 
-dir := utils/cmdKits/pb
+dir := console/pb
 dir2 := storage/application/pb
 dir3 := storage/merkledag/pb
 dir4 := storage/bitswap/pb

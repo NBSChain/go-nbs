@@ -5,7 +5,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/application/pb"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/golang/protobuf/proto"
 	"io"
 	"strconv"

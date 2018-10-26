@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application/rpcServiceImpl"
-	"github.com/NBSChain/go-nbs/utils/cmdKits/pb"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
