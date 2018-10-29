@@ -2,19 +2,18 @@ package network
 
 import (
 	"context"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-host"
 	"sync"
 )
 
-type NbsNetwork struct {
-	Host    host.Host
-	Context context.Context
+type nbsNetwork struct {
+	Context 	context.Context
+	natManager 	nat.NAT
 }
 
 var once sync.Once
-var instance *NbsNetwork
+var instance *nbsNetwork
 var logger = utils.GetLogInstance()
 
 func GetInstance() Network {
@@ -26,24 +25,18 @@ func GetInstance() Network {
 	return instance
 }
 
-func newNetwork() *NbsNetwork {
+func newNetwork() *nbsNetwork {
 
-	network := &NbsNetwork{
+	network := &nbsNetwork{
 		Context: context.Background(),
 	}
 
-	//--->convert gx version control to github one's
-	newHost, err := libp2p.New(network.Context)
-	if err != nil {
-		panic(err)
-	}
-	//logger.Info("Create host  %s\n", newHost.Addrs())
-
-	network.Host = newHost.(host.Host)
+	go network.bootStrap()
 
 	return network
 }
 
-func (network *NbsNetwork) GetId() string {
-	return string(network.Host.ID())
+func (network *nbsNetwork) bootStrap() {
+
+	network.natManager = nat.NewNatManager()
 }

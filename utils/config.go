@@ -7,20 +7,30 @@ import (
 	"sync"
 )
 
+
 type Configure struct {
-	BaseDir        string
-	LevelDBDir     string
-	BlocksDir      string
-	ShardFun       string
-	LogFileName    string
-	CmdServicePort string
-	CurrentVersion string
-	SysTimeFormat  string
+	BaseDir        	string
+	LevelDBDir     	string
+	BlocksDir      	string
+	ShardFun       	string
+	LogFileName    	string
+	CmdServicePort 	string
+	CurrentVersion 	string
+	SysTimeFormat  	string
+	BootStrapPeers 	[]string
+	NatServerPort, NatClientPort int
+	NatServerIP	string
 }
 
-const cmdServicePort = "6080"
-const currentVersion = "0.0.1"
+const cmdServicePort 	= "6080"
+const currentVersion 	= "0.0.1"
+const natServerPort	= 6001
+const natClientPort	= 7001
+const natServerIP 	= "52.8.190.235"
 
+var defaultBootstrapAddresses = []string{
+	"",
+}
 var config *Configure
 var onceConf sync.Once
 
@@ -56,6 +66,10 @@ func initConfig() *Configure {
 		CmdServicePort: cmdServicePort,
 		CurrentVersion: currentVersion,
 		SysTimeFormat:  "2006-01-02 15:04:05",
+		BootStrapPeers:	defaultBootstrapAddresses,
+		NatServerPort:	natServerPort,
+		NatClientPort:	natClientPort,
+		NatServerIP:	natServerIP,
 	}
 }
 

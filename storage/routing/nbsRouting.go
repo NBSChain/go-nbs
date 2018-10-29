@@ -36,10 +36,9 @@ func GetInstance() Routing {
 
 func newNbsDht() (*NbsDHT, error) {
 
-	network := network.GetInstance()
+	network.GetInstance()
 
 	distributeTable := &NbsDHT{
-		peerId: peer.ID(network.GetId()),
 	}
 
 	return distributeTable, nil

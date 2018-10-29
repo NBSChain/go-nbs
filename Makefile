@@ -32,11 +32,13 @@ dir := console/pb
 dir2 := storage/application/pb
 dir3 := storage/merkledag/pb
 dir4 := storage/bitswap/pb
+dir5 := storage/network/pb
 
 pbs:
 	protoc -I=$(dir) --go_out=plugins=grpc:${dir} ${dir}/*.proto
 	protoc -I=$(dir2) --go_out=plugins=grpc:${dir2} ${dir2}/*.proto
 	protoc -I=$(dir4) --go_out=plugins=grpc:${dir4} ${dir4}/*.proto
+	protoc -I=$(dir5) --go_out=plugins=grpc:${dir5} ${dir5}/*.proto
 	protoc -I=$(dir3) -I=$(INCLUDE)/src -I=$(INCLUDE)/src/github.com/gogo/protobuf/protobuf --go_out=plugins=grpc:${dir3} ${dir3}/*.proto
 
 clean:
