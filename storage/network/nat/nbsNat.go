@@ -163,6 +163,11 @@ func (nat *nbsNat) registerToBootStrap() error {
 			Port:int(response.PublicPort),
 			Zone:response.Zone,
 		}
+
+		nat.isPublic = false
+	}else{
+		nat.isPublic = true
+		nat.publicAddress = nil
 	}
 
 	return nil
