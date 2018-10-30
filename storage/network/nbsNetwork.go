@@ -31,7 +31,7 @@ func newNetwork() *nbsNetwork {
 		Context: context.Background(),
 	}
 
-	go network.bootStrap()
+	network.bootStrap()
 
 	return network
 }
@@ -39,4 +39,8 @@ func newNetwork() *nbsNetwork {
 func (network *nbsNetwork) bootStrap() {
 
 	network.natManager = nat.NewNatManager()
+
+	if err := network.natManager.RegisterToBootStrap(); err != nil{
+		logger.Warning("boot strap err:", err)
+	}
 }

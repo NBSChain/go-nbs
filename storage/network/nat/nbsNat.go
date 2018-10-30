@@ -32,10 +32,13 @@ type nbsNat struct {
 
 //TODO::support multiple local ip address.
 func NewNatManager() NAT{
+
 	localPeers := ExternalIP()
 	if len(localPeers) == 0{
 		logger.Panic("no available network")
 	}
+
+	logger.Debug("all network interfaces:", localPeers)
 
 	natObj := &nbsNat{
 		peers:     make(map[string]natItem),
@@ -43,8 +46,6 @@ func NewNatManager() NAT{
 	}
 
 	natObj.startNatServer()
-
-	natObj.registerToBootStrap()
 
 	go natObj.natService()
 
@@ -68,6 +69,7 @@ func (nat *nbsNat)  startNatServer() {
 
 func (nat *nbsNat) natService()  {
 
+	logger.Info(">>>>>>Nat server start to listen......")
 	for {
 		data := make([]byte, NetIoBufferSize)
 
@@ -82,6 +84,8 @@ func (nat *nbsNat) natService()  {
 			logger.Warning("can't parse the nat request", err, peerAddr)
 			continue
 		}
+
+		logger.Debug("get nat request from client:", request)
 
 		response := &nat_pb.NatResponse{}
 		if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)){
@@ -108,17 +112,18 @@ func (nat *nbsNat) natService()  {
 }
 
 //TODO:: set multiple servers to make it stronger.
-func (nat *nbsNat) registerToBootStrap() error {
+func (nat *nbsNat) RegisterToBootStrap() error {
 
 	config := utils.GetConfig()
 
 	natServerAddr := &net.UDPAddr{
-		IP:[]byte(config.NatServerIP),
-		Port:config.NatServerPort,
+		IP:	net.ParseIP(config.NatServerIP),
+		Port:	config.NatServerPort,
 	}
 
 	connection, err := net.DialUDP("udp", &net.UDPAddr{
-		Port:config.NatClientPort,
+		//IP:	net.ParseIP(nat.privateIP),
+		Port:	config.NatClientPort,
 	}, natServerAddr)
 
 	if err != nil{
@@ -139,7 +144,7 @@ func (nat *nbsNat) registerToBootStrap() error {
 		return err
 	}
 
-	if _, err := connection.WriteToUDP(requestData, natServerAddr); err != nil{
+	if _, err := connection.Write(requestData); err != nil{
 		logger.Error("failed to send nat request to server ", err)
 		return err
 	}
@@ -157,9 +162,11 @@ func (nat *nbsNat) registerToBootStrap() error {
 		return err
 	}
 
+	logger.Debug("get response data from nat server:", response)
+
 	if response.IsAfterNat{
 		nat.publicAddress = &net.UDPAddr{
-			IP:[]byte(response.PublicIp),
+			IP:net.ParseIP(response.PublicIp),
 			Port:int(response.PublicPort),
 			Zone:response.Zone,
 		}
@@ -195,7 +202,6 @@ func (nat *nbsNat) runLoop()  {
 	for {
 		if len(nat.peers) < MaxNatServerItem{
 			time.Sleep(time.Second)
-			logger.Debug("no much item to handle")
 			continue
 		}
 
@@ -244,6 +250,13 @@ func ExternalIP() []string {
 			if ip == nil || ip.IsLoopback() {
 				continue
 			}
+
+			//TODO:: Support ip v6 lter.
+			if ip = ip.To4(); ip == nil{
+				continue
+			}
+
+			logger.Debug("---->", ip.String())
 
 			ips = append(ips, ip.String())
 		}
