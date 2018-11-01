@@ -28,7 +28,7 @@ type nbsNat struct {
 	isPublic      bool
 	publicAddress *net.UDPAddr
 	privateIP     string
-	P2pListenPort	*net.UDPConn
+	P2pServer     *net.UDPConn
 }
 
 //TODO::support multiple local ip address.
@@ -52,7 +52,7 @@ func NewNatManager() NAT{
 
 	go natObj.p2pService()
 
-	go natObj.natCacheCollect()
+	go natObj.cacheCollect()
 	
 	return natObj
 }
@@ -79,7 +79,7 @@ func (nat *nbsNat) startNatService() {
 		logger.Panic("can't start nat natServer.", err)
 	}
 
-	nat.P2pListenPort = p2pServer
+	nat.P2pServer = p2pServer
 }
 
 func (nat *nbsNat) natService()  {
@@ -207,7 +207,7 @@ func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatReq
 	nat.Unlock()
 }
 
-func (nat *nbsNat) natCacheCollect()  {
+func (nat *nbsNat) cacheCollect()  {
 	for {
 		nat.Lock()
 		if len(nat.peers) < MaxNatServerItem{
@@ -232,7 +232,7 @@ func (nat *nbsNat) p2pService()  {
 	for {
 		data := make([]byte, NetIoBufferSize)
 
-		n, peerAddr, err := nat.natServer.ReadFromUDP(data)
+		n, peerAddr, err := nat.P2pServer.ReadFromUDP(data)
 		if err != nil {
 			logger.Warning("nat natServer read udp data failed:", err)
 			continue
