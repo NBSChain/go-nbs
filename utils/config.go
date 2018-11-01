@@ -28,7 +28,7 @@ const natServerPort	= 6001
 const natClientPort	= 7001
 var natServerIP 	= []string{
 	"52.8.190.235",
-	"172.168.20.52",
+	//"172.168.20.52",
 }
 //const natServerIP 	= "192.168.38.173"
 
