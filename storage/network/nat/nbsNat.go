@@ -226,14 +226,16 @@ func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatReq
 
 func (nat *nbsNat) runLoop()  {
 	for {
+		nat.Lock()
 		if len(nat.peers) < MaxNatServerItem{
 			time.Sleep(time.Second)
+			nat.Unlock()
 			continue
 		}
 
 		rightNow := time.Now()
 
-		nat.Lock()
+
 		for key, value := range nat.peers{
 			if rightNow.Sub(value.updateTIme) > SessionTimeOut* time.Hour{
 				delete(nat.peers, key)
