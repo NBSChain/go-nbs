@@ -9,24 +9,25 @@ import (
 
 
 type Configure struct {
-	BaseDir        	string
-	LevelDBDir     	string
-	BlocksDir      	string
-	ShardFun       	string
-	LogFileName    	string
-	CmdServicePort 	string
-	CurrentVersion 	string
-	SysTimeFormat  	string
-	BootStrapPeers 	[]string
-	NatServerPort, NatClientPort int
-	NatServerIP	[]string
+	BaseDir                      string
+	LevelDBDir                   string
+	BlocksDir                    string
+	ShardFun                     string
+	LogFileName                  string
+	CmdServicePort               string
+	CurrentVersion               string
+	SysTimeFormat                string
+	BootStrapPeers               []string
+	NatServerPort int
+	P2pListenPort int
+	NatServerIP                  []string
 }
 
 const cmdServicePort 	= "6080"
 const currentVersion 	= "0.0.1"
 const natServerPort	= 6001
-const natClientPort	= 7001
-var natServerIP 	= []string{
+const p2pListenPort 	= 7001
+var   natServerIP 	= []string{
 	"52.8.190.235",
 	//"172.168.20.52",
 }
@@ -70,10 +71,10 @@ func initConfig() *Configure {
 		CmdServicePort: cmdServicePort,
 		CurrentVersion: currentVersion,
 		SysTimeFormat:  "2006-01-02 15:04:05",
-		BootStrapPeers:	defaultBootstrapAddresses,
-		NatServerPort:	natServerPort,
-		NatClientPort:	natClientPort,
-		NatServerIP:	natServerIP,
+		BootStrapPeers: defaultBootstrapAddresses,
+		NatServerPort:  natServerPort,
+		P2pListenPort:  p2pListenPort,
+		NatServerIP:    natServerIP,
 	}
 }
 

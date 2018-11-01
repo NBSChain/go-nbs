@@ -40,7 +40,7 @@ func (network *nbsNetwork) bootStrap() {
 
 	network.natManager = nat.NewNatManager()
 
-	if err := network.natManager.RegisterToBootStrap(); err != nil{
+	if err := network.natManager.FetchNatInfo(); err != nil{
 		logger.Warning("boot strap err:", err)
 	}
 }
