@@ -54,9 +54,10 @@ func NewNatManager() NAT{
 	return natObj
 }
 
+//TODO:: support ipv6 later.
 func (nat *nbsNat)  startNatServer() {
 
-	l, err := net.ListenUDP("udp",&net.UDPAddr{
+	l, err := net.ListenUDP("udp4",&net.UDPAddr{
 		Port:utils.GetConfig().NatServerPort,
 	})
 
@@ -190,7 +191,7 @@ func (nat *nbsNat) RegisterToBootStrap() error {
 			continue
 		}
 
-		connection.SetDeadline(time.Now().Add(time.Second))
+		connection.SetDeadline(time.Now().Add(3* time.Second))
 
 		if err := nat.sendNatRequest(connection); err != nil{
 			continue
