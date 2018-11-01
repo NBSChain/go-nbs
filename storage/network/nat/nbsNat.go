@@ -111,31 +111,22 @@ func (nat *nbsNat) natService()  {
 	}
 }
 
-//TODO:: set multiple servers to make it stronger.
-func (nat *nbsNat) RegisterToBootStrap() error {
+func (nat *nbsNat) connectToNatServer(serverIP string, localAddress *net.UDPAddr) (*net.UDPConn, error){
 
 	config := utils.GetConfig()
-
 	natServerAddr := &net.UDPAddr{
-		IP:	net.ParseIP(config.NatServerIP),
+		IP:	net.ParseIP(serverIP),
 		Port:	config.NatServerPort,
 	}
+	return net.DialUDP("udp", localAddress, natServerAddr)
+}
 
-	connection, err := net.DialUDP("udp", &net.UDPAddr{
-		//IP:	net.ParseIP(nat.privateIP),
-		Port:	config.NatClientPort,
-	}, natServerAddr)
-
-	if err != nil{
-		logger.Error("can't know who am I", err)
-		return err
-	}
-	defer connection.Close()
+func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error{
 
 	request := &nat_pb.NatRequest{
-		NodeId:"",//TODO::
-		PrivateIp:nat.privateIP,
-		PrivatePort:int32(config.NatClientPort),
+		NodeId:"",	//TODO::
+		PrivateIp:	nat.privateIP,
+		PrivatePort:	int32(utils.GetConfig().NatClientPort),
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -144,22 +135,27 @@ func (nat *nbsNat) RegisterToBootStrap() error {
 		return err
 	}
 
-	if _, err := connection.Write(requestData); err != nil{
-		logger.Error("failed to send nat request to server ", err)
+	if no, err := connection.Write(requestData); err != nil || no == 0{
+		logger.Error("failed to send nat request to server ", err, no)
 		return err
 	}
+
+	return nil
+}
+
+func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.NatResponse, error){
 
 	responseData:= make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
 	if err != nil{
 		logger.Error("failed to read nat response from server", err)
-		return err
+		return nil, err
 	}
 
 	response := &nat_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil{
 		logger.Error("failed to unmarshal nat response data", err)
-		return err
+		return nil, err
 	}
 
 	logger.Debug("get response data from nat server:", response)
@@ -170,11 +166,40 @@ func (nat *nbsNat) RegisterToBootStrap() error {
 			Port:int(response.PublicPort),
 			Zone:response.Zone,
 		}
-
 		nat.isPublic = false
 	}else{
 		nat.isPublic = true
 		nat.publicAddress = nil
+	}
+
+	return response, nil
+}
+
+//TODO:: set multiple servers to make it stronger.
+func (nat *nbsNat) RegisterToBootStrap() error {
+
+	config := utils.GetConfig()
+
+	for _, serverIP := range config.NatServerIP{
+
+		//TIPS:: no need to bind local host and local port right now
+		connection, err := nat.connectToNatServer(serverIP, nil)
+
+		if err != nil{
+			logger.Error("can't know who am I", err)
+			continue
+		}
+
+		connection.SetDeadline(time.Now().Add(time.Second))
+
+		if err := nat.sendNatRequest(connection); err != nil{
+			continue
+		}
+
+		_, err = nat.parseNatResponse(connection)
+		if err == nil{
+			break
+		}
 	}
 
 	return nil
@@ -255,8 +280,6 @@ func ExternalIP() []string {
 			if ip = ip.To4(); ip == nil{
 				continue
 			}
-
-			logger.Debug("---->", ip.String())
 
 			ips = append(ips, ip.String())
 		}

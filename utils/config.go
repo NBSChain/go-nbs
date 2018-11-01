@@ -19,15 +19,18 @@ type Configure struct {
 	SysTimeFormat  	string
 	BootStrapPeers 	[]string
 	NatServerPort, NatClientPort int
-	NatServerIP	string
+	NatServerIP	[]string
 }
 
 const cmdServicePort 	= "6080"
 const currentVersion 	= "0.0.1"
 const natServerPort	= 6001
 const natClientPort	= 7001
-//const natServerIP 	= "52.8.190.235"
-const natServerIP 	= "192.168.38.173"
+var natServerIP 	= []string{
+	"52.8.190.235",
+	"172.168.20.52",
+}
+//const natServerIP 	= "192.168.38.173"
 
 var defaultBootstrapAddresses = []string{
 	"",
