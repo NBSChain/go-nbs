@@ -34,7 +34,7 @@ func newApplication() (*NbsApplication, error) {
 
 	return &NbsApplication{
 		context: context.Background(),
-		node:    NewNode(),
+		node:    newNode(),
 	}, nil
 }
 
@@ -42,7 +42,7 @@ func (app *NbsApplication) Start() error {
 
 	logger.Info("Application starting......")
 
-	instance.node.Online()
+	app.node.Online()
 
 	rpcService.StartCmdService()
 

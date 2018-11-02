@@ -9,12 +9,20 @@ package pb;
 service AccountTask {
 
     rpc AccountUnlock (AccountUnlockRequest) returns (AccountUnlockResponse) {}
+    rpc CreateAccount (CreateAccountRequest) returns (CreateAccountResponse) {}
 }
 message AccountUnlockRequest{
     string password = 1;
 }
 
 message AccountUnlockResponse {
+    string message = 1;
+}
+
+message CreateAccountRequest{
+    string password = 1;
+}
+message CreateAccountResponse{
     string message = 1;
 }
 

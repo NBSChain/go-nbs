@@ -2,7 +2,6 @@ package nat
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/thirdParty/idService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
@@ -31,11 +30,11 @@ type nbsNat struct {
 	publicAddress *net.UDPAddr
 	privateIP     string
 	P2pServer     *net.UDPConn
-	peerID        *idService.Identity
+	networkId     string
 }
 
 //TODO::support multiple local ip address.
-func NewNatManager(id *idService.Identity) NAT {
+func NewNatManager(networkId string) NAT {
 
 	localPeers := ExternalIP()
 	if len(localPeers) == 0 {
@@ -47,7 +46,7 @@ func NewNatManager(id *idService.Identity) NAT {
 	natObj := &nbsNat{
 		peers:     make(map[string]natItem),
 		privateIP: localPeers[0],
-		peerID:    id,
+		networkId: networkId,
 	}
 
 	natObj.startNatService()
@@ -143,7 +142,7 @@ func (nat *nbsNat) connectToNatServer(serverIP string, localAddress *net.UDPAddr
 func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 
 	request := &nat_pb.NatRequest{
-		NodeId:      nat.peerID.PeerID,
+		NodeId:      nat.networkId,
 		PrivateIp:   nat.privateIP,
 		PrivatePort: int32(utils.GetConfig().P2pListenPort),
 	}

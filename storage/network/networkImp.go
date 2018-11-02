@@ -2,7 +2,6 @@ package network
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
-	"github.com/NBSChain/go-nbs/thirdParty/idService"
 )
 
 func (network *nbsNetwork) NewHost(options ...HostOption) Host {
@@ -19,7 +18,7 @@ func (network *nbsNetwork) ListenAddrString(address string) HostOption {
 	}
 }
 
-func (network *nbsNetwork) StartUp(peerId *idService.Identity, options ...SetupOption) error {
+func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error {
 
 	for _, opt := range options {
 

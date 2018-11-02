@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
-	"github.com/NBSChain/go-nbs/thirdParty/idService"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -11,7 +10,7 @@ import (
 type nbsNetwork struct {
 	Context    context.Context
 	natManager nat.NAT
-	netWorkId  *idService.Identity
+	netWorkId  string
 }
 
 var once sync.Once

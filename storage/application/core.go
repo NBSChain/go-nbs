@@ -3,7 +3,9 @@ package application
 import (
 	"github.com/NBSChain/go-nbs/storage/bitswap"
 	"github.com/NBSChain/go-nbs/storage/merkledag"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/routing"
+	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/utils"
 )
 
@@ -17,22 +19,27 @@ type NbsStorageNode struct {
 	nodeId string
 }
 
-func (*NbsStorageNode) Online() error {
+func (node *NbsStorageNode) Online() error {
 
 	//naming
+
 	merkledag.GetDagInstance()
 
 	bitswap.GetSwapInstance()
 
 	routing.GetInstance()
 
+	network.GetInstance().StartUp(node.nodeId)
+
 	return nil
 }
 
-func NewNode() StorageNode {
+func newNode() StorageNode {
+
+	acc := account.GetAccountInstance()
 
 	node := &NbsStorageNode{
-		nodeId: "",
+		nodeId: acc.GetPeerID(),
 	}
 
 	return node

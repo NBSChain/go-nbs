@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package account.pb;
+
+message account{
+    string peerID       = 1;
+    bool Encrypted      = 2;
+    string PrivateKey   = 3;
+}
