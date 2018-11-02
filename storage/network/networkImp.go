@@ -1,6 +1,9 @@
 package network
 
-import "github.com/NBSChain/go-nbs/thirdParty/idService"
+import (
+	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/thirdParty/idService"
+)
 
 func (network *nbsNetwork) NewHost(options ...HostOption) Host {
 
@@ -16,9 +19,22 @@ func (network *nbsNetwork) ListenAddrString(address string) HostOption {
 	}
 }
 
-func (network *nbsNetwork) Identity(id *idService.Identity) HostOption {
+func (network *nbsNetwork) StartUp(peerId *idService.Identity, options ...SetupOption) error {
 
-	return func() error {
-		return nil
+	for _, opt := range options {
+
+		if err := opt(); err != nil {
+			logger.Warning("one network startup option applies failed", opt)
+		}
 	}
+
+	network.netWorkId = peerId
+
+	network.natManager = nat.NewNatManager(network.netWorkId)
+
+	if err := network.natManager.FetchNatInfo(); err != nil {
+		logger.Warning("boot strap err:", err)
+	}
+
+	return nil
 }

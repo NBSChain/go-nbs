@@ -13,7 +13,10 @@ func main() {
 	localPort := flag.Int("p", 9900, "local server listening port")
 	flag.Parse()
 
+	peerId, _ := idService.GetInstance().GenerateId("")
+
 	netInstance := network.GetInstance()
+	netInstance.StartUp(peerId)
 
 	if *targetID != "" {
 		host := netInstance.NewHost()
@@ -25,10 +28,7 @@ func main() {
 
 		l := fmt.Sprintf("%d", localPort)
 
-		id, _ := idService.GetInstance().GenerateId("")
-
 		netInstance.NewHost(
-			netInstance.Identity(id),
 			netInstance.ListenAddrString(l),
 		)
 

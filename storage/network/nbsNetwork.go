@@ -3,13 +3,15 @@ package network
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/thirdParty/idService"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
 
 type nbsNetwork struct {
-	Context 	context.Context
-	natManager 	nat.NAT
+	Context    context.Context
+	natManager nat.NAT
+	netWorkId  *idService.Identity
 }
 
 var once sync.Once
@@ -31,16 +33,5 @@ func newNetwork() *nbsNetwork {
 		Context: context.Background(),
 	}
 
-	network.bootStrap()
-
 	return network
-}
-
-func (network *nbsNetwork) bootStrap() {
-
-	network.natManager = nat.NewNatManager()
-
-	if err := network.natManager.FetchNatInfo(); err != nil{
-		logger.Warning("boot strap err:", err)
-	}
 }

@@ -2,6 +2,7 @@ package nat
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/thirdParty/idService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
@@ -10,15 +11,16 @@ import (
 )
 
 var logger = utils.GetLogInstance()
-const MaxNatServerItem 	= 1 << 10
-const SessionTimeOut 	= 24
-const NetIoBufferSize	= 1 << 11
+
+const MaxNatServerItem = 1 << 10
+const SessionTimeOut = 24
+const NetIoBufferSize = 1 << 11
 
 type natItem struct {
-	nodeID		string
-	privateInfo	*net.UDPAddr
-	publicInfo	*net.UDPAddr
-	updateTIme	time.Time
+	nodeID      string
+	privateInfo *net.UDPAddr
+	publicInfo  *net.UDPAddr
+	updateTIme  time.Time
 }
 
 type nbsNat struct {
@@ -29,13 +31,14 @@ type nbsNat struct {
 	publicAddress *net.UDPAddr
 	privateIP     string
 	P2pServer     *net.UDPConn
+	peerID        *idService.Identity
 }
 
 //TODO::support multiple local ip address.
-func NewNatManager() NAT{
+func NewNatManager(id *idService.Identity) NAT {
 
 	localPeers := ExternalIP()
-	if len(localPeers) == 0{
+	if len(localPeers) == 0 {
 		logger.Panic("no available network")
 	}
 
@@ -44,6 +47,7 @@ func NewNatManager() NAT{
 	natObj := &nbsNat{
 		peers:     make(map[string]natItem),
 		privateIP: localPeers[0],
+		peerID:    id,
 	}
 
 	natObj.startNatService()
@@ -53,49 +57,49 @@ func NewNatManager() NAT{
 	go natObj.p2pService()
 
 	go natObj.cacheCollect()
-	
+
 	return natObj
 }
 
 //TODO:: support ipv6 later.
 func (nat *nbsNat) startNatService() {
 
-	natServer, err := net.ListenUDP("udp4",&net.UDPAddr{
-		Port:utils.GetConfig().NatServerPort,
+	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: utils.GetConfig().NatServerPort,
 	})
 
-	if err != nil{
+	if err != nil {
 		logger.Panic("can't start nat natServer.", err)
 	}
 
 	nat.natServer = natServer
 
-	p2pServer, err := net.ListenUDP("udp4",&net.UDPAddr{
-		IP:	net.ParseIP(nat.privateIP),
-		Port:	utils.GetConfig().P2pListenPort,
+	p2pServer, err := net.ListenUDP("udp4", &net.UDPAddr{
+		IP:   net.ParseIP(nat.privateIP),
+		Port: utils.GetConfig().P2pListenPort,
 	})
 
-	if err != nil{
+	if err != nil {
 		logger.Panic("can't start nat natServer.", err)
 	}
 
 	nat.P2pServer = p2pServer
 }
 
-func (nat *nbsNat) natService()  {
+func (nat *nbsNat) natService() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
 	for {
 		data := make([]byte, NetIoBufferSize)
 
-		n, peerAddr, err :=nat.natServer.ReadFromUDP(data)
-		if err != nil{
+		n, peerAddr, err := nat.natServer.ReadFromUDP(data)
+		if err != nil {
 			logger.Warning("nat natServer read udp data failed:", err)
 			continue
 		}
 
 		request := &nat_pb.NatRequest{}
-		if err := proto.Unmarshal(data[:n], request); err != nil{
+		if err := proto.Unmarshal(data[:n], request); err != nil {
 			logger.Warning("can't parse the nat request", err, peerAddr)
 			continue
 		}
@@ -103,54 +107,54 @@ func (nat *nbsNat) natService()  {
 		logger.Debug("get nat request from client:", request)
 
 		response := &nat_pb.NatResponse{}
-		if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)){
+		if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 			response.IsAfterNat = false
-		}else{
+		} else {
 			nat.cacheItem(peerAddr, request)
-			response.IsAfterNat 	= true
-			response.PublicIp 	= peerAddr.IP.String()
-			response.PublicPort 	= int32(peerAddr.Port)
-			response.Zone 		= peerAddr.Zone
+			response.IsAfterNat = true
+			response.PublicIp = peerAddr.IP.String()
+			response.PublicPort = int32(peerAddr.Port)
+			response.Zone = peerAddr.Zone
 		}
 
-		 responseData, err := proto.Marshal(response)
-		if err != nil{
+		responseData, err := proto.Marshal(response)
+		if err != nil {
 			logger.Warning("failed to marshal nat response data", err)
 			continue
 		}
 
-		if _, err := nat.natServer.WriteToUDP(responseData, peerAddr); err != nil{
+		if _, err := nat.natServer.WriteToUDP(responseData, peerAddr); err != nil {
 			logger.Warning("failed to send nat response", err)
 			continue
 		}
 	}
 }
 
-func (nat *nbsNat) connectToNatServer(serverIP string, localAddress *net.UDPAddr) (*net.UDPConn, error){
+func (nat *nbsNat) connectToNatServer(serverIP string, localAddress *net.UDPAddr) (*net.UDPConn, error) {
 
 	config := utils.GetConfig()
 	natServerAddr := &net.UDPAddr{
-		IP:	net.ParseIP(serverIP),
-		Port:	config.NatServerPort,
+		IP:   net.ParseIP(serverIP),
+		Port: config.NatServerPort,
 	}
 	return net.DialUDP("udp", localAddress, natServerAddr)
 }
 
-func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error{
+func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 
 	request := &nat_pb.NatRequest{
-		NodeId:"",	//TODO::
-		PrivateIp:	nat.privateIP,
-		PrivatePort:	int32(utils.GetConfig().P2pListenPort),
+		NodeId:      nat.peerID.PeerID,
+		PrivateIp:   nat.privateIP,
+		PrivatePort: int32(utils.GetConfig().P2pListenPort),
 	}
 
 	requestData, err := proto.Marshal(request)
-	if err != nil{
+	if err != nil {
 		logger.Error("failed to marshal nat request", err)
 		return err
 	}
 
-	if no, err := connection.Write(requestData); err != nil || no == 0{
+	if no, err := connection.Write(requestData); err != nil || no == 0 {
 		logger.Error("failed to send nat request to natServer ", err, no)
 		return err
 	}
@@ -158,48 +162,48 @@ func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error{
 	return nil
 }
 
-func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.NatResponse, error){
+func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.NatResponse, error) {
 
-	responseData:= make([]byte, NetIoBufferSize)
+	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
-	if err != nil{
+	if err != nil {
 		logger.Error("failed to read nat response from natServer", err)
 		return nil, err
 	}
 
 	response := &nat_pb.NatResponse{}
-	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil{
+	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("failed to unmarshal nat response data", err)
 		return nil, err
 	}
 
 	logger.Debug("get response data from nat natServer:", response)
 
-	if response.IsAfterNat{
+	if response.IsAfterNat {
 		nat.publicAddress = &net.UDPAddr{
-			IP:net.ParseIP(response.PublicIp),
-			Port:int(response.PublicPort),
-			Zone:response.Zone,
+			IP:   net.ParseIP(response.PublicIp),
+			Port: int(response.PublicPort),
+			Zone: response.Zone,
 		}
 		nat.isPublic = false
-	}else{
+	} else {
 		nat.isPublic = true
 		nat.publicAddress = nil
 	}
 
 	return response, nil
 }
-func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatRequest){
+func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatRequest) {
 
 	item := natItem{
-		nodeID: 	privateInfo.NodeId,
-		privateInfo:	&net.UDPAddr{
-			IP:	[]byte(privateInfo.PrivateIp),
-			Port:	int(privateInfo.PrivatePort),
-			Zone:	privateInfo.Zone,
+		nodeID: privateInfo.NodeId,
+		privateInfo: &net.UDPAddr{
+			IP:   []byte(privateInfo.PrivateIp),
+			Port: int(privateInfo.PrivatePort),
+			Zone: privateInfo.Zone,
 		},
-		publicInfo:	publicInfo,
-		updateTIme:	time.Now(),
+		publicInfo: publicInfo,
+		updateTIme: time.Now(),
 	}
 
 	nat.Lock()
@@ -207,10 +211,10 @@ func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatReq
 	nat.Unlock()
 }
 
-func (nat *nbsNat) cacheCollect()  {
+func (nat *nbsNat) cacheCollect() {
 	for {
 		nat.Lock()
-		if len(nat.peers) < MaxNatServerItem{
+		if len(nat.peers) < MaxNatServerItem {
 			time.Sleep(time.Second)
 			nat.Unlock()
 			continue
@@ -218,9 +222,8 @@ func (nat *nbsNat) cacheCollect()  {
 
 		rightNow := time.Now()
 
-
-		for key, value := range nat.peers{
-			if rightNow.Sub(value.updateTIme) > SessionTimeOut* time.Hour{
+		for key, value := range nat.peers {
+			if rightNow.Sub(value.updateTIme) > SessionTimeOut*time.Hour {
 				delete(nat.peers, key)
 			}
 		}
@@ -228,7 +231,7 @@ func (nat *nbsNat) cacheCollect()  {
 	}
 }
 
-func (nat *nbsNat) p2pService()  {
+func (nat *nbsNat) p2pService() {
 	for {
 		data := make([]byte, NetIoBufferSize)
 
@@ -242,7 +245,6 @@ func (nat *nbsNat) p2pService()  {
 	}
 }
 
-
 func ExternalIP() []string {
 
 	interfaces, err := net.Interfaces()
@@ -254,7 +256,7 @@ func ExternalIP() []string {
 	for _, face := range interfaces {
 
 		if face.Flags&net.FlagUp == 0 ||
-			face.Flags&net.FlagLoopback != 0{
+			face.Flags&net.FlagLoopback != 0 {
 			continue
 		}
 
@@ -277,7 +279,7 @@ func ExternalIP() []string {
 			}
 
 			//TODO:: Support ip v6 lter.
-			if ip = ip.To4(); ip == nil{
+			if ip = ip.To4(); ip == nil {
 				continue
 			}
 
@@ -288,30 +290,29 @@ func ExternalIP() []string {
 	return ips
 }
 
-
 //TODO:: set multiple servers to make it stronger.
 func (nat *nbsNat) FetchNatInfo() error {
 
 	config := utils.GetConfig()
 
-	for _, serverIP := range config.NatServerIP{
+	for _, serverIP := range config.NatServerIP {
 
 		//TIPS:: no need to bind local host and local port right now
 		connection, err := nat.connectToNatServer(serverIP, nil)
 
-		if err != nil{
+		if err != nil {
 			logger.Error("can't know who am I", err)
 			continue
 		}
 
-		connection.SetDeadline(time.Now().Add(3* time.Second))
+		connection.SetDeadline(time.Now().Add(3 * time.Second))
 
-		if err := nat.sendNatRequest(connection); err != nil{
+		if err := nat.sendNatRequest(connection); err != nil {
 			continue
 		}
 
 		_, err = nat.parseNatResponse(connection)
-		if err == nil{
+		if err == nil {
 			break
 		}
 	}
