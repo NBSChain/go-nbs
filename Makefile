@@ -24,6 +24,7 @@ all: pbs build
 
 build:
 	go build -race -o $(EXENAME)
+	mv $(EXENAME) $(GOPATH)/bin/
 
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
