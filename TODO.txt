@@ -6,3 +6,8 @@ all initial things in one time.
 control the size of logs.
 control the size of local storage.
 chatting function.
+
+---------------->>>>>>---------------->>>>>>
+check account info before use the nbs
+load account info from local data store
+add nbs create count logic.
