@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcAccountMessage";
+
+package pb;
+
+service AccountTask {
+
+    rpc AccountUnlock (AccountUnlockRequest) returns (AccountUnlockResponse) {}
+}
+message AccountUnlockRequest{
+    string password = 1;
+}
+
+message AccountUnlockResponse {
+    string message = 1;
+}
+

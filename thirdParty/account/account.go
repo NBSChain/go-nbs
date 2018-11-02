@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"github.com/NBSChain/go-nbs/thirdParty/idService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/crypto"
@@ -44,6 +45,10 @@ func loadAccount() *nbsAccount{
 }
 
 func (account *nbsAccount) UnlockAccount(encodedKey string) (err error){
+
+	if account.accountId == nil{
+		return fmt.Errorf("the account is not initialized yet")
+	}
 
 	privateKeyData, err := base64.StdEncoding.DecodeString(account.accountId.PrivateKey)
 	if err != nil{

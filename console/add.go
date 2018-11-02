@@ -148,7 +148,7 @@ func addFile(request *pb.AddRequest) *pb.AddResponse {
 
 	response, err := client.AddFile(ctx, request)
 	if err != nil {
-		log.Fatalf("could not add file : %v", err)
+		logger.Fatalf("could not add file : %v", err)
 	}
 
 	return response
