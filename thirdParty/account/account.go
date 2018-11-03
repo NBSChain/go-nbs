@@ -118,6 +118,7 @@ func (account *nbsAccount) loadAccount() error {
 		return err
 	}
 
+	account.accountId = new(idService.Identity)
 	account.accountId.PeerID = accountInfo.PeerID
 	account.accountId.PrivateKey = accountInfo.PrivateKey
 	account.accountId.Encrypted = accountInfo.Encrypted
