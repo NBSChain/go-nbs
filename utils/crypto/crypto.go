@@ -62,11 +62,11 @@ func PKCS5Padding(src []byte, blockSize int) []byte {
 
 func PKCS5UnPadding(src []byte) []byte {
 
-	n := len(src)
+	length := len(src)
 
-	unPadNum := int(src[n-1])
+	unPadding := int(src[length-1])
 
-	return src[:n-unPadNum]
+	return src[:(length - unPadding)]
 }
 
 func EncryptAES(src []byte, key []byte) []byte {
@@ -75,7 +75,7 @@ func EncryptAES(src []byte, key []byte) []byte {
 	blockSize := block.BlockSize()
 
 	src = PKCS5Padding(src, blockSize)
-	dst := make([]byte, 0, len(src))
+	dst := make([]byte, len(src))
 
 	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
 	blockMode.CryptBlocks(dst, src)
@@ -90,8 +90,7 @@ func DecryptAES(src []byte, key []byte) []byte {
 
 	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
 
-	dst := make([]byte, 0, len(src))
-
+	dst := make([]byte, len(src))
 	blockMode.CryptBlocks(dst, src)
 
 	dst = PKCS5UnPadding(dst)

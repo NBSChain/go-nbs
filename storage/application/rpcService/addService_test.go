@@ -2,8 +2,8 @@ package rpcService
 
 import (
 	"context"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/console/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"os"
 	"path/filepath"
 	"testing"
@@ -56,7 +56,7 @@ func testImportFile(t *testing.T, fileName string, target string) {
 	if response.Hash != target {
 		t.Error("Hash 值计算错误!")
 	} else {
-		t.Log("测试通过")
+		t.Log("Import file 测试通过")
 	}
 
 }

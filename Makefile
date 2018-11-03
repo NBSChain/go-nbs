@@ -49,3 +49,5 @@ clean:
 
 test:
 	go test -v ./storage/application/rpcService/
+	go test -v ./utils/crypto/
+
