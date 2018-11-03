@@ -3,6 +3,7 @@ package console
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application"
+	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -36,7 +37,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	application.GetInstance().Start()
 
-	logger.Info("Nbs daemon is ready......")
+	rpcService.StartCmdService()
 }
 
 func DialToCmdService() *grpc.ClientConn {

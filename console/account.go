@@ -1,7 +1,6 @@
 package console
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
@@ -53,9 +52,8 @@ func unlockAccount(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	encodeKey := hex.EncodeToString([]byte(password))
 	request := &pb.AccountUnlockRequest{
-		Password: encodeKey,
+		Password: crypto.MD5SS(password),
 	}
 
 	conn := DialToCmdService()
@@ -82,9 +80,8 @@ func createAccount(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	encodeKey := hex.EncodeToString([]byte(password))
 	request := &pb.CreateAccountRequest{
-		Password: encodeKey,
+		Password: crypto.MD5SS(password),
 	}
 
 	conn := DialToCmdService()

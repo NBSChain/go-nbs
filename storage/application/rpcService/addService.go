@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/application/rpcServiceImpl"
 	"github.com/NBSChain/go-nbs/console/pb"
+	"github.com/NBSChain/go-nbs/storage/application/rpcServiceImpl"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -13,8 +13,8 @@ import (
 	"sync"
 )
 
-const DefaultStreamTaskNo 	= 30
-const StreamSessionIDKey 	= "sessionid"
+const DefaultStreamTaskNo = 30
+const StreamSessionIDKey = "sessionid"
 
 type addService struct {
 	taskLock    sync.RWMutex
@@ -36,7 +36,7 @@ func (service *addService) AddFile(ctx context.Context, request *pb.AddRequest) 
 				return nil, errors.New("too many add task running now. ")
 			}
 
-			sessionId := crypto.MD5(request.FullPath + string(request.FileSize))
+			sessionId := crypto.MD5SS(request.FullPath + string(request.FileSize))
 
 			service.appendTask(sessionId, request)
 

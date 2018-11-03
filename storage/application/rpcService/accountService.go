@@ -1,7 +1,9 @@
 package rpcService
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/console/pb"
+	"github.com/NBSChain/go-nbs/storage/application"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"golang.org/x/net/context"
 )
@@ -21,11 +23,19 @@ func (service *accountService) AccountUnlock(ctx context.Context,
 }
 
 func (service *accountService) CreateAccount(ctx context.Context,
+
 	request *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
 
-	if err := account.CreateAccount(request.Password); err != nil {
+	acc := account.GetAccountInstance()
+	if acc.GetPeerID() != "" {
+		return nil, fmt.Errorf("can't create another account, we support only one account right now")
+	}
+
+	if err := acc.CreateAccount(request.Password); err != nil {
 		return nil, err
 	}
+
+	application.GetInstance().ReloadForNewAccount()
 
 	return &pb.CreateAccountResponse{
 		Message: "Create account success!",

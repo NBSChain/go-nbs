@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application/dataStore"
 	"github.com/NBSChain/go-nbs/thirdParty/account/pb"
@@ -19,13 +18,14 @@ import (
 type Account interface {
 	UnlockAccount(password string) error
 	GetPeerID() string
-	Reload() error
+	CreateAccount(password string) error
 }
 
 type nbsAccount struct {
 	accountId     *idService.Identity
 	privateKey    *rsa.PrivateKey
 	cleanKeyTimer chan struct{}
+	dataLock      sync.Mutex
 	dataStore     dataStore.DataStore
 }
 
@@ -38,11 +38,18 @@ const ParameterKeyForAccount = "keys_for_account_local_info"
 func GetAccountInstance() Account {
 
 	once.Do(func() {
-		instance, err := newAccount()
+		obj, err := newAccount()
 		if err != nil {
 			panic(err)
 		}
-		go instance.monitorPrivateKey()
+
+		if err := obj.loadAccount(); err != nil {
+			logger.Warning("no account found, so the network is not up")
+		}
+
+		go obj.monitorPrivateKey()
+
+		instance = obj
 	})
 
 	return instance
@@ -79,9 +86,7 @@ func (account *nbsAccount) UnlockAccount(encodedKey string) (err error) {
 	if !account.accountId.Encrypted {
 		decryptedData = privateKeyData
 	} else {
-		key, _ := hex.DecodeString(encodedKey)
-
-		decryptedData = crypto.DecryptAES(privateKeyData, key)
+		decryptedData = crypto.DecryptAES(privateKeyData, []byte(encodedKey))
 	}
 
 	account.privateKey, err = x509.ParsePKCS1PrivateKey(decryptedData)
@@ -91,10 +96,17 @@ func (account *nbsAccount) UnlockAccount(encodedKey string) (err error) {
 	return nil
 }
 func (account *nbsAccount) GetPeerID() string {
+	if account.accountId == nil {
+		return ""
+	}
+
 	return account.accountId.PeerID
 }
 
-func (account *nbsAccount) Reload() error {
+func (account *nbsAccount) loadAccount() error {
+
+	account.dataLock.Lock()
+	defer account.dataLock.Unlock()
 
 	accountData, err := account.dataStore.Get(ParameterKeyForAccount)
 	if err != nil {
@@ -125,14 +137,17 @@ func (account *nbsAccount) monitorPrivateKey() {
 	}
 }
 
-func CreateAccount(password string) error {
+func (account *nbsAccount) CreateAccount(password string) error {
+
+	account.dataLock.Lock()
+	defer account.dataLock.Unlock()
 
 	id, err := idService.GetInstance().GenerateId(password)
 	if err != nil {
 		return err
 	}
 
-	keyStore := dataStore.GetServiceDispatcher().ServiceByType(dataStore.ServiceTypeLocalParam)
+	account.accountId = id
 
 	accountInfo := &account_pb.Account{
 		PeerID:     id.PeerID,
@@ -145,11 +160,7 @@ func CreateAccount(password string) error {
 		return err
 	}
 
-	if err := keyStore.Put(ParameterKeyForAccount, accountData); err != nil {
-		return err
-	}
-
-	if err := GetAccountInstance().Reload(); err != nil {
+	if err := account.dataStore.Put(ParameterKeyForAccount, accountData); err != nil {
 		return err
 	}
 
