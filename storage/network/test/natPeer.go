@@ -1,37 +1,106 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network"
-	"github.com/NBSChain/go-nbs/thirdParty/idService"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/golang/protobuf/proto"
+	"net"
+	"os"
+	"time"
 )
+
+type NatPeer struct {
+	peerID    string
+	conn      *net.UDPConn
+	privateIP string
+}
+
+const NatHoleListeningPort = 7001
+
+func NewPeer() *NatPeer {
+
+	c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP("52.8.190.235"),
+		Port: NatServerTestPort,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	ips := nat.ExternalIP()
+
+	client := &NatPeer{
+		conn:      c,
+		peerID:    os.Args[1],
+		privateIP: ips[0],
+	}
+
+	return client
+}
+
+func (peer *NatPeer) KeepAlive() {
+
+	request := &nat_pb.NatRequest{
+		NodeId:      peer.peerID,
+		PrivateIp:   peer.privateIP,
+		PrivatePort: NatHoleListeningPort,
+	}
+
+	requestData, err := proto.Marshal(request)
+	if err != nil {
+		fmt.Println("failed to marshal nat request", err)
+	}
+
+	fmt.Println("start to keep alive......")
+
+	for {
+		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
+			fmt.Println("failed to send nat request to natServer ", err, no)
+			continue
+		}
+
+		responseData := make([]byte, 2048)
+		hasRead, _, err := peer.conn.ReadFromUDP(responseData)
+		if err != nil {
+			fmt.Println("failed to read nat response from natServer", err)
+			continue
+		}
+
+		response := &nat_pb.NatResponse{}
+		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
+			fmt.Println("failed to unmarshal nat response data", err)
+			continue
+		}
+
+		fmt.Println("get response data from nat natServer:", response)
+
+		time.Sleep(20 * time.Second)
+	}
+}
 
 func main() {
 
-	targetID := flag.String("d", "", "server ip")
-	localPort := flag.Int("p", 9900, "local server listening port")
-	flag.Parse()
+	if len(os.Args) < 2 {
+		fmt.Println("input run mode -c or -s")
+		os.Exit(1)
+	}
 
-	id, _ := idService.GetInstance().GenerateId("")
+	if os.Args[1] == "-c" {
+		if len(os.Args) < 3 {
+			fmt.Println("input this peer's ID")
+			os.Exit(1)
+		}
 
-	netInstance := network.GetInstance()
-	netInstance.StartUp(id.PeerID)
+		client := NewPeer()
 
-	if *targetID != "" {
-		host := netInstance.NewHost()
-		host.SetStreamHandler("/test/1.0.0", func(s network.Stream) {
+		client.KeepAlive()
+	} else if os.Args[1] == "-s" {
 
-		})
-		host.NewStream(*targetID, "/test/1.0.0")
+		server := NewServer()
+		server.Processing()
 	} else {
-
-		l := fmt.Sprintf("/ip4/0.0.0.0/udp/%d", localPort)
-
-		netInstance.NewHost(
-			netInstance.ListenAddrString(l),
-		)
-
-		<-make(chan struct{})
+		fmt.Println("unknown action")
 	}
 }
