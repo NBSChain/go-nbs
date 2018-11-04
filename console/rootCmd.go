@@ -22,6 +22,14 @@ var rootCmd = &cobra.Command{
 
 	Run: mainRun,
 }
+var natServiceConf *bool
+
+func init() {
+	natServiceConf = rootCmd.Flags().BoolP("without-nat",
+		"n", false,
+		"Without nat service, this is used when you're sure in private network")
+
+}
 
 func Execute() {
 
@@ -33,7 +41,9 @@ func Execute() {
 
 func mainRun(cmd *cobra.Command, args []string) {
 
-	logger.Info("root command args:", args)
+	logger.Info("get command args:(", args, ")-->", *natServiceConf)
+
+	utils.GetConfig().NatServiceOff = *natServiceConf
 
 	application.GetInstance().Start()
 

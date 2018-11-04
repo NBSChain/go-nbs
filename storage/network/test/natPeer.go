@@ -26,7 +26,7 @@ func main() {
 		host.NewStream(*targetID, "/test/1.0.0")
 	} else {
 
-		l := fmt.Sprintf("%d", localPort)
+		l := fmt.Sprintf("/ip4/0.0.0.0/udp/%d", localPort)
 
 		netInstance.NewHost(
 			netInstance.ListenAddrString(l),

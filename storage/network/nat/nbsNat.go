@@ -11,25 +11,14 @@ import (
 
 var logger = utils.GetLogInstance()
 
-const MaxNatServerItem = 1 << 10
-const SessionTimeOut = 24
 const NetIoBufferSize = 1 << 11
-
-type natItem struct {
-	nodeID      string
-	privateInfo *net.UDPAddr
-	publicInfo  *net.UDPAddr
-	updateTIme  time.Time
-}
 
 type nbsNat struct {
 	sync.Mutex
-	peers         map[string]natItem
 	natServer     *net.UDPConn
 	isPublic      bool
 	publicAddress *net.UDPAddr
 	privateIP     string
-	P2pServer     *net.UDPConn
 	networkId     string
 }
 
@@ -44,18 +33,16 @@ func NewNatManager(networkId string) NAT {
 	logger.Debug("all network interfaces:", localPeers)
 
 	natObj := &nbsNat{
-		peers:     make(map[string]natItem),
 		privateIP: localPeers[0],
 		networkId: networkId,
 	}
 
-	natObj.startNatService()
+	if !utils.GetConfig().NatServiceOff {
 
-	go natObj.natService()
+		natObj.startNatService()
 
-	go natObj.p2pService()
-
-	go natObj.cacheCollect()
+		go natObj.natService()
+	}
 
 	return natObj
 }
@@ -72,22 +59,12 @@ func (nat *nbsNat) startNatService() {
 	}
 
 	nat.natServer = natServer
-
-	p2pServer, err := net.ListenUDP("udp4", &net.UDPAddr{
-		IP:   net.ParseIP(nat.privateIP),
-		Port: utils.GetConfig().P2pListenPort,
-	})
-
-	if err != nil {
-		logger.Panic("can't start nat natServer.", err)
-	}
-
-	nat.P2pServer = p2pServer
 }
 
 func (nat *nbsNat) natService() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
+
 	for {
 		data := make([]byte, NetIoBufferSize)
 
@@ -109,7 +86,6 @@ func (nat *nbsNat) natService() {
 		if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 			response.IsAfterNat = false
 		} else {
-			nat.cacheItem(peerAddr, request)
 			response.IsAfterNat = true
 			response.PublicIp = peerAddr.IP.String()
 			response.PublicPort = int32(peerAddr.Port)
@@ -191,57 +167,6 @@ func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.NatRespons
 	}
 
 	return response, nil
-}
-func (nat *nbsNat) cacheItem(publicInfo *net.UDPAddr, privateInfo *nat_pb.NatRequest) {
-
-	item := natItem{
-		nodeID: privateInfo.NodeId,
-		privateInfo: &net.UDPAddr{
-			IP:   []byte(privateInfo.PrivateIp),
-			Port: int(privateInfo.PrivatePort),
-			Zone: privateInfo.Zone,
-		},
-		publicInfo: publicInfo,
-		updateTIme: time.Now(),
-	}
-
-	nat.Lock()
-	nat.peers[item.nodeID] = item
-	nat.Unlock()
-}
-
-func (nat *nbsNat) cacheCollect() {
-	for {
-		nat.Lock()
-		if len(nat.peers) < MaxNatServerItem {
-			time.Sleep(time.Second)
-			nat.Unlock()
-			continue
-		}
-
-		rightNow := time.Now()
-
-		for key, value := range nat.peers {
-			if rightNow.Sub(value.updateTIme) > SessionTimeOut*time.Hour {
-				delete(nat.peers, key)
-			}
-		}
-		nat.Unlock()
-	}
-}
-
-func (nat *nbsNat) p2pService() {
-	for {
-		data := make([]byte, NetIoBufferSize)
-
-		n, peerAddr, err := nat.P2pServer.ReadFromUDP(data)
-		if err != nil {
-			logger.Warning("nat natServer read udp data failed:", err)
-			continue
-		}
-
-		logger.Info(n, peerAddr, data[:n])
-	}
 }
 
 func ExternalIP() []string {

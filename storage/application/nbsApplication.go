@@ -65,6 +65,8 @@ func (app *NbsApplication) Start() error {
 	if app.nodeId != "" {
 		//TIPS:: if no account exist, we can't identify the network. so there are no connections right now.
 		network.GetInstance().StartUp(app.nodeId)
+	} else {
+		logger.Warning("no account now so the network is down now")
 	}
 
 	return nil

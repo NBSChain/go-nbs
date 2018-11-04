@@ -73,7 +73,6 @@ func unlockAccount(cmd *cobra.Command, args []string) {
 
 func createAccount(cmd *cobra.Command, args []string) {
 
-	fmt.Println("unlock this:", args[0])
 	password := args[0]
 
 	if err := crypto.CheckPassword(password); err != nil {

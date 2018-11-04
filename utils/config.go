@@ -7,30 +7,32 @@ import (
 	"sync"
 )
 
-
 type Configure struct {
-	BaseDir                      string
-	LevelDBDir                   string
-	BlocksDir                    string
-	ShardFun                     string
-	LogFileName                  string
-	CmdServicePort               string
-	CurrentVersion               string
-	SysTimeFormat                string
-	BootStrapPeers               []string
-	NatServerPort int
-	P2pListenPort int
-	NatServerIP                  []string
+	BaseDir        string
+	LevelDBDir     string
+	BlocksDir      string
+	ShardFun       string
+	LogFileName    string
+	CmdServicePort string
+	CurrentVersion string
+	SysTimeFormat  string
+	BootStrapPeers []string
+	NatServerPort  int
+	P2pListenPort  int
+	NatServerIP    []string
+	NatServiceOff  bool
 }
 
-const cmdServicePort 	= "6080"
-const currentVersion 	= "0.0.1"
-const natServerPort	= 6001
-const p2pListenPort 	= 7001
-var   natServerIP 	= []string{
+const cmdServicePort = "6080"
+const currentVersion = "0.0.1"
+const natServerPort = 6001
+const p2pListenPort = 7001
+
+var natServerIP = []string{
 	"52.8.190.235",
 	//"172.168.20.52",
 }
+
 //const natServerIP 	= "192.168.38.173"
 
 var defaultBootstrapAddresses = []string{
@@ -58,9 +60,9 @@ func initConfig() *Configure {
 		}
 	}
 
-	levelDBDir 	:= filepath.Join(baseDir, string(filepath.Separator), "dataStore")
-	blockStoreDir 	:= filepath.Join(baseDir, string(filepath.Separator), "blocks")
-	logFileName 	:= filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
+	levelDBDir := filepath.Join(baseDir, string(filepath.Separator), "dataStore")
+	blockStoreDir := filepath.Join(baseDir, string(filepath.Separator), "blocks")
+	logFileName := filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
 
 	return &Configure{
 		BaseDir:        baseDir,
