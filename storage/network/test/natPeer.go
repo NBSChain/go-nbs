@@ -20,7 +20,7 @@ type NatPeer struct {
 
 func NewPeer() *NatPeer {
 
-	c, err := reuseport.Dial("udp4", "", "52.8.190.235:"+string(NatServerTestPort))
+	c, err := reuseport.Dial("udp4", "", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -58,6 +58,7 @@ func (peer *NatPeer) runLoop() {
 	for {
 		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
+			time.Sleep(20 * time.Second)
 			continue
 		}
 
@@ -65,12 +66,14 @@ func (peer *NatPeer) runLoop() {
 		hasRead, err := peer.conn.Read(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
+			time.Sleep(20 * time.Second)
 			continue
 		}
 
 		response := &nat_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
+			time.Sleep(20 * time.Second)
 			continue
 		}
 

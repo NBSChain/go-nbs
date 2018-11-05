@@ -6,13 +6,14 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-reuseport"
 	"net"
+	"strconv"
 	"time"
 )
 
 const NatServerTestPort = 8001
 
 type NatServer struct {
-	server   net.Listener
+	server   net.PacketConn
 	natCache map[string]*NatCacheItem
 }
 
@@ -23,21 +24,16 @@ type NatCacheItem struct {
 	PrivateIp   string
 	PrivatePort string
 	updateTime  time.Time
-	connection  net.Conn
 }
 
 func NewServer() *NatServer {
 
-	localAddress := &net.UDPAddr{
-		Port: NatServerTestPort,
-	}
-
-	s, err := reuseport.Listen(
-		"udp4", localAddress.String())
-
+	s, err := reuseport.ListenPacket("udp", "0.0.0.0:8001")
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(s.LocalAddr().String())
 
 	server := &NatServer{
 		server:   s,
@@ -52,22 +48,8 @@ func (s *NatServer) Processing() {
 	fmt.Println("start to run......")
 
 	for {
-
-		conn, err := s.server.Accept()
-		if err != nil {
-			fmt.Errorf(err.Error())
-			continue
-		}
-
-		go s.processNewConnection(conn)
-	}
-}
-
-func (s *NatServer) processNewConnection(conn net.Conn) {
-
-	for {
 		data := make([]byte, 2048)
-		n, err := conn.Read(data)
+		n, peerAddr, err := s.server.ReadFrom(data)
 		if err != nil {
 			fmt.Errorf(err.Error())
 			continue
@@ -76,20 +58,20 @@ func (s *NatServer) processNewConnection(conn net.Conn) {
 		request := &nat_pb.Request{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
 			fmt.Println("can't parse the nat request", err)
-			return
+			continue
 		}
 
 		fmt.Println("get nat request from client:", request)
 
 		if request.ReqType == nat_pb.RequestType_KAReq {
-			s.answerKA(conn, request.KeepAlive)
+			s.answerKA(peerAddr, request.KeepAlive)
 		} else if request.ReqType == nat_pb.RequestType_inviteReq {
-			s.makeAMatch(conn, request.Invite)
+			s.makeAMatch(peerAddr, request.Invite)
 		}
 	}
 }
 
-func (s *NatServer) answerKA(conn net.Conn, request *nat_pb.RegRequest) error {
+func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.RegRequest) error {
 
 	response := &nat_pb.Response{
 		ResType: nat_pb.ResponseType_KARes,
@@ -97,7 +79,7 @@ func (s *NatServer) answerKA(conn net.Conn, request *nat_pb.RegRequest) error {
 
 	resKA := &nat_pb.RegResponse{}
 
-	peerAddrStr := conn.RemoteAddr().String()
+	peerAddrStr := peerAddr.String()
 	host, port, err := net.SplitHostPort(peerAddrStr)
 
 	if host == request.PrivateIp {
@@ -116,7 +98,7 @@ func (s *NatServer) answerKA(conn net.Conn, request *nat_pb.RegRequest) error {
 		return err
 	}
 
-	if _, err := conn.Write(responseData); err != nil {
+	if _, err := s.server.WriteTo(responseData, peerAddr); err != nil {
 		return fmt.Errorf(err.Error())
 	}
 
@@ -127,7 +109,6 @@ func (s *NatServer) answerKA(conn net.Conn, request *nat_pb.RegRequest) error {
 		PrivateIp:   request.PrivateIp,
 		PrivatePort: request.PrivatePort,
 		updateTime:  time.Now(),
-		connection:  conn,
 	}
 
 	s.natCache[item.PeerId] = item
@@ -135,21 +116,20 @@ func (s *NatServer) answerKA(conn net.Conn, request *nat_pb.RegRequest) error {
 	return nil
 }
 
-func (s *NatServer) makeAMatch(conn net.Conn, request *nat_pb.InviteRequest) error {
+func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.InviteRequest) error {
 
 	responseTo := &nat_pb.Response{
 		ResType: nat_pb.ResponseType_inviteRes,
 	}
 
-	toCachedItem := s.natCache[request.ToPeerId]
-	fromCachedItem := s.natCache[request.FromPeerId]
+	cacheItem := s.natCache[request.ToPeerId]
 
 	toInfo := &nat_pb.InviteResponse{
-		PeerId:      toCachedItem.PeerId,
-		PublicIp:    toCachedItem.PublicIp,
-		PublicPort:  toCachedItem.PublicPort,
-		PrivateIp:   toCachedItem.PrivateIp,
-		PrivatePort: toCachedItem.PrivatePort,
+		PeerId:      cacheItem.PeerId,
+		PublicIp:    cacheItem.PublicIp,
+		PublicPort:  cacheItem.PublicPort,
+		PrivateIp:   cacheItem.PrivateIp,
+		PrivatePort: cacheItem.PrivatePort,
 	}
 	responseTo.Invite = toInfo
 
@@ -159,7 +139,7 @@ func (s *NatServer) makeAMatch(conn net.Conn, request *nat_pb.InviteRequest) err
 		return err
 	}
 
-	if _, err := conn.Write(responseToData); err != nil {
+	if _, err := s.server.WriteTo(responseToData, peerAddr); err != nil {
 		fmt.Println("failed to send connection request to invitor", err)
 		return fmt.Errorf(err.Error())
 	}
@@ -169,12 +149,14 @@ func (s *NatServer) makeAMatch(conn net.Conn, request *nat_pb.InviteRequest) err
 		ResType: nat_pb.ResponseType_invitedRes,
 	}
 
+	cacheItem = s.natCache[request.FromPeerId]
+
 	fromInfo := &nat_pb.InviteResponse{
-		PeerId:      fromCachedItem.PeerId,
-		PublicIp:    fromCachedItem.PublicIp,
-		PublicPort:  fromCachedItem.PublicPort,
-		PrivateIp:   fromCachedItem.PrivateIp,
-		PrivatePort: fromCachedItem.PrivatePort,
+		PeerId:      cacheItem.PeerId,
+		PublicIp:    cacheItem.PublicIp,
+		PublicPort:  cacheItem.PublicPort,
+		PrivateIp:   cacheItem.PrivateIp,
+		PrivatePort: cacheItem.PrivatePort,
 	}
 
 	responseFrom.Invite = fromInfo
@@ -185,7 +167,12 @@ func (s *NatServer) makeAMatch(conn net.Conn, request *nat_pb.InviteRequest) err
 		return err
 	}
 
-	if _, err := toCachedItem.connection.Write(responseFromData); err != nil {
+	port, _ := strconv.Atoi(toInfo.PublicPort)
+
+	if _, err := s.server.WriteTo(responseFromData, &net.UDPAddr{
+		IP:   net.ParseIP(toInfo.PublicIp),
+		Port: port,
+	}); err != nil {
 		fmt.Println("failed to send connection request to target", err)
 		return fmt.Errorf(err.Error())
 	}
