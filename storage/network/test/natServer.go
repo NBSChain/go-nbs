@@ -43,7 +43,9 @@ func NewServer() *NatServer {
 }
 
 func (s *NatServer) Processing() {
+
 	fmt.Println("start to run......")
+
 	for {
 		data := make([]byte, 2048)
 
@@ -52,8 +54,6 @@ func (s *NatServer) Processing() {
 			fmt.Errorf(err.Error())
 			continue
 		}
-
-		fmt.Println("receiver ka from :", peerAddr)
 
 		request := &nat_pb.Request{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
@@ -138,11 +138,11 @@ func (s *NatServer) makeAMatch(peerAddr *net.UDPAddr, request *nat_pb.InviteRequ
 	}
 
 	if _, err := s.server.WriteToUDP(responseToData, peerAddr); err != nil {
+		fmt.Println("failed to send connection request to invitor", err)
 		return fmt.Errorf(err.Error())
 	}
 
 	//<<<<<<<-------------------------------------->>>>>>>>>>>>>
-
 	responseFrom := &nat_pb.Response{
 		ResType: nat_pb.ResponseType_invitedRes,
 	}
@@ -169,6 +169,7 @@ func (s *NatServer) makeAMatch(peerAddr *net.UDPAddr, request *nat_pb.InviteRequ
 		IP:   net.ParseIP(toInfo.PublicIp),
 		Port: int(toInfo.PrivatePort),
 	}); err != nil {
+		fmt.Println("failed to send connection request to target", err)
 		return fmt.Errorf(err.Error())
 	}
 

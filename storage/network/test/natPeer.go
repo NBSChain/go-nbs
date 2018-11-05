@@ -17,8 +17,6 @@ type NatPeer struct {
 	privatePort int
 }
 
-const NatHoleListeningPort = 7001
-
 func NewPeer() *NatPeer {
 
 	c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
@@ -43,7 +41,7 @@ func NewPeer() *NatPeer {
 	return client
 }
 
-func (peer *NatPeer) KeepAlive() {
+func (peer *NatPeer) runLoop() {
 
 	request := &nat_pb.Request{
 		ReqType: nat_pb.RequestType_KAReq,
@@ -81,12 +79,13 @@ func (peer *NatPeer) KeepAlive() {
 			continue
 		}
 
-		fmt.Println("get response data from nat natServer:", response)
+		fmt.Println(response)
 
 		switch response.ResType {
 		case nat_pb.ResponseType_KARes:
 			time.Sleep(20 * time.Second)
 		case nat_pb.ResponseType_invitedRes:
+			peer.connectToPeers(response.Invite)
 		case nat_pb.ResponseType_inviteRes:
 			peer.connectToPeers(response.Invite)
 		}
@@ -94,11 +93,16 @@ func (peer *NatPeer) KeepAlive() {
 }
 
 func (peer *NatPeer) punchAHole(targetId string) {
-	time.Sleep(1 * time.Second)
+	time.Sleep(20 * time.Second)
 
-	request := &nat_pb.InviteRequest{
+	inviteRequest := &nat_pb.InviteRequest{
 		FromPeerId: peer.peerID,
 		ToPeerId:   targetId,
+	}
+
+	request := &nat_pb.Request{
+		ReqType: nat_pb.RequestType_inviteReq,
+		Invite:  inviteRequest,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -122,7 +126,8 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.InviteResponse) {
 	})
 
 	if err != nil {
-		fmt.Errorf("failed to send hole punch data.")
+		fmt.Errorf("failed to send hole punch data")
+		return
 	}
 
 	conn.Write([]byte("anything ok,"))
@@ -146,13 +151,15 @@ func main() {
 
 		if len(os.Args) == 4 {
 
-			go client.KeepAlive()
+			go client.runLoop()
 
 			client.punchAHole(os.Args[3])
 
+			<-make(chan struct{})
+
 		} else if len(os.Args) == 3 {
 
-			client.KeepAlive()
+			client.runLoop()
 		}
 
 	} else if os.Args[1] == "-s" {
