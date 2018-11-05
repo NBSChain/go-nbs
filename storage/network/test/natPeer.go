@@ -20,7 +20,7 @@ type NatPeer struct {
 
 func NewPeer() *NatPeer {
 
-	c, err := reuseport.Dial("udp", "", "47.52.172.234:8001") //172.168.30.18//52.8.190.235
+	c, err := reuseport.Dial("udp", "", "52.8.190.235:8001") //172.168.30.18//52.8.190.235
 	if err != nil {
 		panic(err)
 	}

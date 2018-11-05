@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/gogo/protobuf/proto"
-	"github.com/libp2p/go-reuseport"
 	"net"
 	"strconv"
 	"time"
@@ -28,7 +27,9 @@ type NatCacheItem struct {
 
 func NewServer() *NatServer {
 
-	s, err := reuseport.ListenPacket("udp", "0.0.0.0:8001")
+	s, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: NatServerTestPort,
+	})
 	if err != nil {
 		panic(err)
 	}
