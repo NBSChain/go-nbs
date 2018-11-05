@@ -27,7 +27,7 @@ for linuxs:
 	export https_proxy=http://127.0.0.1:1087;
 
 go get github.com/NBSChain/go-nbs
-cd go-nbs/
+cd $GOPATH/src/github.com/NBSChain/go-nbs
 make
 ```
 

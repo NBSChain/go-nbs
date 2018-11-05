@@ -1,5 +1,5 @@
 package nat
 
-type NAT interface {
+type Manager interface {
 	FetchNatInfo() error
 }

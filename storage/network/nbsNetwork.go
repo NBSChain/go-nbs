@@ -9,7 +9,7 @@ import (
 
 type nbsNetwork struct {
 	Context    context.Context
-	natManager nat.NAT
+	natManager nat.Manager
 	netWorkId  string
 }
 

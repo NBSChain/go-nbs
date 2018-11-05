@@ -14,7 +14,7 @@ var logger = utils.GetLogInstance()
 
 const NetIoBufferSize = 1 << 11
 
-type nbsNat struct {
+type nbsNatManager struct {
 	sync.Mutex
 	natServer     *net.UDPConn
 	isPublic      bool
@@ -24,7 +24,7 @@ type nbsNat struct {
 }
 
 //TODO::support multiple local ip address.
-func NewNatManager(networkId string) NAT {
+func NewNatManager(networkId string) Manager {
 
 	localPeers := ExternalIP()
 	if len(localPeers) == 0 {
@@ -33,7 +33,7 @@ func NewNatManager(networkId string) NAT {
 
 	logger.Debug("all network interfaces:", localPeers)
 
-	natObj := &nbsNat{
+	natObj := &nbsNatManager{
 		privateIP: localPeers[0],
 		networkId: networkId,
 	}
@@ -49,7 +49,7 @@ func NewNatManager(networkId string) NAT {
 }
 
 //TODO:: support ipv6 later.
-func (nat *nbsNat) startNatService() {
+func (nat *nbsNatManager) startNatService() {
 
 	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().NatServerPort,
@@ -62,7 +62,7 @@ func (nat *nbsNat) startNatService() {
 	nat.natServer = natServer
 }
 
-func (nat *nbsNat) natService() {
+func (nat *nbsNatManager) natService() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
 
@@ -106,7 +106,7 @@ func (nat *nbsNat) natService() {
 	}
 }
 
-func (nat *nbsNat) connectToNatServer(serverIP string) (*net.UDPConn, error) {
+func (nat *nbsNatManager) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 
 	config := utils.GetConfig()
 	natServerAddr := &net.UDPAddr{
@@ -116,7 +116,7 @@ func (nat *nbsNat) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 	return net.DialUDP("udp", nil, natServerAddr)
 }
 
-func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
+func (nat *nbsNatManager) sendNatRequest(connection *net.UDPConn) error {
 
 	localAddr := connection.LocalAddr().String()
 
@@ -142,7 +142,7 @@ func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 	return nil
 }
 
-func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.BootNatRegRes, error) {
+func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.BootNatRegRes, error) {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
@@ -221,7 +221,7 @@ func ExternalIP() []string {
 }
 
 //TODO:: set multiple servers to make it stronger.
-func (nat *nbsNat) FetchNatInfo() error {
+func (nat *nbsNatManager) FetchNatInfo() error {
 
 	config := utils.GetConfig()
 

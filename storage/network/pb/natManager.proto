@@ -30,20 +30,34 @@ message NatConRes {
     string privatePort  = 6;
 }
 
+message NatKeepAlive{
+    string nodeId = 1;
+}
+
+message NatProbe{
+    string ping = 1;
+    string pong = 2;
+}
+
 enum NatMsgType {
     BootStrapReg    = 0;
-    KAReq           = 1;
+    KeepAlive       = 1;
     Connect         = 2;
+    Probe           = 3;
 }
 
 message NatRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
     NatConReq connReq           = 3;
+    NatKeepAlive keepAlive      = 4;
+    NatProbe probeReq           = 5;
 }
 
 message response {
     NatMsgType msgType          = 1;
     BootNatRegRes BootRegRes    = 2;
     NatConRes connRes           = 3;
+    NatKeepAlive keepAlive      = 4;
+    NatProbe probeRes           = 5;
 }
