@@ -75,7 +75,7 @@ func (nat *nbsNat) natService() {
 			continue
 		}
 
-		request := &nat_pb.RegRequest{}
+		request := &nat_pb.BootNatRegReq{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
 			logger.Warning("can't parse the nat request", err, peerAddr)
 			continue
@@ -83,7 +83,7 @@ func (nat *nbsNat) natService() {
 
 		logger.Debug("get nat request from client:", request)
 
-		response := &nat_pb.RegResponse{}
+		response := &nat_pb.BootNatRegRes{}
 		if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 			response.IsAfterNat = false
 		} else {
@@ -122,7 +122,7 @@ func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 
 	host, port, err := net.SplitHostPort(localAddr)
 	nat.privateIP = host
-	request := &nat_pb.RegRequest{
+	request := &nat_pb.BootNatRegReq{
 		NodeId:      nat.networkId,
 		PrivateIp:   host,
 		PrivatePort: port,
@@ -142,7 +142,7 @@ func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 	return nil
 }
 
-func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.RegResponse, error) {
+func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.BootNatRegRes, error) {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
@@ -151,7 +151,7 @@ func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.RegRespons
 		return nil, err
 	}
 
-	response := &nat_pb.RegResponse{}
+	response := &nat_pb.BootNatRegRes{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("failed to unmarshal nat response data", err)
 		return nil, err

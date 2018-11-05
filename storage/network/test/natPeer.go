@@ -20,7 +20,7 @@ type NatPeer struct {
 
 func NewPeer() *NatPeer {
 
-	c, err := reuseport.Dial("udp4", "", "52.8.190.235:8001")
+	c, err := reuseport.Dial("udp", "", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -39,9 +39,9 @@ func NewPeer() *NatPeer {
 
 func (peer *NatPeer) runLoop() {
 
-	request := &nat_pb.Request{
-		ReqType: nat_pb.RequestType_KAReq,
-		KeepAlive: &nat_pb.RegRequest{
+	request := &nat_pb.NatRequest{
+		MsgType: nat_pb.NatMsgType_BootStrapReg,
+		BootRegReq: &nat_pb.BootNatRegReq{
 			NodeId:      peer.peerID,
 			PrivateIp:   peer.privateIP,
 			PrivatePort: peer.privatePort,
@@ -58,34 +58,30 @@ func (peer *NatPeer) runLoop() {
 	for {
 		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
-			time.Sleep(20 * time.Second)
 			continue
 		}
 
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.conn.Read(responseData)
+
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
-			time.Sleep(20 * time.Second)
 			continue
 		}
 
 		response := &nat_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
-			time.Sleep(20 * time.Second)
 			continue
 		}
 
 		fmt.Println(response)
 
-		switch response.ResType {
-		case nat_pb.ResponseType_KARes:
+		switch response.MsgType {
+		case nat_pb.NatMsgType_BootStrapReg:
 			time.Sleep(20 * time.Second)
-		case nat_pb.ResponseType_invitedRes:
-			go peer.connectToPeers(response.Invite)
-		case nat_pb.ResponseType_inviteRes:
-			go peer.connectToPeers(response.Invite)
+		case nat_pb.NatMsgType_Connect:
+			go peer.connectToPeers(response.ConnRes)
 		}
 	}
 }
@@ -94,14 +90,14 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 	time.Sleep(5 * time.Second)
 
-	inviteRequest := &nat_pb.InviteRequest{
+	inviteRequest := &nat_pb.NatConReq{
 		FromPeerId: peer.peerID,
 		ToPeerId:   targetId,
 	}
 
-	request := &nat_pb.Request{
-		ReqType: nat_pb.RequestType_inviteReq,
-		Invite:  inviteRequest,
+	request := &nat_pb.NatRequest{
+		MsgType: nat_pb.NatMsgType_Connect,
+		ConnReq: inviteRequest,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -114,9 +110,9 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	}
 }
 
-func (peer *NatPeer) connectToPeers(response *nat_pb.InviteResponse) {
+func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
-	c, err := reuseport.Dial("udp4",
+	c, err := reuseport.Dial("udp",
 		peer.privateIP+":"+peer.privatePort,
 		response.PublicIp+":"+response.PublicPort)
 
@@ -126,9 +122,44 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.InviteResponse) {
 
 	peer.p2pConn = c
 
-	if no, err := peer.p2pConn.Write([]byte("anything ok,")); err != nil || no == 0 {
-		fmt.Println("failed to make p2p connection-> ", err, no)
+	holeMsg := &nat_pb.Response{
+		MsgType: nat_pb.NatMsgType_Connect,
+		ConnRes: response,
 	}
+
+	data, err := proto.Marshal(holeMsg)
+	if err != nil {
+		fmt.Println("hole message:", err)
+		return
+	}
+
+	go peer.p2pReader()
+
+	for {
+		var no int
+		if no, err = peer.p2pConn.Write(data); err != nil || no == 0 {
+			fmt.Println("failed to make p2p connection-> ", err, no)
+			continue
+		}
+
+		fmt.Println("---------success write data len:->", no)
+
+		time.Sleep(time.Second * 10)
+	}
+}
+
+func (peer *NatPeer) p2pReader() {
+
+	time.Sleep(time.Millisecond * 10)
+
+	readBuff := make([]byte, 2048)
+	hasRead, err := peer.p2pConn.Read(readBuff)
+	if err != nil {
+		fmt.Println("hole message read:", err)
+		return
+	}
+
+	fmt.Printf("hole message :->%s ", readBuff[:hasRead])
 }
 
 func main() {

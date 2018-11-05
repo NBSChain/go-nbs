@@ -1,0 +1,49 @@
+syntax = "proto3";
+package nat.pb;
+
+message BootNatRegReq {
+    string  nodeId      = 1;
+    string  privatePort = 3;
+    string  zone        = 4;
+    string  privateIp   = 2;
+}
+
+message BootNatRegRes {
+    bool    isAfterNat  = 1;
+    string  nodeId      = 2;
+    string  publicIp    = 3;
+    string  publicPort  = 4;
+    string  zone        = 5;
+}
+
+
+message NatConReq {
+    string FromPeerId   = 1;
+    string ToPeerId     = 2;
+}
+
+message NatConRes {
+    string peerId       = 2;
+    string publicIp     = 3;
+    string publicPort   = 4;
+    string privateIp    = 5;
+    string privatePort  = 6;
+}
+
+enum NatMsgType {
+    BootStrapReg    = 0;
+    KAReq           = 1;
+    Connect         = 2;
+}
+
+message NatRequest {
+    NatMsgType msgType          = 1;
+    BootNatRegReq BootRegReq    = 2;
+    NatConReq connReq           = 3;
+}
+
+message response {
+    NatMsgType msgType          = 1;
+    BootNatRegRes BootRegRes    = 2;
+    NatConRes connRes           = 3;
+}

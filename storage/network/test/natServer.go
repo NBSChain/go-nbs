@@ -55,7 +55,7 @@ func (s *NatServer) Processing() {
 			continue
 		}
 
-		request := &nat_pb.Request{}
+		request := &nat_pb.NatRequest{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
 			fmt.Println("can't parse the nat request", err)
 			continue
@@ -63,21 +63,21 @@ func (s *NatServer) Processing() {
 
 		fmt.Println("get nat request from client:", request)
 
-		if request.ReqType == nat_pb.RequestType_KAReq {
-			s.answerKA(peerAddr, request.KeepAlive)
-		} else if request.ReqType == nat_pb.RequestType_inviteReq {
-			s.makeAMatch(peerAddr, request.Invite)
+		if request.MsgType == nat_pb.NatMsgType_BootStrapReg {
+			s.answerKA(peerAddr, request.BootRegReq)
+		} else if request.MsgType == nat_pb.NatMsgType_Connect {
+			s.makeAMatch(peerAddr, request.ConnReq)
 		}
 	}
 }
 
-func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.RegRequest) error {
+func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) error {
 
 	response := &nat_pb.Response{
-		ResType: nat_pb.ResponseType_KARes,
+		MsgType: nat_pb.NatMsgType_BootStrapReg,
 	}
 
-	resKA := &nat_pb.RegResponse{}
+	resKA := &nat_pb.BootNatRegRes{}
 
 	peerAddrStr := peerAddr.String()
 	host, port, err := net.SplitHostPort(peerAddrStr)
@@ -90,7 +90,7 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.RegRequest) erro
 		resKA.PublicPort = port
 	}
 
-	response.KeepAlive = resKA
+	response.BootRegRes = resKA
 
 	responseData, err := proto.Marshal(response)
 	if err != nil {
@@ -116,22 +116,22 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.RegRequest) erro
 	return nil
 }
 
-func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.InviteRequest) error {
+func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) error {
 
 	responseTo := &nat_pb.Response{
-		ResType: nat_pb.ResponseType_inviteRes,
+		MsgType: nat_pb.NatMsgType_Connect,
 	}
 
 	cacheItem := s.natCache[request.ToPeerId]
 
-	toInfo := &nat_pb.InviteResponse{
+	toInfo := &nat_pb.NatConRes{
 		PeerId:      cacheItem.PeerId,
 		PublicIp:    cacheItem.PublicIp,
 		PublicPort:  cacheItem.PublicPort,
 		PrivateIp:   cacheItem.PrivateIp,
 		PrivatePort: cacheItem.PrivatePort,
 	}
-	responseTo.Invite = toInfo
+	responseTo.ConnRes = toInfo
 
 	responseToData, err := proto.Marshal(responseTo)
 	if err != nil {
@@ -146,12 +146,12 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.InviteRequest)
 
 	//<<<<<<<-------------------------------------->>>>>>>>>>>>>
 	responseFrom := &nat_pb.Response{
-		ResType: nat_pb.ResponseType_invitedRes,
+		MsgType: nat_pb.NatMsgType_Connect,
 	}
 
 	cacheItem = s.natCache[request.FromPeerId]
 
-	fromInfo := &nat_pb.InviteResponse{
+	fromInfo := &nat_pb.NatConRes{
 		PeerId:      cacheItem.PeerId,
 		PublicIp:    cacheItem.PublicIp,
 		PublicPort:  cacheItem.PublicPort,
@@ -159,7 +159,7 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.InviteRequest)
 		PrivatePort: cacheItem.PrivatePort,
 	}
 
-	responseFrom.Invite = fromInfo
+	responseFrom.ConnRes = fromInfo
 
 	responseFromData, err := proto.Marshal(responseFrom)
 	if err != nil {
