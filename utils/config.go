@@ -18,7 +18,6 @@ type Configure struct {
 	SysTimeFormat  string
 	BootStrapPeers []string
 	NatServerPort  int
-	P2pListenPort  int
 	NatServerIP    []string
 	NatServiceOff  bool
 }
@@ -26,7 +25,6 @@ type Configure struct {
 const cmdServicePort = "6080"
 const currentVersion = "0.0.1"
 const natServerPort = 6001
-const p2pListenPort = 7001
 
 var natServerIP = []string{
 	"52.8.190.235",
@@ -75,7 +73,6 @@ func initConfig() *Configure {
 		SysTimeFormat:  "2006-01-02 15:04:05",
 		BootStrapPeers: defaultBootstrapAddresses,
 		NatServerPort:  natServerPort,
-		P2pListenPort:  p2pListenPort,
 		NatServerIP:    natServerIP,
 	}
 }

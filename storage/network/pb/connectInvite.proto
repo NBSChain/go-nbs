@@ -10,7 +10,7 @@ message InviteRequest{
 message inviteResponse{
     string peerId       = 2;
     string publicIp     = 3;
-    int32  publicPort   = 4;
+    string publicPort   = 4;
     string privateIp    = 5;
-    int32  privatePort  = 6;
+    string privatePort  = 6;
 }

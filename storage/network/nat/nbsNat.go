@@ -5,6 +5,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -88,7 +89,7 @@ func (nat *nbsNat) natService() {
 		} else {
 			response.IsAfterNat = true
 			response.PublicIp = peerAddr.IP.String()
-			response.PublicPort = int32(peerAddr.Port)
+			response.PublicPort = string(peerAddr.Port)
 			response.Zone = peerAddr.Zone
 		}
 
@@ -105,22 +106,26 @@ func (nat *nbsNat) natService() {
 	}
 }
 
-func (nat *nbsNat) connectToNatServer(serverIP string, localAddress *net.UDPAddr) (*net.UDPConn, error) {
+func (nat *nbsNat) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 
 	config := utils.GetConfig()
 	natServerAddr := &net.UDPAddr{
 		IP:   net.ParseIP(serverIP),
 		Port: config.NatServerPort,
 	}
-	return net.DialUDP("udp", localAddress, natServerAddr)
+	return net.DialUDP("udp", nil, natServerAddr)
 }
 
 func (nat *nbsNat) sendNatRequest(connection *net.UDPConn) error {
 
+	localAddr := connection.LocalAddr().String()
+
+	host, port, err := net.SplitHostPort(localAddr)
+	nat.privateIP = host
 	request := &nat_pb.RegRequest{
 		NodeId:      nat.networkId,
-		PrivateIp:   nat.privateIP,
-		PrivatePort: int32(utils.GetConfig().P2pListenPort),
+		PrivateIp:   host,
+		PrivatePort: port,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -154,10 +159,11 @@ func (nat *nbsNat) parseNatResponse(connection *net.UDPConn) (*nat_pb.RegRespons
 
 	logger.Debug("get response data from nat natServer:", response)
 
+	port, _ := strconv.Atoi(response.PublicPort)
 	if response.IsAfterNat {
 		nat.publicAddress = &net.UDPAddr{
 			IP:   net.ParseIP(response.PublicIp),
-			Port: int(response.PublicPort),
+			Port: port,
 			Zone: response.Zone,
 		}
 		nat.isPublic = false
@@ -222,7 +228,7 @@ func (nat *nbsNat) FetchNatInfo() error {
 	for _, serverIP := range config.NatServerIP {
 
 		//TIPS:: no need to bind local host and local port right now
-		connection, err := nat.connectToNatServer(serverIP, nil)
+		connection, err := nat.connectToNatServer(serverIP)
 
 		if err != nil {
 			logger.Error("can't know who am I", err)

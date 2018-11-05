@@ -4,38 +4,34 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/golang/protobuf/proto"
+	"github.com/libp2p/go-reuseport"
 	"net"
 	"os"
-	"strconv"
 	"time"
 )
 
 type NatPeer struct {
 	peerID      string
-	conn        *net.UDPConn
+	conn        net.Conn
 	privateIP   string
-	privatePort int
+	privatePort string
+	p2pConn     net.Conn
 }
 
 func NewPeer() *NatPeer {
 
-	c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP("52.8.190.235"),
-		Port: NatServerTestPort,
-	})
-
+	c, err := reuseport.Dial("udp4", "", "52.8.190.235:"+string(NatServerTestPort))
 	if err != nil {
 		panic(err)
 	}
 
 	host, port, _ := net.SplitHostPort(c.LocalAddr().String())
-	portInt, _ := strconv.Atoi(port)
 
 	client := &NatPeer{
 		conn:        c,
 		peerID:      os.Args[2],
 		privateIP:   host,
-		privatePort: portInt,
+		privatePort: port,
 	}
 
 	return client
@@ -48,7 +44,7 @@ func (peer *NatPeer) runLoop() {
 		KeepAlive: &nat_pb.RegRequest{
 			NodeId:      peer.peerID,
 			PrivateIp:   peer.privateIP,
-			PrivatePort: int32(peer.privatePort),
+			PrivatePort: peer.privatePort,
 		},
 	}
 
@@ -66,14 +62,13 @@ func (peer *NatPeer) runLoop() {
 		}
 
 		responseData := make([]byte, 2048)
-		hasRead, _, err := peer.conn.ReadFromUDP(responseData)
+		hasRead, err := peer.conn.Read(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
 			continue
 		}
 
 		response := &nat_pb.Response{}
-
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
@@ -118,24 +113,19 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 func (peer *NatPeer) connectToPeers(response *nat_pb.InviteResponse) {
 
-	conn, err := net.DialUDP("udp4", &net.UDPAddr{
-		IP:   net.ParseIP(peer.privateIP),
-		Port: peer.privatePort,
-	}, &net.UDPAddr{
-		IP:   net.ParseIP(response.PublicIp),
-		Port: int(response.PublicPort),
-	})
+	c, err := reuseport.Dial("udp4",
+		peer.privateIP+":"+peer.privatePort,
+		response.PublicIp+":"+response.PublicPort)
 
 	if err != nil {
-		fmt.Errorf("failed to send hole punch data")
-		return
+		panic(err)
 	}
 
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	peer.p2pConn = c
 
-	fmt.Println("------connectToPeers------", conn.RemoteAddr().String(), conn.LocalAddr().String())
-
-	conn.Write([]byte("anything ok,"))
+	if no, err := peer.p2pConn.Write([]byte("anything ok,")); err != nil || no == 0 {
+		fmt.Println("failed to make p2p connection-> ", err, no)
+	}
 }
 
 func main() {
