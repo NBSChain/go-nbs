@@ -167,7 +167,7 @@ func (s *NatServer) makeAMatch(peerAddr *net.UDPAddr, request *nat_pb.InviteRequ
 
 	if _, err := s.server.WriteToUDP(responseFromData, &net.UDPAddr{
 		IP:   net.ParseIP(toInfo.PublicIp),
-		Port: int(toInfo.PrivatePort),
+		Port: int(toInfo.PublicPort),
 	}); err != nil {
 		fmt.Println("failed to send connection request to target", err)
 		return fmt.Errorf(err.Error())

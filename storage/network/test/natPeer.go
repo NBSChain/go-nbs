@@ -85,15 +85,16 @@ func (peer *NatPeer) runLoop() {
 		case nat_pb.ResponseType_KARes:
 			time.Sleep(20 * time.Second)
 		case nat_pb.ResponseType_invitedRes:
-			peer.connectToPeers(response.Invite)
+			go peer.connectToPeers(response.Invite)
 		case nat_pb.ResponseType_inviteRes:
-			peer.connectToPeers(response.Invite)
+			go peer.connectToPeers(response.Invite)
 		}
 	}
 }
 
 func (peer *NatPeer) punchAHole(targetId string) {
-	time.Sleep(20 * time.Second)
+
+	time.Sleep(5 * time.Second)
 
 	inviteRequest := &nat_pb.InviteRequest{
 		FromPeerId: peer.peerID,
@@ -129,6 +130,10 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.InviteResponse) {
 		fmt.Errorf("failed to send hole punch data")
 		return
 	}
+
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	fmt.Println("------connectToPeers------", conn.RemoteAddr().String(), conn.LocalAddr().String())
 
 	conn.Write([]byte("anything ok,"))
 }
