@@ -84,9 +84,9 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 	host, port, err := net.SplitHostPort(peerAddrStr)
 
 	if host == request.PrivateIp {
-		resKA.NatType = false
+		resKA.NatType = nat_pb.NatType_NoNatDevice
 	} else {
-		resKA.NatType = true
+		resKA.NatType = nat_pb.NatType_BehindNat
 		resKA.PublicIp = host
 		resKA.PublicPort = port
 	}
