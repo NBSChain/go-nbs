@@ -13,7 +13,7 @@ import (
 var logger = utils.GetLogInstance()
 
 const NetIoBufferSize = 1 << 11
-const BootStrapNatServerTimeOutInSec = 3
+const BootStrapNatServerTimeOutInSec = 6
 
 type nbsNatManager struct {
 	sync.Mutex
@@ -101,7 +101,7 @@ func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, er
 		return nil, nil, err
 	}
 
-	logger.Debug("get nat request from client:", request)
+	logger.Debug("request:", request)
 
 	return peerAddr, request, nil
 }
@@ -119,7 +119,7 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
 
 		response.NatType = nat_pb.NatType_ToBeChecked
-		nat.checkPeersNatService(peerAddr, response)
+		nat.ping(peerAddr, response)
 	} else {
 		response.NatType = nat_pb.NatType_BehindNat
 	}
@@ -159,7 +159,7 @@ func (nat *nbsNatManager) pong(ping *nat_pb.NatPing, peerAddr *net.UDPAddr) erro
 	return nil
 }
 
-func (nat *nbsNatManager) checkPeersNatService(peerAddr *net.UDPAddr, response *nat_pb.BootNatRegRes) {
+func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr, response *nat_pb.BootNatRegRes) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   peerAddr.IP,
@@ -171,13 +171,18 @@ func (nat *nbsNatManager) checkPeersNatService(peerAddr *net.UDPAddr, response *
 		return
 	}
 
-	conn.SetDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec))
+	conn.SetDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec / 2))
 
 	ping := &nat_pb.NatPing{
 		Ping: nat.networkId,
 	}
 
-	data, _ := proto.Marshal(ping)
+	request := &nat_pb.NatRequest{
+		Ping:    ping,
+		MsgType: nat_pb.NatMsgType_Ping,
+	}
+
+	data, _ := proto.Marshal(request)
 
 	if _, err := conn.Write(data); err != nil {
 		response.NatType = nat_pb.NatType_BehindNat
@@ -255,17 +260,17 @@ func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
 	if err != nil {
-		logger.Error("failed to read nat response from natServer", err)
+		logger.Error("reading failed from nat server", err)
 		return nil, err
 	}
 
 	response := &nat_pb.BootNatRegRes{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("failed to unmarshal nat response data", err)
+		logger.Error("unmarshal err:", err)
 		return nil, err
 	}
 
-	logger.Debug("get response data from nat natServer:", response)
+	logger.Debug("response:", response)
 
 	port, _ := strconv.Atoi(response.PublicPort)
 	nat.natType = response.NatType
