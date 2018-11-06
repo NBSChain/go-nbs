@@ -136,8 +136,8 @@ func (peer *NatPeer) punchAHole(targetId string) {
 func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 	holeMsg := &nat_pb.Response{
-		MsgType: nat_pb.NatMsgType_Probe,
-		ProbeRes: &nat_pb.NatProbe{
+		MsgType: nat_pb.NatMsgType_Ping,
+		Pong: &nat_pb.NatPing{
 			Ping: peer.peerID,
 		},
 	}

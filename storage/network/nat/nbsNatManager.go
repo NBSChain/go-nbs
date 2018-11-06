@@ -35,7 +35,6 @@ func NewNatManager(networkId string) Manager {
 	logger.Debug("all network interfaces:", localPeers)
 
 	natObj := &nbsNatManager{
-		privateIP: localPeers[0],
 		networkId: networkId,
 	}
 
@@ -73,13 +72,20 @@ func (nat *nbsNatManager) natService() {
 			logger.Error(err)
 		}
 
-		if err := nat.composeNatResponse(request, peerAddr); err != nil {
-			logger.Error(err)
+		switch request.MsgType {
+		case nat_pb.NatMsgType_BootStrapReg:
+			if err := nat.bootNatResponse(request.BootRegReq, peerAddr); err != nil {
+				logger.Error(err)
+			}
+		case nat_pb.NatMsgType_KeepAlive:
+			if err := nat.pong(request.Ping, peerAddr); err != nil {
+				logger.Error(err)
+			}
 		}
 	}
 }
 
-func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.BootNatRegReq, error) {
+func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, error) {
 
 	data := make([]byte, NetIoBufferSize)
 
@@ -89,7 +95,7 @@ func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.BootNatRegReq,
 		return nil, nil, err
 	}
 
-	request := &nat_pb.BootNatRegReq{}
+	request := &nat_pb.NatRequest{}
 	if err := proto.Unmarshal(data[:n], request); err != nil {
 		logger.Warning("can't parse the nat request", err, peerAddr)
 		return nil, nil, err
@@ -100,7 +106,7 @@ func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.BootNatRegReq,
 	return peerAddr, request, nil
 }
 
-func (nat *nbsNatManager) composeNatResponse(request *nat_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
 
 	response := &nat_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
@@ -132,6 +138,27 @@ func (nat *nbsNatManager) composeNatResponse(request *nat_pb.BootNatRegReq, peer
 	return nil
 }
 
+func (nat *nbsNatManager) pong(ping *nat_pb.NatPing, peerAddr *net.UDPAddr) error {
+
+	pong := &nat_pb.NatPing{
+		Ping: ping.Ping,
+		Pong: nat.networkId,
+	}
+
+	pongData, err := proto.Marshal(pong)
+	if err != nil {
+		logger.Warning("failed to marshal pong data", err)
+		return err
+	}
+
+	if _, err := nat.natServer.WriteToUDP(pongData, peerAddr); err != nil {
+		logger.Warning("failed to send pong", err)
+		return err
+	}
+
+	return nil
+}
+
 func (nat *nbsNatManager) checkPeersNatService(peerAddr *net.UDPAddr, response *nat_pb.BootNatRegRes) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
@@ -146,7 +173,7 @@ func (nat *nbsNatManager) checkPeersNatService(peerAddr *net.UDPAddr, response *
 
 	conn.SetDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec))
 
-	ping := &nat_pb.NatProbe{
+	ping := &nat_pb.NatPing{
 		Ping: nat.networkId,
 	}
 
@@ -160,7 +187,7 @@ func (nat *nbsNatManager) checkPeersNatService(peerAddr *net.UDPAddr, response *
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := conn.ReadFromUDP(responseData)
 
-	pong := &nat_pb.NatProbe{}
+	pong := &nat_pb.NatPing{}
 	if err := proto.Unmarshal(responseData[:hasRead], pong); err != nil {
 		response.NatType = nat_pb.NatType_BehindNat
 		return
@@ -198,10 +225,15 @@ func (nat *nbsNatManager) sendNatRequest(connection *net.UDPConn) error {
 
 	host, port, err := net.SplitHostPort(localAddr)
 	nat.privateIP = host
-	request := &nat_pb.BootNatRegReq{
+	bootRequest := &nat_pb.BootNatRegReq{
 		NodeId:      nat.networkId,
 		PrivateIp:   host,
 		PrivatePort: port,
+	}
+
+	request := &nat_pb.NatRequest{
+		MsgType:    nat_pb.NatMsgType_BootStrapReg,
+		BootRegReq: bootRequest,
 	}
 
 	requestData, err := proto.Marshal(request)
