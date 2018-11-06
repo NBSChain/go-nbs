@@ -126,30 +126,6 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
-	//sourcePort, _ := strconv.Atoi(peer.privatePort)
-	desPort, _ := strconv.Atoi(response.PublicPort)
-
-	c, err := reuseport.NewReusablePortPacketConn("udp4", peer.privateIP+":7001")
-
-	//c, err := net.DialUDP("udp4",
-	//	&net.UDPAddr{
-	//		IP:   net.ParseIP(peer.privateIP),
-	//		Port: sourcePort,
-	//	},&net.UDPAddr{
-	//		IP:   net.ParseIP(response.PublicIp),
-	//		Port: desPort,
-	//	})
-
-	peerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(response.PublicIp),
-		Port: desPort,
-	}
-	if err != nil {
-		panic(err)
-	}
-
-	peer.p2pConn = c
-
 	holeMsg := &nat_pb.Response{
 		MsgType: nat_pb.NatMsgType_Connect,
 		ConnRes: response,
@@ -161,23 +137,37 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		return
 	}
 
-	go peer.p2pReader()
+	desPort, _ := strconv.Atoi(response.PublicPort)
 
 	for {
+		c, err := reuseport.NewReusablePortPacketConn("udp4", peer.privateIP+":"+peer.privatePort)
+		peerAddr := &net.UDPAddr{
+			IP:   net.ParseIP(response.PublicIp),
+			Port: desPort,
+		}
+		if err != nil {
+			panic(err)
+		}
+
+		peer.p2pConn = c
 		var no int
 		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
 			fmt.Println("failed to make p2p connection-> ", err, no)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
-		fmt.Println("---------success write data len:->", no)
+		fmt.Println("---success write data len:->", no, peerAddr.String(), c.LocalAddr().String())
 
-		time.Sleep(time.Second * 10)
+		peer.p2pConn.SetDeadline(time.Now().Add(time.Second * 10))
+
+		peer.p2pReader()
 	}
 }
 
 func (peer *NatPeer) p2pReader() {
-	time.Sleep(time.Second * 2)
+
+	fmt.Println("-----------p2pReader----------------")
 
 	readBuff := make([]byte, 2048)
 	hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
@@ -186,7 +176,7 @@ func (peer *NatPeer) p2pReader() {
 		return
 	}
 
-	fmt.Printf("hole message :->%s from :%v->", readBuff[:hasRead], peerAddr)
+	fmt.Printf("****************hole message :->%s from :%v->", readBuff[:hasRead], peerAddr)
 }
 
 func main() {
