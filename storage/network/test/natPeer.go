@@ -139,17 +139,17 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 	desPort, _ := strconv.Atoi(response.PublicPort)
 
-	for {
-		c, err := reuseport.NewReusablePortPacketConn("udp4", peer.privateIP+":"+peer.privatePort)
-		peerAddr := &net.UDPAddr{
-			IP:   net.ParseIP(response.PublicIp),
-			Port: desPort,
-		}
-		if err != nil {
-			panic(err)
-		}
+	c, err := reuseport.NewReusablePortPacketConn("udp4", peer.privateIP+":"+peer.privatePort)
+	peerAddr := &net.UDPAddr{
+		IP:   net.ParseIP(response.PublicIp),
+		Port: desPort,
+	}
+	if err != nil {
+		panic(err)
+	}
 
-		peer.p2pConn = c
+	peer.p2pConn = c
+	for {
 		var no int
 		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
 			fmt.Println("failed to make p2p connection-> ", err, no)
@@ -159,7 +159,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 		fmt.Println("---success write data len:->", no, peerAddr.String(), c.LocalAddr().String())
 
-		peer.p2pConn.SetDeadline(time.Now().Add(time.Second * 10))
+		peer.p2pConn.SetDeadline(time.Now().Add(time.Second * 30))
 
 		peer.p2pReader()
 	}
@@ -176,7 +176,9 @@ func (peer *NatPeer) p2pReader() {
 		return
 	}
 
-	fmt.Printf("****************hole message :->%s from :%v->", readBuff[:hasRead], peerAddr)
+	fmt.Println(readBuff[hasRead])
+
+	fmt.Printf("****************hole message :->from :%v->", peerAddr)
 }
 
 func main() {
