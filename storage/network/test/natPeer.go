@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/golang/protobuf/proto"
-	"github.com/kavu/go_reuseport"
 	"net"
 	"os"
 	"strconv"
@@ -14,10 +12,10 @@ import (
 
 type NatPeer struct {
 	peerID      string
-	conn        net.PacketConn
+	conn        *net.UDPConn
 	privateIP   string
 	privatePort string
-	p2pConn     net.PacketConn
+	p2pConn     *net.UDPConn
 }
 
 var natServerAddr = &net.UDPAddr{
@@ -27,18 +25,17 @@ var natServerAddr = &net.UDPAddr{
 
 func NewPeer() *NatPeer {
 
-	ip := nat.ExternalIP()[0]
-	c, err := reuseport.NewReusablePortPacketConn("udp4", ip+":0")
-	//
-	//c, err := net.DialUDP("udp4",nil, &net.UDPAddr{
-	//	IP:net.ParseIP("47.52.172.234"), //172.168.30.18//52.8.190.235//47.52.172.234
-	//	Port:NatServerTestPort,
-	//})
+	//ip := nat.ExternalIP()[0]
+	//c, err := reuseport.NewReusablePortPacketConn("udp4", ip+":0")
+	//172.168.30.18//52.8.190.235//47.52.172.234
+
+	c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP("47.52.172.234"),
+		Port: NatServerTestPort,
+	})
 	if err != nil {
 		panic(err)
 	}
-	//net.PacketConn
-	//syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
 
 	host, port, _ := net.SplitHostPort(c.LocalAddr().String())
 
@@ -71,13 +68,13 @@ func (peer *NatPeer) runLoop() {
 	fmt.Println("start to keep alive......")
 
 	for {
-		if no, err := peer.conn.WriteTo(requestData, natServerAddr); err != nil || no == 0 {
+		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
 			continue
 		}
 
 		responseData := make([]byte, 2048)
-		hasRead, peerAdd, err := peer.conn.ReadFrom(responseData)
+		hasRead, err := peer.conn.Read(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
 			continue
@@ -88,8 +85,6 @@ func (peer *NatPeer) runLoop() {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
 		}
-
-		fmt.Println(response, peerAdd)
 
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
@@ -138,12 +133,17 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 	}
 
 	desPort, _ := strconv.Atoi(response.PublicPort)
+	srcPort, _ := strconv.Atoi(peer.privatePort)
 
-	c, err := reuseport.NewReusablePortPacketConn("udp4", peer.privateIP+":"+peer.privatePort)
 	peerAddr := &net.UDPAddr{
 		IP:   net.ParseIP(response.PublicIp),
 		Port: desPort,
 	}
+
+	c, err := net.DialUDP("udp4", &net.UDPAddr{
+		Port: srcPort,
+	}, peerAddr)
+
 	if err != nil {
 		panic(err)
 	}
@@ -157,9 +157,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 			continue
 		}
 
-		fmt.Println("---success write data len:->", no, peerAddr.String(), c.LocalAddr().String())
-
-		peer.p2pConn.SetDeadline(time.Now().Add(time.Second * 30))
+		fmt.Println("\n\n---write data len:->", no, peerAddr.String(), c.LocalAddr().String())
 
 		peer.p2pReader()
 	}
@@ -178,7 +176,7 @@ func (peer *NatPeer) p2pReader() {
 
 	fmt.Println(readBuff[hasRead])
 
-	fmt.Printf("****************hole message :->from :%v->", peerAddr)
+	fmt.Printf("****************hole message :->(%d)from :%v->", hasRead, peerAddr)
 }
 
 func main() {

@@ -103,6 +103,8 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 		return fmt.Errorf(err.Error())
 	}
 
+	fmt.Println("------response data len:----->", len(responseData))
+
 	item := &NatCacheItem{
 		PeerId:      request.NodeId,
 		PublicIp:    resKA.PublicIp,
@@ -124,6 +126,10 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) err
 	}
 
 	cacheItem := s.natCache[request.ToPeerId]
+	cacheItemFrom := s.natCache[request.FromPeerId]
+	if cacheItem == nil || cacheItemFrom == nil {
+		return fmt.Errorf("some peer is not in the cache")
+	}
 
 	toInfo := &nat_pb.NatConRes{
 		PeerId:      cacheItem.PeerId,
@@ -150,14 +156,12 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) err
 		MsgType: nat_pb.NatMsgType_Connect,
 	}
 
-	cacheItem = s.natCache[request.FromPeerId]
-
 	fromInfo := &nat_pb.NatConRes{
-		PeerId:      cacheItem.PeerId,
-		PublicIp:    cacheItem.PublicIp,
-		PublicPort:  cacheItem.PublicPort,
-		PrivateIp:   cacheItem.PrivateIp,
-		PrivatePort: cacheItem.PrivatePort,
+		PeerId:      cacheItemFrom.PeerId,
+		PublicIp:    cacheItemFrom.PublicIp,
+		PublicPort:  cacheItemFrom.PublicPort,
+		PrivateIp:   cacheItemFrom.PrivateIp,
+		PrivatePort: cacheItemFrom.PrivatePort,
 	}
 
 	responseFrom.ConnRes = fromInfo
