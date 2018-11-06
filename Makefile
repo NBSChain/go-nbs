@@ -1,6 +1,6 @@
 SHELL=PATH='$(PATH)' /bin/sh
 
-PLATFORM := $(shell uname -a)
+PLATFORM := $(shell uname -o)
 
 
 EXTEND := .exe
@@ -24,7 +24,7 @@ all: pbs build
 
 build:
 	go build -race -o $(EXENAME)
-	mv $(EXENAME) $(GOPATH)/bin/
+	mv $(EXENAME) $(INCLUDE)/bin/
 
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
