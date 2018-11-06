@@ -1,5 +1,20 @@
 syntax = "proto3";
+
 package nat.pb;
+
+enum NatMsgType {
+    BootStrapReg    = 0;
+    KeepAlive       = 1;
+    Connect         = 2;
+    Probe           = 3;
+}
+
+enum NatType{
+    NoNatDevice     = 0;
+    BehindNat       = 1;
+    CanBeNatServer  = 2;
+    ToBeChecked     = 3;
+}
 
 message BootNatRegReq {
     string  nodeId      = 1;
@@ -9,7 +24,7 @@ message BootNatRegReq {
 }
 
 message BootNatRegRes {
-    bool    isAfterNat  = 1;
+    NatType natType    = 1;
     string  nodeId      = 2;
     string  publicIp    = 3;
     string  publicPort  = 4;
@@ -37,13 +52,6 @@ message NatKeepAlive{
 message NatProbe{
     string ping = 1;
     string pong = 2;
-}
-
-enum NatMsgType {
-    BootStrapReg    = 0;
-    KeepAlive       = 1;
-    Connect         = 2;
-    Probe           = 3;
 }
 
 message NatRequest {
