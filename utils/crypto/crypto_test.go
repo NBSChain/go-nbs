@@ -4,6 +4,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"github.com/mr-tron/base58/base58"
+	"github.com/multiformats/go-multihash"
 	"testing"
 )
 
@@ -20,7 +22,7 @@ func TestEncryptAES(t *testing.T) {
 
 	privateKeyData := x509.MarshalPKCS1PrivateKey(privateKey)
 
-	password := MD5SB("lws502")
+	password := MD5SB("Wesley")
 
 	encryptedPrivateKeyData := EncryptAES(privateKeyData, []byte(password))
 
@@ -36,7 +38,7 @@ func TestDecryptAES(t *testing.T) {
 		t.Fatal("DecodeString private key failed.")
 	}
 
-	password := MD5SB("lws502")
+	password := MD5SB("Wesley")
 
 	decryptedData := DecryptAES(privateKeyData, []byte(password))
 
@@ -51,4 +53,19 @@ func TestDecryptAES(t *testing.T) {
 	}
 
 	t.Log("DecryptAES 测试通过")
+}
+
+func TestPeerID(t *testing.T) {
+	_, pub, err := GenerateRSAKeyPair()
+	if err != nil {
+		t.Fatal("GenerateRSAKeyPair failed.", err)
+	}
+
+	pubData := x509.MarshalPKCS1PublicKey(pub)
+
+	hash, _ := multihash.Sum(pubData, multihash.SHA2_256, -1)
+
+	id := string(hash)
+
+	t.Log("PeerID 测试通过:", base58.Encode([]byte(id)))
 }

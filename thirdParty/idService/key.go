@@ -6,11 +6,11 @@ import (
 	"gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
 )
 
-func IDFromPublicKey(pub *rsa.PublicKey) ID{
+func IDFromPublicKey(pub *rsa.PublicKey) ID {
 
 	pubData := x509.MarshalPKCS1PublicKey(pub)
 
-	hash, _ := multihash.Sum(pubData, multihash.ID, -1)
+	hash, _ := multihash.Sum(pubData, multihash.SHA2_256, -1)
 
 	return ID(hash)
 }
