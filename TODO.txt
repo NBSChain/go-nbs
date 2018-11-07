@@ -1,15 +1,10 @@
 garbage collection
 ping data
 mark data as temp
-key pair generation
 all initial things in one time.
 control the size of logs.
 control the size of local storage.
 chatting function.
 
 ---------------->>>>>>---------------->>>>>>
-check account info before use the nbs
-load account info from local data store
-add nbs create count logic.
-
 for nat pole punch Applications must therefore authen- ticate all messages in some way to filter out such stray traffic robustly. The messages might include application- specific names or cryptographic tokens, for example, or at least a random nonce pre-arranged through S.

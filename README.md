@@ -36,6 +36,13 @@ make
 ```
     //start main node
     nbs
+    
+    //create a account(make sure the nbs service start)
+    nbs account create <PASSWORD>
+    
+    //unlock the account
+    nbs account unlock <PASSWORD>
+    
     //add file in new commd window
     nbs add 1.jpg
     //get file by hash
