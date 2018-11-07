@@ -26,7 +26,7 @@ var natServerAddr = &net.UDPAddr{
 
 func NewPeer() *NatPeer {
 
-	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "52.8.190.235:8001")
+	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "47.52.172.234:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -93,7 +93,7 @@ func (peer *NatPeer) runLoop() {
 
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
-			time.Sleep(20 * time.Second)
+			time.Sleep(10 * time.Second)
 		case nat_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
 		}
@@ -188,7 +188,6 @@ func (peer *NatPeer) p2pReader() {
 		proto.Unmarshal(readBuff[:hasRead], holeMsg)
 
 		fmt.Println(holeMsg)
-
 	}
 }
 
