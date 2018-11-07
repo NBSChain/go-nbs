@@ -11,14 +11,14 @@ import (
 )
 
 type NbsDHT struct {
-	peerId peer.ID
-	localDataStore	dataStore.DataStore
+	peerId         peer.ID
+	localDataStore dataStore.DataStore
 }
 
-var instance 		*NbsDHT
-var once 		sync.Once
-var parentContext 	context.Context
-var logger 		= utils.GetLogInstance()
+var instance *NbsDHT
+var once sync.Once
+var parentContext context.Context
+var logger = utils.GetLogInstance()
 
 func GetInstance() Routing {
 	once.Do(func() {
@@ -38,18 +38,17 @@ func newNbsDht() (*NbsDHT, error) {
 
 	network.GetInstance()
 
-	distributeTable := &NbsDHT{
-	}
+	distributeTable := &NbsDHT{}
 
 	return distributeTable, nil
 }
 
 //----------->routing interface implementation<-----------//
-func (*NbsDHT) Ping(peer peerstore.PeerInfo) Pong{
+func (*NbsDHT) Ping(peer peerstore.PeerInfo) Pong {
 	return nil
 }
 
-func (*NbsDHT) FindPeer(key string) ([]peerstore.PeerInfo, error){
+func (*NbsDHT) FindPeer(key string) ([]peerstore.PeerInfo, error) {
 	return nil, nil
 }
 
@@ -57,10 +56,10 @@ func (*NbsDHT) PutValue(key string, value []byte) chan error {
 	return nil
 }
 
-func (*NbsDHT) GetValue(peer []peerstore.PeerInfo,  key string) ([]byte, []peerstore.PeerInfo, error) {
+func (*NbsDHT) GetValue(peer []peerstore.PeerInfo, key string) ([]byte, []peerstore.PeerInfo, error) {
 	return nil, nil, nil
 }
 
-func (dht *NbsDHT) saveData(key string, value []byte){
+func (dht *NbsDHT) saveData(key string, value []byte) {
 	dht.localDataStore.Put(key, value)
 }

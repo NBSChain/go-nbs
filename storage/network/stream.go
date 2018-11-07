@@ -1,5 +1,4 @@
 package network
 
-type Stream interface{
-
+type Stream interface {
 }

@@ -1,9 +1,9 @@
 package console
 
 import (
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -18,11 +18,11 @@ func init() {
 }
 
 var addCmd = &cobra.Command{
-	Use:   	"add",
-	Short: 	"Add file to nbs network",
-	Long:  	`Add file to cache and find the peers to store it.`,
-	Run:   	addFileCmd,
-	Args:	cobra.MinimumNArgs(1),
+	Use:   "add",
+	Short: "Add file to nbs network",
+	Long:  `Add file to cache and find the peers to store it.`,
+	Run:   addFileCmd,
+	Args:  cobra.MinimumNArgs(1),
 }
 
 func addFileCmd(cmd *cobra.Command, args []string) {

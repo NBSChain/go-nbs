@@ -28,5 +28,3 @@ type DAGService interface {
 
 	RemoveMany([]*cid.Cid) error
 }
-
-

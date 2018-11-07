@@ -81,7 +81,6 @@ var CodecToStr = map[uint64]string{
 	DecredTx:           "decred-tx",
 }
 
-
 var (
 	// ErrVarintBuffSmall means that a buffer passed to the cid parser was not
 	// long enough, or did not contain an invalid cid
@@ -114,7 +113,7 @@ func (c *Cid) HashLength() int {
 		return c.HashLen
 	}
 
-	if len(c.Hash) == 0{
+	if len(c.Hash) == 0 {
 		return -1
 	}
 
@@ -200,11 +199,11 @@ func Decode(v string) (*Cid, error) {
 		}
 
 		return &Cid{
-			Version: 	0,
-			Code:   	DagProtobuf,
-			Hash:    	hash,
-			HashLen:	-1,
-			HashType: 	multihash.SHA2_256,
+			Version:  0,
+			Code:     DagProtobuf,
+			Hash:     hash,
+			HashLen:  -1,
+			HashType: multihash.SHA2_256,
 		}, nil
 	}
 
@@ -224,11 +223,11 @@ func Cast(data []byte) (*Cid, error) {
 		}
 
 		return &Cid{
-			Code:   	DagProtobuf,
-			Version: 	0,
-			Hash:    	h,
-			HashLen:	-1,
-			HashType: 	multihash.SHA2_256,
+			Code:     DagProtobuf,
+			Version:  0,
+			Hash:     h,
+			HashLen:  -1,
+			HashType: multihash.SHA2_256,
 		}, nil
 	}
 
@@ -253,10 +252,10 @@ func Cast(data []byte) (*Cid, error) {
 	}
 
 	return &Cid{
-		Version: 	vers,
-		Code:   	codec,
-		Hash:    	h,
-		HashLen:	-1,
+		Version: vers,
+		Code:    codec,
+		Hash:    h,
+		HashLen: -1,
 	}, nil
 }
 
@@ -271,11 +270,9 @@ func uvError(read int) error {
 	}
 }
 
-
-
 func NewKeyFromBinary(rawKey []byte) string {
 	encoder := base32.StdEncoding.WithPadding(base32.NoPadding)
-	buf := make([]byte, 1 + encoder.EncodedLen(len(rawKey)))
+	buf := make([]byte, 1+encoder.EncodedLen(len(rawKey)))
 	buf[0] = '/'
 	encoder.Encode(buf[1:], rawKey)
 	return string(buf)
@@ -297,4 +294,3 @@ func CovertDataStoreKeyToCid(dsKey string) (*Cid, error) {
 	}
 	return Cast(kb)
 }
-

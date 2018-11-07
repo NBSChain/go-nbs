@@ -1,9 +1,9 @@
 package rpcService
 
 import (
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/storage/application/rpcServiceImpl"
 	"github.com/NBSChain/go-nbs/storage/merkledag/cid"
-	"github.com/NBSChain/go-nbs/console/pb"
 	"io"
 )
 
@@ -15,32 +15,32 @@ func (service *getService) Get(request *pb.GetRequest, stream pb.GetTask_GetServ
 
 	//TODO:: didn't consider the naming system request right now.
 	cidKey, parts, err := cid.IsValidPath(dataHash)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	resolver, err := rpcServiceImpl.ReadStreamData(cidKey, parts)
-	if err != nil{
+	if err != nil {
 		return nil
 	}
 
 	for {
 		data, err := resolver.Next()
 
-		if err != nil{
-			if err != io.EOF{
+		if err != nil {
+			if err != io.EOF {
 				return err
-			}else{
+			} else {
 				break
 			}
 		}
 
-		if data == nil{
+		if data == nil {
 			break
 		}
 
 		response := &pb.GetResponse{
-			Content:data,
+			Content: data,
 		}
 
 		stream.Send(response)

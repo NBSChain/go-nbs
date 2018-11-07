@@ -8,6 +8,6 @@ type Identity struct {
 	PrivateKey string
 }
 
-func (id ID)Pretty() string {
+func (id ID) Pretty() string {
 	return IDB58Encode(id)
 }

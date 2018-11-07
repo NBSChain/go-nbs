@@ -7,7 +7,6 @@ import (
 	"sync"
 )
 
-
 // DecodeBlockFunc functions decode blocks into nodes.
 type DecodeBlockFunc func([]byte, *cid.Cid) (DagNode, error)
 
@@ -84,4 +83,3 @@ func DecodeProtoBufBlock(b []byte, c *cid.Cid) (DagNode, error) {
 	decnd.cached = c
 	return decnd, nil
 }
-

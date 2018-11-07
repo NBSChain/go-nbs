@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-var IPFS_DEF_SHARD 	= NextToLast(2)
-var IPFS_DEF_SHARD_STR 	= IPFS_DEF_SHARD.String()
+var IPFS_DEF_SHARD = NextToLast(2)
+var IPFS_DEF_SHARD_STR = IPFS_DEF_SHARD.String()
 
 const PREFIX = "/repo/flatfs/shard/"
 
-const SHARDING_FN 	= "SHARDING"
-const README_FN 	= "_README"
+const SHARDING_FN = "SHARDING"
+const README_FN = "_README"
 
 type ShardIdV1 struct {
 	funName string

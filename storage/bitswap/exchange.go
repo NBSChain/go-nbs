@@ -9,22 +9,17 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 )
 
-
-
 type Exchange interface {
-
 	GetDagNode(*cid.Cid) (ipld.DagNode, error)
 
-	GetDagNodes(context.Context, []*cid.Cid) (<-chan fetcher.AsyncResult)
+	GetDagNodes(context.Context, []*cid.Cid) <-chan fetcher.AsyncResult
 
 	SaveToNetPeer(map[string]ipld.DagNode) error
 
 	GetLedgerEngine() LedgerEngine
 }
 
-
 type LedgerEngine interface {
-
 	ReceiveData(fromNode peer.ID, data []byte) engine.SwapLedger
 
 	SupportData(toNode peer.ID, data []byte) engine.SwapLedger

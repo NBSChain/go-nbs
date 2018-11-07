@@ -1,20 +1,21 @@
 package rpcServiceImpl
 
 import (
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/storage/application/pb"
 	"github.com/NBSChain/go-nbs/storage/merkledag/ipld"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/gogo/protobuf/proto"
 	"io"
 )
 
-const BlockSizeLimit 		= 1048576 // 1 MB
+const BlockSizeLimit = 1048576 // 1 MB
 
-const roughLinkBlockSize 	= 1 << 13 // 8KB
-const roughLinkSize 		= 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
-const adderOutChanSize 		= 8
+const roughLinkBlockSize = 1 << 13 // 8KB
+const roughLinkSize = 34 + 8 + 5   // sha256 multihash + size + no name + protobuf framing
+const adderOutChanSize = 8
 const DefaultLinksPerBlock = roughLinkBlockSize / roughLinkSize
+
 //const DefaultLinksPerBlock = 2
 
 var logger = utils.GetLogInstance()

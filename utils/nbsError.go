@@ -4,14 +4,14 @@ import (
 	"fmt"
 )
 
-const (ErrCommon  	= -1
-	ErrSystem 	= -2)
-
-
+const (
+	ErrCommon = -1
+	ErrSystem = -2
+)
 
 type NbsError struct {
-	errCode	int
-	errMsg	string
+	errCode int
+	errMsg  string
 }
 
 func (e *NbsError) Error() string {
@@ -19,9 +19,9 @@ func (e *NbsError) Error() string {
 }
 
 func New(text string) error {
-	return &NbsError{errCode:ErrCommon, errMsg:text}
+	return &NbsError{errCode: ErrCommon, errMsg: text}
 }
 
 func NewWithCode(code int, text string) error {
-	return &NbsError{errCode:code, errMsg:text}
+	return &NbsError{errCode: code, errMsg: text}
 }

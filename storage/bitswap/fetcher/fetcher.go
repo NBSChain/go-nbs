@@ -11,12 +11,13 @@ import (
 	"time"
 )
 
-const MaxPeerEachSearch  	= 3
-const MaxItemPerRound		= 10
-const MaxIdleTime		= 100
-const MaxRestTime		= 10
-const MaxDepthForRouting  	= 20
-var ErrNotFound 		= fmt.Errorf("can't find the target block data")
+const MaxPeerEachSearch = 3
+const MaxItemPerRound = 10
+const MaxIdleTime = 100
+const MaxRestTime = 10
+const MaxDepthForRouting = 20
+
+var ErrNotFound = fmt.Errorf("can't find the target block data")
 
 type AsyncResult struct {
 	node ipld.DagNode
@@ -24,25 +25,24 @@ type AsyncResult struct {
 }
 
 type wantItem struct {
-	sessionID	uint
-	resultNodeChan	chan AsyncResult
-	waitingItem	[]*cid.Cid
+	sessionID      uint
+	resultNodeChan chan AsyncResult
+	waitingItem    []*cid.Cid
 }
 
 type Fetcher struct {
 	sync.Mutex
-	sessionID	uint
-	runningTask	int
-	wantQueue	map[uint]*wantItem
+	sessionID   uint
+	runningTask int
+	wantQueue   map[uint]*wantItem
 }
 
-func NewRouterFetcher() *Fetcher{
+func NewRouterFetcher() *Fetcher {
 
 	return &Fetcher{
-		wantQueue:	make(map[uint]*wantItem),
+		wantQueue: make(map[uint]*wantItem),
 	}
 }
-
 
 /*****************************************************************
 *
@@ -50,22 +50,22 @@ func NewRouterFetcher() *Fetcher{
 *
 *****************************************************************/
 
-func (getter *Fetcher)  GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error)  {
+func (getter *Fetcher) GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error) {
 
 	key := cid.CovertCidToDataStoreKey(cidObj)
 
 	peers, err := routing.GetInstance().FindPeer(key)
 
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
-	if len(peers) == 0{
+	if len(peers) == 0 {
 		return nil, ErrNotFound
 	}
 
 	data, err := getter.findValueFromPeers(key, peers, MaxDepthForRouting)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,9 +73,9 @@ func (getter *Fetcher)  GetNodeSync(cidObj *cid.Cid) (ipld.DagNode, error)  {
 }
 
 func (getter *Fetcher) findValueFromPeers(key string,
-	peers []peerstore.PeerInfo, depth int) ([]byte, error){
+	peers []peerstore.PeerInfo, depth int) ([]byte, error) {
 
-	if peerSize := len(peers); peerSize > MaxPeerEachSearch{
+	if peerSize := len(peers); peerSize > MaxPeerEachSearch {
 		peerSize = MaxPeerEachSearch
 		peers = peers[:peerSize]
 	}
@@ -85,24 +85,23 @@ func (getter *Fetcher) findValueFromPeers(key string,
 		return nil, err
 	}
 
-	if data != nil{
+	if data != nil {
 		return data, nil
 	}
 
-	if depth -= 1; depth < 0 || len(newPeers) == 0{
+	if depth -= 1; depth < 0 || len(newPeers) == 0 {
 		return nil, ErrNotFound
 	}
 
 	return getter.findValueFromPeers(key, newPeers, depth)
 }
 
-
 /*****************************************************************
 *
 *		interface GetDagNodes implements.
 *
 *****************************************************************/
-func (getter *Fetcher)  CacheRequest(ctx context.Context, cidArr []*cid.Cid) <-chan AsyncResult {
+func (getter *Fetcher) CacheRequest(ctx context.Context, cidArr []*cid.Cid) <-chan AsyncResult {
 
 	resultNode := make(chan AsyncResult)
 
@@ -111,9 +110,9 @@ func (getter *Fetcher)  CacheRequest(ctx context.Context, cidArr []*cid.Cid) <-c
 
 	getter.sessionID += 1
 	getter.wantQueue[getter.sessionID] = &wantItem{
-		resultNodeChan:	resultNode,
-		waitingItem:	cidArr,
-		sessionID:	getter.sessionID,
+		resultNodeChan: resultNode,
+		waitingItem:    cidArr,
+		sessionID:      getter.sessionID,
 	}
 
 	return resultNode
@@ -121,25 +120,25 @@ func (getter *Fetcher)  CacheRequest(ctx context.Context, cidArr []*cid.Cid) <-c
 
 func (getter *Fetcher) FetchRunLoop() {
 
-	for{
-		if len(getter.wantQueue) == 0{
+	for {
+		if len(getter.wantQueue) == 0 {
 			time.Sleep(time.Millisecond * MaxIdleTime)
 			continue
 		}
 
-		if getter.runningTask > MaxItemPerRound{
+		if getter.runningTask > MaxItemPerRound {
 			time.Sleep(time.Millisecond * MaxRestTime)
 			continue
 		}
 
 		getter.Lock()
 
-		for sessionID, item := range getter.wantQueue{
+		for sessionID, item := range getter.wantQueue {
 
 			go getter.getNodeArrayAsync(item)
 			delete(getter.wantQueue, sessionID)
 
-			if getter.runningTask++;getter.runningTask > MaxItemPerRound{
+			if getter.runningTask++; getter.runningTask > MaxItemPerRound {
 				break
 			}
 		}
@@ -148,11 +147,11 @@ func (getter *Fetcher) FetchRunLoop() {
 	}
 }
 
-func (getter *Fetcher) getNodeArrayAsync(item *wantItem){
+func (getter *Fetcher) getNodeArrayAsync(item *wantItem) {
 
-	for _, cidObj := range item.waitingItem{
+	for _, cidObj := range item.waitingItem {
 		node, err := getter.GetNodeSync(cidObj)
-		item.resultNodeChan<- AsyncResult{
+		item.resultNodeChan <- AsyncResult{
 			node: node,
 			err:  err,
 		}
