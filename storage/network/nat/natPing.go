@@ -52,9 +52,9 @@ func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr) {
 		return
 	}
 
-	ping.TTL = pong.TTL + 1
+	pong.TTL = pong.TTL + 1
 
-	nat.sendPing(ping, conn)
+	nat.sendPing(pong, conn)
 
 	defer conn.Close()
 }
