@@ -120,7 +120,7 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
 
 		response.NatType = nat_pb.NatType_ToBeChecked
-		nat.ping(peerAddr, response)
+		go nat.ping(peerAddr)
 
 	} else {
 
@@ -143,6 +143,11 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 
 func (nat *nbsNatManager) pong(ping *nat_pb.NatPing, peerAddr *net.UDPAddr) error {
 
+	if nat.natType == nat_pb.NatType_UnknownRES ||
+		nat.natType == nat_pb.NatType_ToBeChecked {
+		nat.natType = nat_pb.NatType_CanBeNatServer
+	}
+
 	pong := &nat_pb.NatPing{
 		Ping: ping.Ping,
 		Pong: nat.networkId,
@@ -159,24 +164,22 @@ func (nat *nbsNatManager) pong(ping *nat_pb.NatPing, peerAddr *net.UDPAddr) erro
 		return err
 	}
 
-	logger.Debug("send pong:", pong)
-
 	return nil
 }
 
-func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr, response *nat_pb.BootNatRegRes) {
+func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   peerAddr.IP,
 		Port: utils.GetConfig().NatServerPort,
 	})
-
 	if err != nil {
-		response.NatType = nat_pb.NatType_BehindNat
 		return
 	}
 
-	conn.SetDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec / 2))
+	defer conn.Close()
+
+	conn.SetWriteDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec / 2))
 
 	ping := &nat_pb.NatPing{
 		Ping: nat.networkId,
@@ -190,35 +193,8 @@ func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr, response *nat_pb.BootNatRe
 	data, _ := proto.Marshal(request)
 
 	if _, err := conn.Write(data); err != nil {
-		response.NatType = nat_pb.NatType_BehindNat
 		return
 	}
-
-	responseData := make([]byte, NetIoBufferSize)
-	hasRead, _, err := conn.ReadFromUDP(responseData)
-	if err != nil {
-		logger.Warning("get pong failed", err)
-		response.NatType = nat_pb.NatType_BehindNat
-		return
-	}
-	logger.Debug("get pong", hasRead)
-
-	pong := &nat_pb.NatPing{}
-	if err := proto.Unmarshal(responseData[:hasRead], pong); err != nil {
-		logger.Warning("Unmarshal pong failed", err)
-		response.NatType = nat_pb.NatType_BehindNat
-		return
-	}
-
-	logger.Debug("get pong", pong)
-
-	if pong.Ping != ping.Ping {
-		logger.Warning("nat ping and pong not equal")
-		response.NatType = nat_pb.NatType_BehindNat
-		return
-	}
-
-	response.NatType = nat_pb.NatType_CanBeNatServer
 }
 
 func (nat *nbsNatManager) connectToNatServer(serverIP string) (*net.UDPConn, error) {
@@ -290,14 +266,13 @@ func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 	port, _ := strconv.Atoi(response.PublicPort)
 	nat.natType = response.NatType
 
-	if response.NatType == nat_pb.NatType_BehindNat {
+	if response.NatType == nat_pb.NatType_BehindNat ||
+		response.NatType == nat_pb.NatType_ToBeChecked {
 		nat.publicAddress = &net.UDPAddr{
 			IP:   net.ParseIP(response.PublicIp),
 			Port: port,
 			Zone: response.Zone,
 		}
-	} else {
-		nat.publicAddress = nil
 	}
 
 	return response, nil
