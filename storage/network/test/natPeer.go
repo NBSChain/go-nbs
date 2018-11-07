@@ -73,7 +73,7 @@ func (peer *NatPeer) runLoop() {
 
 	for {
 
-		peer.conn.SetDeadline(time.Now().Add(time.Second * 5))
+		peer.conn.SetDeadline(time.Now().Add(time.Second * 10))
 
 		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
