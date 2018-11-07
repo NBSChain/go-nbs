@@ -72,6 +72,9 @@ func (peer *NatPeer) runLoop() {
 	fmt.Println("start to keep alive......")
 
 	for {
+
+		peer.conn.SetDeadline(time.Now().Add(time.Second * 5))
+
 		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
 			continue
@@ -174,15 +177,15 @@ func (peer *NatPeer) p2pReader() {
 
 		readBuff := make([]byte, 2048)
 
-		peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 20))
+		peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
 		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
 		if err != nil {
-			fmt.Println("hole message read:", err)
+			fmt.Println("****************hole message read:", err)
 			continue
 		}
 
-		fmt.Printf("****************hole message :->(%d)from :%v->", hasRead, peerAddr)
+		fmt.Println("****************hole message ->", hasRead, peerAddr)
 
 		holeMsg := &nat_pb.Response{}
 

@@ -12,6 +12,9 @@
 
 #### Before you begin
 Install [grpc](https://grpc.io/docs/quickstart/go.html),[protocol-buffers](https://developers.google.com/protocol-buffers/)
+
+go get -u github.com/golang/protobuf/protoc-gen-go
+
 ## Install
 ```
 
@@ -24,7 +27,7 @@ for linuxs:
 	export http_proxy=http://127.0.0.1:1087;
 	export https_proxy=http://127.0.0.1:1087;
 
-go get github.com/NBSChain/go-nbs
+go get -v -u github.com/NBSChain/go-nbs
 cd $GOPATH/src/github.com/NBSChain/go-nbs
 make
 ```
