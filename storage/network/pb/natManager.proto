@@ -52,8 +52,10 @@ message NatKeepAlive {
 }
 
 message NatPing {
-    string ping = 1;
-    string pong = 2;
+    string ping  = 1;
+    string pong  = 2;
+    string nonce = 3;
+    int32  TTL   = 4;
 }
 
 message NatRequest {

@@ -29,10 +29,8 @@ const natServerPort = 6001
 var natServerIP = []string{
 	"52.8.190.235",
 	"47.52.172.234",
-	"172.168.20.52",
+	"172.168.30.18",
 }
-
-//const natServerIP 	= "192.168.38.173"
 
 var defaultBootstrapAddresses = []string{
 	"",
