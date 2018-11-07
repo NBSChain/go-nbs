@@ -26,16 +26,7 @@ var natServerAddr = &net.UDPAddr{
 
 func NewPeer() *NatPeer {
 
-	//ip := nat.ExternalIP()[0]
-	//c, err := reuseport.NewReusablePortPacketConn("udp4", ip+":0")
-	//172.168.30.18//52.8.190.235//47.52.172.234
-
-	//c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-	//	IP:   net.ParseIP("47.52.172.234"),
-	//	Port: NatServerTestPort,
-	//})
-
-	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "47.52.172.234:8001")
+	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -174,21 +165,31 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 func (peer *NatPeer) p2pReader() {
 
-	time.Sleep(time.Second * 4)
+	for {
 
-	fmt.Println("-----------p2pReader----------------")
+		time.Sleep(time.Second * 4)
 
-	readBuff := make([]byte, 2048)
+		fmt.Println("-----------p2pReader----------------")
 
-	peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 20))
+		readBuff := make([]byte, 2048)
 
-	hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
-	if err != nil {
-		fmt.Println("hole message read:", err)
-		return
+		peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 20))
+
+		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
+		if err != nil {
+			fmt.Println("hole message read:", err)
+			continue
+		}
+
+		fmt.Printf("****************hole message :->(%d)from :%v->", hasRead, peerAddr)
+
+		holeMsg := &nat_pb.Response{}
+
+		proto.Unmarshal(readBuff[:hasRead], holeMsg)
+
+		fmt.Println(holeMsg)
+
 	}
-
-	fmt.Printf("****************hole message :->(%d)from :%v->", hasRead, peerAddr)
 }
 
 func main() {
