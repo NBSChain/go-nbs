@@ -3,7 +3,7 @@ package idService
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
+	"github.com/multiformats/go-multihash"
 )
 
 func IDFromPublicKey(pub *rsa.PublicKey) ID {
