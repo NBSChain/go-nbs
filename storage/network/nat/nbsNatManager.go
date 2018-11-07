@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -77,7 +78,7 @@ func (nat *nbsNatManager) natService() {
 			if err := nat.bootNatResponse(request.BootRegReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case nat_pb.NatMsgType_KeepAlive:
+		case nat_pb.NatMsgType_Ping:
 			if err := nat.pong(request.Ping, peerAddr); err != nil {
 				logger.Error(err)
 			}
@@ -110,7 +111,7 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 
 	response := &nat_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
-	response.PublicPort = string(peerAddr.Port)
+	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
 	response.Zone = peerAddr.Zone
 
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
@@ -120,7 +121,9 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 
 		response.NatType = nat_pb.NatType_ToBeChecked
 		nat.ping(peerAddr, response)
+
 	} else {
+
 		response.NatType = nat_pb.NatType_BehindNat
 	}
 
@@ -155,6 +158,8 @@ func (nat *nbsNatManager) pong(ping *nat_pb.NatPing, peerAddr *net.UDPAddr) erro
 		logger.Warning("failed to send pong", err)
 		return err
 	}
+
+	logger.Debug("send pong:", pong)
 
 	return nil
 }
@@ -191,14 +196,24 @@ func (nat *nbsNatManager) ping(peerAddr *net.UDPAddr, response *nat_pb.BootNatRe
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := conn.ReadFromUDP(responseData)
+	if err != nil {
+		logger.Warning("get pong failed", err)
+		response.NatType = nat_pb.NatType_BehindNat
+		return
+	}
+	logger.Debug("get pong", hasRead)
 
 	pong := &nat_pb.NatPing{}
 	if err := proto.Unmarshal(responseData[:hasRead], pong); err != nil {
+		logger.Warning("Unmarshal pong failed", err)
 		response.NatType = nat_pb.NatType_BehindNat
 		return
 	}
 
+	logger.Debug("get pong", pong)
+
 	if pong.Ping != ping.Ping {
+		logger.Warning("nat ping and pong not equal")
 		response.NatType = nat_pb.NatType_BehindNat
 		return
 	}
@@ -251,8 +266,6 @@ func (nat *nbsNatManager) sendNatRequest(connection *net.UDPConn) error {
 		logger.Error("failed to send nat request to natServer ", err, no)
 		return err
 	}
-
-	logger.Debug("start:", request)
 
 	return nil
 }
