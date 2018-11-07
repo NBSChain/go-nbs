@@ -1,4 +1,4 @@
-#TestToll
+#TestTool
 build a runnable file
 ```
 make
