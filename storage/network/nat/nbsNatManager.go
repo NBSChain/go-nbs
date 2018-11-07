@@ -141,6 +141,8 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 }
 
 func (nat *nbsNatManager) confirmNatType() {
+	nat.Lock()
+	defer nat.Unlock()
 
 	if nat.natType == nat_pb.NatType_BehindNat ||
 		nat.natType == nat_pb.NatType_ToBeChecked {

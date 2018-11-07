@@ -76,7 +76,10 @@ func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 	logger.Debug("response:", response)
 
 	port, _ := strconv.Atoi(response.PublicPort)
+
+	nat.Lock()
 	nat.natType = response.NatType
+	nat.Unlock()
 
 	if response.NatType == nat_pb.NatType_BehindNat ||
 		response.NatType == nat_pb.NatType_ToBeChecked {
