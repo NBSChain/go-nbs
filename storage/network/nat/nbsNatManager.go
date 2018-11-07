@@ -252,6 +252,8 @@ func (nat *nbsNatManager) sendNatRequest(connection *net.UDPConn) error {
 		return err
 	}
 
+	logger.Debug("start:", request)
+
 	return nil
 }
 

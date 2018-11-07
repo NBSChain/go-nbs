@@ -3,17 +3,19 @@ syntax = "proto3";
 package nat.pb;
 
 enum NatMsgType {
-    BootStrapReg    = 0;
-    KeepAlive       = 1;
-    Connect         = 2;
-    Ping            = 3;
+    UnknownReq         = 0;
+    BootStrapReg    = 1;
+    KeepAlive       = 2;
+    Connect         = 3;
+    Ping            = 4;
 }
 
 enum NatType{
-    NoNatDevice     = 0;
-    BehindNat       = 1;
-    CanBeNatServer  = 2;
-    ToBeChecked     = 3;
+    UnknownRES      = 0;
+    NoNatDevice     = 1;
+    BehindNat       = 2;
+    CanBeNatServer  = 3;
+    ToBeChecked     = 4;
 }
 
 message BootNatRegReq {
