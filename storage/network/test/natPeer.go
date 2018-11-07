@@ -26,7 +26,8 @@ var natServerAddr = &net.UDPAddr{
 
 func NewPeer() *NatPeer {
 
-	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "47.52.172.234:8001")
+	//47.52.172.234
+	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
