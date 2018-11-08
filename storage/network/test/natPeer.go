@@ -19,11 +19,6 @@ type NatPeer struct {
 	p2pConn     net.PacketConn
 }
 
-var natServerAddr = &net.UDPAddr{
-	IP:   net.ParseIP("47.52.172.234"),
-	Port: NatServerTestPort,
-}
-
 func NewPeer() *NatPeer {
 
 	//47.52.172.234
