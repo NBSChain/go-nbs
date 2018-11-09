@@ -1,6 +1,9 @@
 package shareport
 
-import "net"
+import (
+	"net"
+	"syscall"
+)
 
 /*********************************************************************************
 *
@@ -8,33 +11,43 @@ import "net"
 *
 *********************************************************************************/
 
-func ResolveAddr(network, address string) (net.Addr, error) {
-	switch network {
-	default:
-		return nil, net.UnknownNetworkError(network)
-	case "ip", "ip4", "ip6":
-		return net.ResolveIPAddr(network, address)
-	case "tcp", "tcp4", "tcp6":
-		return net.ResolveTCPAddr(network, address)
-	case "udp", "udp4", "udp6":
-		return net.ResolveUDPAddr(network, address)
-	case "unix", "unixgram", "unixpacket":
-		return net.ResolveUnixAddr(network, address)
+func UDPAddrToSockaddr(network, addr string) (*syscall.SockaddrInet4, error) {
+
+	address, err := net.ResolveUDPAddr(network, addr)
+	if err != nil {
+		return nil, err
 	}
+
+	socket := &syscall.SockaddrInet4{
+		Port: address.Port,
+	}
+
+	if ipv4 := address.IP.To4(); ipv4 != nil {
+		socket.Addr = [4]byte{ipv4[0], ipv4[1], ipv4[2], ipv4[3]}
+	}
+
+	return socket, nil
 }
 
-func DialUDP(network, laddr, raddr string) (net.Conn, error) {
-	return nil, nil
+func DialUDP(network, laddr, raddr string) (conn net.PacketConn, err error) {
+
+	localAddress, err := UDPAddrToSockaddr(network, laddr)
+	if err != nil {
+		return nil, err
+	}
+	remoteAddress, err := UDPAddrToSockaddr(network, raddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return dial(localAddress, remoteAddress)
 }
 
-func ListenUDP(network, address string) (net.PacketConn, error) {
-	return nil, nil
-}
+func ListenUDP(network, addr string) (net.PacketConn, error) {
 
-func DialTCP(network, laddr, raddr string) (net.Conn, error) {
-	return nil, nil
-}
-
-func ListenTCP(network, address string) (net.Listener, error) {
-	return nil, nil
+	address, err := UDPAddrToSockaddr(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	return listenUDP(address)
 }
