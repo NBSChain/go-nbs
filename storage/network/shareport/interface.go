@@ -11,7 +11,7 @@ import (
 *
 *********************************************************************************/
 
-func UDPAddrToSockaddr(network, addr string) (*syscall.SockaddrInet4, error) {
+func UDPAddrToSockAddr(network, addr string) (*syscall.SockaddrInet4, error) {
 
 	address, err := net.ResolveUDPAddr(network, addr)
 	if err != nil {
@@ -29,13 +29,13 @@ func UDPAddrToSockaddr(network, addr string) (*syscall.SockaddrInet4, error) {
 	return socket, nil
 }
 
-func DialUDP(network, laddr, raddr string) (conn net.PacketConn, err error) {
+func DialUDP(network, laddr, raddr string) (conn net.Conn, err error) {
 
-	localAddress, err := UDPAddrToSockaddr(network, laddr)
+	localAddress, err := UDPAddrToSockAddr(network, laddr)
 	if err != nil {
 		return nil, err
 	}
-	remoteAddress, err := UDPAddrToSockaddr(network, raddr)
+	remoteAddress, err := UDPAddrToSockAddr(network, raddr)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func DialUDP(network, laddr, raddr string) (conn net.PacketConn, err error) {
 
 func ListenUDP(network, addr string) (net.PacketConn, error) {
 
-	address, err := UDPAddrToSockaddr(network, addr)
+	address, err := UDPAddrToSockAddr(network, addr)
 	if err != nil {
 		return nil, err
 	}

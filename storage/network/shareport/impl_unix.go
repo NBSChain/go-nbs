@@ -67,15 +67,29 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	return fdToPacketConn(fd)
 }
 
-func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.PacketConn, error) {
+func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	fd, err := socket(localAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := syscall.Connect(fd, remoteAddr); err != nil {
+		syscall.Close(fd)
 		return nil, err
 	}
 
-	return fdToPacketConn(fd)
+	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
+	conn, err := net.FileConn(file)
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+
+	if err = file.Close(); err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	return conn, nil
+
 }
