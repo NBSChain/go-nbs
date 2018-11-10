@@ -1,4 +1,4 @@
-// +build darwin freebsd dragonfly netbsd openbsd linux
+// +build linux
 
 package shareport
 
