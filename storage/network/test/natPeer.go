@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
-	"github.com/libp2p/go-reuseport"
 	"net"
 	"os"
 	"strconv"
@@ -22,7 +22,7 @@ type NatPeer struct {
 func NewPeer() *NatPeer {
 
 	//47.52.172.234//52.8.190.235
-	c, err := reuseport.Dial("udp4", "0.0.0.0:0", "52.8.190.235:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "10.130.146.68:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func NewPeer() *NatPeer {
 
 	fmt.Println("dialed", c.LocalAddr(), c.RemoteAddr())
 
-	l, err := reuseport.ListenPacket("udp4", host+":"+port)
+	l, err := shareport.ListenUDP("udp4", host+":"+port)
 	if err != nil {
 		panic(err)
 	}
