@@ -6,9 +6,150 @@ import (
 	"os"
 	"strconv"
 	"syscall"
+	"time"
+	"unsafe"
 )
 
 const filePrefix = "windows_sharePort."
+
+type winShareConn struct {
+	fd         syscall.Handle
+	localAddr  *syscall.SockaddrInet4
+	remoteAddr *syscall.SockaddrInet4
+}
+
+func (winConn *winShareConn) Read(b []byte) (n int, err error) {
+	buffer := &syscall.WSABuf{
+		Len: uint32(len(b)),
+		Buf: &b[0],
+	}
+	dataReceived := uint32(0)
+	flags := uint32(0)
+	if err := syscall.WSARecv(winConn.fd, buffer, 1,
+		&dataReceived, &flags, nil, nil); err != nil {
+		return 0, err
+	}
+
+	return int(dataReceived), nil
+}
+func (winConn *winShareConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+
+	buffer := &syscall.WSABuf{
+		Len: uint32(len(p)),
+		Buf: &p[0],
+	}
+
+	dataReceived := uint32(n)
+	flags := uint32(0)
+	var asIp4 syscall.RawSockaddrInet4
+	fromAny := (*syscall.RawSockaddrAny)(unsafe.Pointer(&asIp4))
+	fromSize := int32(unsafe.Sizeof(asIp4))
+
+	err = syscall.WSARecvFrom(winConn.fd, buffer, 1,
+		&dataReceived, &flags, fromAny, &fromSize, nil, nil)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	addr = &net.UDPAddr{
+		IP:   net.IPv4(asIp4.Addr[0], asIp4.Addr[1], asIp4.Addr[2], asIp4.Addr[3]),
+		Port: int(asIp4.Port),
+	}
+
+	return n, addr, nil
+}
+
+func (winConn *winShareConn) Write(b []byte) (n int, err error) {
+
+	msgLen := uint32(len(b))
+	buffer := syscall.WSABuf{
+		Len: msgLen,
+		Buf: &b[0],
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	err = syscall.WSASend(winConn.fd, &buffer, 1,
+		&msgLen, 0, nil, nil)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(msgLen), nil
+}
+
+func (winConn *winShareConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+	msgLen := uint32(len(p))
+	buffer := syscall.WSABuf{
+		Len: msgLen,
+		Buf: &p[0],
+	}
+
+	host, port, err := net.SplitHostPort(addr.String())
+
+	portInt, err := strconv.Atoi(port)
+	to := &syscall.SockaddrInet4{
+		Port: portInt,
+		Addr: [4]byte{host[0], host[1], host[2], host[3]},
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	err = syscall.WSASendto(winConn.fd, &buffer, 1,
+		&msgLen, 0, to, nil, nil)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return int(msgLen), nil
+}
+
+func (winConn *winShareConn) Close() error {
+
+	if err := syscall.WSACleanup(); err != nil {
+		return err
+	}
+
+	if err := syscall.Closesocket(winConn.fd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (winConn *winShareConn) LocalAddr() net.Addr {
+	la := winConn.localAddr.Addr
+	addr := net.UDPAddr{
+		IP:   net.IPv4(la[0], la[1], la[2], la[3]),
+		Port: winConn.localAddr.Port,
+	}
+	return &addr
+}
+func (winConn *winShareConn) RemoteAddr() net.Addr {
+
+	ra := winConn.remoteAddr.Addr
+	addr := net.UDPAddr{
+		IP:   net.IPv4(ra[0], ra[1], ra[2], ra[3]),
+		Port: winConn.remoteAddr.Port,
+	}
+	return &addr
+}
+
+func (winConn *winShareConn) SetDeadline(t time.Time) error {
+	return nil
+}
+func (winConn *winShareConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+func (winConn *winShareConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
 
 func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
 
@@ -34,6 +175,11 @@ func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
 
 func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) {
 
+	var wsaData syscall.WSAData
+	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
+		return nil, err
+	}
+
 	fd, err := socket(localAddress)
 	if err != nil {
 		return nil, err
@@ -44,46 +190,36 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
-	conn, err := net.FileConn(file)
-	if err != nil {
-		file.Close()
-		return nil, err
-	}
-
-	if err = file.Close(); err != nil {
-		conn.Close()
-		return nil, err
-	}
-
-	return conn, nil
+	return newConn(fd, localAddress, remoteAddress), nil
 }
 
-func fdToPacketConn(fd syscall.Handle) (net.PacketConn, error) {
+func newConn(fd syscall.Handle, localAddr, remoteAddr *syscall.SockaddrInet4) *winShareConn {
 
-	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
-
-	packetConn, err := net.FilePacketConn(file)
-	if err != nil {
-		syscall.Close(fd)
-		return nil, err
+	winConn := &winShareConn{
+		fd:         fd,
+		localAddr:  localAddr,
+		remoteAddr: remoteAddr,
 	}
 
-	if err := file.Close(); err != nil {
-		syscall.Close(fd)
-		packetConn.Close()
-		return nil, err
-	}
+	return winConn
+}
 
-	return packetConn, nil
+func makeWord(low, high uint8) uint32 {
+	var ret uint16 = uint16(high)<<8 + uint16(low)
+	return uint32(ret)
 }
 
 func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
+
+	var wsaData syscall.WSAData
+	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
+		return nil, err
+	}
 
 	fd, err := socket(address)
 	if err != nil {
 		return nil, err
 	}
 
-	return fdToPacketConn(fd)
+	return newConn(fd, address, nil), nil
 }
