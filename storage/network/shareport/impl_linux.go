@@ -10,7 +10,7 @@ import (
 	"syscall"
 )
 
-const filePrefix = "sharePort."
+const filePrefix = "linux_sharePort."
 
 func socket(addr *syscall.SockaddrInet4) (int, error) {
 
