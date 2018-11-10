@@ -91,5 +91,4 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	return conn, nil
-
 }

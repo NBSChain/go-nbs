@@ -22,7 +22,7 @@ type NatPeer struct {
 func NewPeer() *NatPeer {
 
 	//47.52.172.234//52.8.190.235
-	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "10.130.146.68:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
