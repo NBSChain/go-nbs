@@ -190,6 +190,16 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
+	//if localAddress.Port == 0{
+	//	realLocal, err := syscall.Getsockname(fd)
+	//	if err != nil{
+	//		return nil, err
+	//	}
+	//
+	//	localAddress = realLocal.(*syscall.SockaddrInet4)
+	//	fmt.Printf("====%v:%d====\n",localAddress.Addr, localAddress.Port)
+	//}
+
 	return newConn(fd, localAddress, remoteAddress), nil
 }
 
