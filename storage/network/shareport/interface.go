@@ -31,10 +31,15 @@ func UDPAddrToSockAddr(network, addr string) (*syscall.SockaddrInet4, error) {
 
 func DialUDP(network, laddr, raddr string) (conn net.Conn, err error) {
 
-	localAddress, err := UDPAddrToSockAddr(network, laddr)
-	if err != nil {
-		return nil, err
+	var localAddress *syscall.SockaddrInet4
+
+	if laddr != "" {
+		localAddress, err = UDPAddrToSockAddr(network, laddr)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	remoteAddress, err := UDPAddrToSockAddr(network, raddr)
 	if err != nil {
 		return nil, err

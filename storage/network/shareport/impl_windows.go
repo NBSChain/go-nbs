@@ -151,6 +151,24 @@ func (winConn *winShareConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
+func getLocalAddr(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
+
+	realLocal, err := syscall.Getsockname(fd)
+	if err != nil {
+		fmt.Println("get sock name failed:", err)
+		return nil, err
+	} else {
+		switch realLocal.(type) {
+		case *syscall.SockaddrInet4:
+			address := realLocal.(*syscall.SockaddrInet4)
+			fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
+			return address, nil
+		default:
+			return nil, fmt.Errorf("only support udp4 right now")
+		}
+	}
+}
+
 func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
@@ -160,10 +178,6 @@ func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
 
 	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
 		return 0, os.NewSyscallError("setSocketOption", err)
-	}
-
-	if err := syscall.Bind(fd, addr); err != nil {
-		return 0, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
 	}
 
 	if err := syscall.SetNonblock(fd, true); err != nil {
@@ -190,15 +204,18 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	//if localAddress.Port == 0{
-	//	realLocal, err := syscall.Getsockname(fd)
-	//	if err != nil{
-	//		return nil, err
-	//	}
-	//
-	//	localAddress = realLocal.(*syscall.SockaddrInet4)
-	//	fmt.Printf("====%v:%d====\n",localAddress.Addr, localAddress.Port)
-	//}
+	if localAddress == nil {
+		addr, err := getLocalAddr(fd)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := syscall.Bind(fd, addr); err != nil {
+			return nil, err
+		}
+
+		localAddress = addr
+	}
 
 	return newConn(fd, localAddress, remoteAddress), nil
 }
@@ -229,6 +246,10 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	fd, err := socket(address)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := syscall.Bind(fd, address); err != nil {
+		return nil, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
 	}
 
 	return newConn(fd, address, nil), nil
