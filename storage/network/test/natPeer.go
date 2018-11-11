@@ -21,10 +21,7 @@ type NatPeer struct {
 
 func NewPeer() *NatPeer {
 
-	//47.52.172.234//52.8.190.235
-	//localIP := nat.ExternalIP()[0]
-	//c, err := shareport.DialUDP("udp4", localIP + ":7001", "52.8.190.235:8001")
-	c, err := shareport.DialUDP("udp4", "192.168.1.49:0", "47.52.172.234:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +37,8 @@ func NewPeer() *NatPeer {
 	}
 
 	fmt.Println("dialed", dialHost, c.RemoteAddr())
-	l, err := shareport.ListenUDP("udp4", dialHost)
+	//TIPS : on windows addr must be same as laddr of DialUDP when the ip part of laddr is 0.0.0.0
+	l, err := shareport.ListenUDP("udp4", "0.0.0.0:"+port)
 	if err != nil {
 		panic(err)
 	}
