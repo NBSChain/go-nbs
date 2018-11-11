@@ -18,6 +18,16 @@ type winShareConn struct {
 	remoteAddr *syscall.SockaddrInet4
 }
 
+func init() {
+
+	var wsaData syscall.WSAData
+	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(wsaData)
+	}
+}
+
 func (winConn *winShareConn) Read(b []byte) (n int, err error) {
 	buffer := &syscall.WSABuf{
 		Len: uint32(len(b)),
@@ -113,10 +123,6 @@ func (winConn *winShareConn) WriteTo(p []byte, addr net.Addr) (n int, err error)
 
 func (winConn *winShareConn) Close() error {
 
-	if err := syscall.WSACleanup(); err != nil {
-		return err
-	}
-
 	if err := syscall.Closesocket(winConn.fd); err != nil {
 		return err
 	}
@@ -189,15 +195,10 @@ func socket() (syscall.Handle, error) {
 }
 
 func addrIsAny(addr *syscall.SockaddrInet4) bool {
-	return addr.Port == 0 || addr.Addr == [4]byte{0, 0, 0, 0}
+	return addr.Port == 0 && addr.Addr == [4]byte{0, 0, 0, 0}
 }
 
 func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) {
-
-	var wsaData syscall.WSAData
-	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
-		return nil, err
-	}
 
 	fd, err := socket()
 	if err != nil {
@@ -216,13 +217,16 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	if isLocalAny {
-		addr, err := getLocalAddr(fd)
-		if err != nil {
-			return nil, err
-		}
-		localAddress = addr
-	}
+	getLocalAddr(fd)
+
+	//if isLocalAny {
+	//	addr, err := getLocalAddr(fd)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	fmt.Println(addr)
+	//	//localAddress = addr
+	//}
 
 	return newConn(fd, localAddress, remoteAddress), nil
 }
@@ -245,11 +249,6 @@ func makeWord(low, high uint8) uint32 {
 
 func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 
-	var wsaData syscall.WSAData
-	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
-		return nil, err
-	}
-
 	fd, err := socket()
 	if err != nil {
 		return nil, err
@@ -258,6 +257,8 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	if err := syscall.Bind(fd, address); err != nil {
 		return nil, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
 	}
+
+	getLocalAddr(fd)
 
 	return newConn(fd, address, nil), nil
 }
