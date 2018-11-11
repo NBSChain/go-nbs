@@ -199,25 +199,22 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	if localAddress.Port != 0 && localAddress.Addr != [4]byte{0, 0, 0, 0} {
-		if err := syscall.Bind(fd, localAddress); err != nil {
-			return nil, err
-		}
+	if err := syscall.Bind(fd, localAddress); err != nil {
+		return nil, err
+	}
+	addr, err := getLocalAddr(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	if localAddress.Addr != addr.Addr || localAddress.Port != addr.Port {
+		localAddress.Port = addr.Port
+		localAddress.Addr = addr.Addr
 	}
 
 	if err := syscall.Connect(fd, remoteAddress); err != nil {
 		syscall.Close(fd)
 		return nil, err
-	}
-
-	getLocalAddr(fd)
-
-	if localAddress.Port == 0 || localAddress.Addr == [4]byte{0, 0, 0, 0} {
-		addr, err := getLocalAddr(fd)
-		if err != nil {
-			return nil, err
-		}
-		localAddress = addr
 	}
 
 	return newConn(fd, localAddress, remoteAddress), nil
@@ -249,8 +246,6 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	if err := syscall.Bind(fd, address); err != nil {
 		return nil, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
 	}
-
-	getLocalAddr(fd)
 
 	return newConn(fd, address, nil), nil
 }
