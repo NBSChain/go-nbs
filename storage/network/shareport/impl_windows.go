@@ -23,6 +23,7 @@ func (winConn *winShareConn) Read(b []byte) (n int, err error) {
 		Len: uint32(len(b)),
 		Buf: &b[0],
 	}
+
 	dataReceived := uint32(0)
 	flags := uint32(0)
 	if err := syscall.WSARecv(winConn.fd, buffer, 1,
@@ -169,7 +170,7 @@ func getLocalAddr(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
 	}
 }
 
-func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
+func socket() (syscall.Handle, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
@@ -187,6 +188,10 @@ func socket(addr *syscall.SockaddrInet4) (syscall.Handle, error) {
 	return fd, nil
 }
 
+func addrIsAny(addr *syscall.SockaddrInet4) bool {
+	return addr.Port == 0 || addr.Addr == [4]byte{0, 0, 0, 0}
+}
+
 func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) {
 
 	var wsaData syscall.WSAData
@@ -194,9 +199,16 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	fd, err := socket(localAddress)
+	fd, err := socket()
 	if err != nil {
 		return nil, err
+	}
+
+	isLocalAny := addrIsAny(localAddress)
+	if !isLocalAny {
+		if err := syscall.Bind(fd, localAddress); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := syscall.Connect(fd, remoteAddress); err != nil {
@@ -204,16 +216,11 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	if localAddress == nil {
+	if isLocalAny {
 		addr, err := getLocalAddr(fd)
 		if err != nil {
 			return nil, err
 		}
-
-		if err := syscall.Bind(fd, addr); err != nil {
-			return nil, err
-		}
-
 		localAddress = addr
 	}
 
@@ -243,7 +250,7 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 		return nil, err
 	}
 
-	fd, err := socket(address)
+	fd, err := socket()
 	if err != nil {
 		return nil, err
 	}

@@ -24,12 +24,13 @@ func NewPeer() *NatPeer {
 	//47.52.172.234//52.8.190.235
 	//localIP := nat.ExternalIP()[0]
 	//c, err := shareport.DialUDP("udp4", localIP + ":7001", "52.8.190.235:8001")
-	c, err := shareport.DialUDP("udp4", "", "52.8.190.235:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
 
-	host, port, _ := net.SplitHostPort(c.LocalAddr().String())
+	dialHost := c.LocalAddr().String()
+	host, port, _ := net.SplitHostPort(dialHost)
 
 	client := &NatPeer{
 		conn:        c,
@@ -38,9 +39,9 @@ func NewPeer() *NatPeer {
 		privatePort: port,
 	}
 
-	fmt.Println("dialed", c.LocalAddr(), c.RemoteAddr())
+	fmt.Println("dialed", dialHost, c.RemoteAddr())
 
-	l, err := shareport.ListenUDP("udp4", host+":"+port)
+	l, err := shareport.ListenUDP("udp4", dialHost)
 	if err != nil {
 		panic(err)
 	}
