@@ -192,10 +192,6 @@ func socket() (syscall.Handle, error) {
 	return fd, nil
 }
 
-func addrIsAny(addr *syscall.SockaddrInet4) bool {
-	return addr.Port == 0 && addr.Addr == [4]byte{0, 0, 0, 0}
-}
-
 func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) {
 
 	fd, err := socket()
@@ -203,8 +199,7 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 		return nil, err
 	}
 
-	isLocalAny := addrIsAny(localAddress)
-	if !isLocalAny {
+	if localAddress.Port != 0 && localAddress.Addr != [4]byte{0, 0, 0, 0} {
 		if err := syscall.Bind(fd, localAddress); err != nil {
 			return nil, err
 		}
@@ -217,14 +212,13 @@ func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) 
 
 	getLocalAddr(fd)
 
-	//if isLocalAny {
-	//	addr, err := getLocalAddr(fd)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	fmt.Println(addr)
-	//	//localAddress = addr
-	//}
+	if localAddress.Port == 0 || localAddress.Addr == [4]byte{0, 0, 0, 0} {
+		addr, err := getLocalAddr(fd)
+		if err != nil {
+			return nil, err
+		}
+		localAddress = addr
+	}
 
 	return newConn(fd, localAddress, remoteAddress), nil
 }
