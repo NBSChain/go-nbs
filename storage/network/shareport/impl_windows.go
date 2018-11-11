@@ -23,8 +23,6 @@ func init() {
 	var wsaData syscall.WSAData
 	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
 		fmt.Println(err)
-	} else {
-		fmt.Println(wsaData)
 	}
 }
 

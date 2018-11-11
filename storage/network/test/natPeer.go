@@ -24,7 +24,7 @@ func NewPeer() *NatPeer {
 	//47.52.172.234//52.8.190.235
 	//localIP := nat.ExternalIP()[0]
 	//c, err := shareport.DialUDP("udp4", localIP + ":7001", "52.8.190.235:8001")
-	c, err := shareport.DialUDP("udp4", "192.168.1.49:7001", "52.8.190.235:8001")
+	c, err := shareport.DialUDP("udp4", "192.168.1.49:7001", "47.52.172.234:8001")
 	if err != nil {
 		panic(err)
 	}
