@@ -16,13 +16,18 @@ type NatPeer struct {
 	conn        *net.UDPConn
 	privateIP   string
 	privatePort string
-	p2pConn     *net.UDPConn
-	isApplier   bool
+	//p2pConn     *net.UDPConn
+	isApplier bool
+}
+
+var hostAddress = &net.UDPAddr{
+	IP:   net.ParseIP("52.8.190.235"),
+	Port: 8001,
 }
 
 func NewPeer() *NatPeer {
 
-	c, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
+	c, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
 	if err != nil {
 		panic(err)
 	}
@@ -39,12 +44,12 @@ func NewPeer() *NatPeer {
 
 	fmt.Println("dialed", dialHost, c.RemoteAddr())
 
-	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
-	if err != nil {
-		fmt.Println("********************dial share port failed:-> ", err)
-		panic(err)
-	}
-	client.p2pConn = l
+	//l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
+	//if err != nil {
+	//	fmt.Println("********************dial share port failed:-> ", err)
+	//	panic(err)
+	//}
+	//client.p2pConn = l
 	return client
 }
 
@@ -68,15 +73,15 @@ func (peer *NatPeer) runLoop() {
 
 	for {
 
-		peer.conn.SetDeadline(time.Now().Add(time.Second * 10))
+		peer.conn.SetDeadline(time.Now().Add(time.Second * 5))
 
-		if no, err := peer.conn.Write(requestData); err != nil || no == 0 {
+		if no, err := peer.conn.WriteTo(requestData, hostAddress); err != nil || no == 0 {
 			fmt.Println("failed to send nat request to natServer ", err, no)
 			continue
 		}
 
 		responseData := make([]byte, 2048)
-		hasRead, err := peer.conn.Read(responseData)
+		hasRead, peerAddr, err := peer.conn.ReadFrom(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
 			continue
@@ -88,7 +93,7 @@ func (peer *NatPeer) runLoop() {
 			continue
 		}
 
-		fmt.Println(response)
+		fmt.Println("----->", peerAddr, response)
 
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
@@ -118,7 +123,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		panic(err)
 	}
 
-	if _, err := peer.conn.Write(requestData); err != nil {
+	if _, err := peer.conn.WriteTo(requestData, hostAddress); err != nil {
 		panic(err)
 	}
 }
@@ -148,12 +153,12 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 	for {
 		var no int
 
-		if no, err = peer.p2pConn.Write(data); err != nil || no == 0 {
+		if no, err = peer.conn.WriteTo(data, peerAddr); err != nil || no == 0 {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
 
-		fmt.Println("\n\n********************write data len:->", no, peer.p2pConn.LocalAddr().String(), peerAddr)
+		fmt.Println("\n\n********************write data len:->", no, peerAddr)
 
 		if peer.isApplier {
 			go peer.p2pReader()
@@ -176,9 +181,9 @@ func (peer *NatPeer) p2pReader() {
 
 		readBuff := make([]byte, 2048)
 
-		//peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
+		peer.conn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
-		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
+		hasRead, peerAddr, err := peer.conn.ReadFrom(readBuff)
 		if err != nil {
 			fmt.Println("****************reading from:->", err, peerAddr)
 			continue
