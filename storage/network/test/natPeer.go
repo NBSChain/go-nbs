@@ -12,12 +12,12 @@ import (
 )
 
 type NatPeer struct {
-	peerID      string
-	conn        net.Conn
-	privateIP   string
-	privatePort string
-	p2pConn     net.PacketConn
-	isApplier   bool
+	peerID       string
+	conn         net.Conn
+	privateIP    string
+	privatePort  string
+	p2pConn      net.PacketConn
+	p2pReadingOk bool
 }
 
 func NewPeer() *NatPeer {
@@ -101,8 +101,6 @@ func (peer *NatPeer) runLoop() {
 
 func (peer *NatPeer) punchAHole(targetId string) {
 
-	peer.isApplier = true
-
 	inviteRequest := &nat_pb.NatConReq{
 		FromPeerId: peer.peerID,
 		ToPeerId:   targetId,
@@ -145,7 +143,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		Port: dstPort,
 	}
 
-	go peer.p2pReader()
+	go peer.p2pReader(data)
 
 	for {
 		var no int
@@ -159,15 +157,16 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 		fmt.Println("\n\n********************write data len:->", no, peer.p2pConn.LocalAddr().String(), peerAddr)
 
+		if peer.p2pReadingOk == true {
+			fmt.Println("\n ************* I'm going to have a rest.")
+			break
+		}
 	}
 }
 
-func (peer *NatPeer) p2pReader() {
+func (peer *NatPeer) p2pReader(data []byte) {
 
 	for {
-
-		time.Sleep(time.Second * 4)
-
 		fmt.Println("********************start reading********************")
 
 		readBuff := make([]byte, 2048)
@@ -187,6 +186,15 @@ func (peer *NatPeer) p2pReader() {
 		proto.Unmarshal(readBuff[:hasRead], holeMsg)
 
 		fmt.Println("********************unmarshal:->", holeMsg)
+
+		peer.p2pReadingOk = true
+
+		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
+			fmt.Println("********************using new conn to write:-> ", err, no)
+			continue
+		} else {
+			fmt.Println("**********write success in new conn:")
+		}
 	}
 }
 
