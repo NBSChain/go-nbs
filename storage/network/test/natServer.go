@@ -62,7 +62,7 @@ func (s *NatServer) Processing() {
 			continue
 		}
 
-		fmt.Println("get nat request from client:", request)
+		fmt.Println("\nNat request:->", request)
 
 		if request.MsgType == nat_pb.NatMsgType_BootStrapReg {
 			s.answerKA(peerAddr, request.BootRegReq)
@@ -85,6 +85,8 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 
 	if host == request.PrivateIp {
 		resKA.NatType = nat_pb.NatType_NoNatDevice
+		resKA.PublicIp = host
+		resKA.PublicPort = port
 	} else {
 		resKA.NatType = nat_pb.NatType_BehindNat
 		resKA.PublicIp = host
@@ -103,8 +105,6 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 		return fmt.Errorf(err.Error())
 	}
 
-	fmt.Println("------response data len:----->", len(responseData))
-
 	item := &NatCacheItem{
 		PeerId:      request.NodeId,
 		PublicIp:    resKA.PublicIp,
@@ -113,6 +113,8 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 		PrivatePort: request.PrivatePort,
 		updateTime:  time.Now(),
 	}
+
+	fmt.Println("Nat item cached:->", item)
 
 	s.natCache[item.PeerId] = item
 
