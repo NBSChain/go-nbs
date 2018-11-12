@@ -148,7 +148,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 	for {
 		var no int
 
-		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
+		if no, err = peer.p2pConn.Write(data); err != nil || no == 0 {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
@@ -178,13 +178,13 @@ func (peer *NatPeer) p2pReader() {
 
 		//peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
-		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
+		hasRead, err := peer.p2pConn.Read(readBuff)
 		if err != nil {
 			fmt.Println("****************reading from:->", err)
 			continue
 		}
 
-		fmt.Println("****************has read :->", hasRead, peerAddr)
+		fmt.Println("****************has read :->", hasRead)
 
 		holeMsg := &nat_pb.Response{}
 
