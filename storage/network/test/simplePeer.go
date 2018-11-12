@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"syscall"
 	"time"
 )
 
@@ -18,22 +16,6 @@ func NewSimplePeer() *SimplePeer {
 	return &SimplePeer{}
 }
 
-func sharePort(network, address string, rawConn syscall.RawConn) error {
-	fn := func(s uintptr) {
-		if err := syscall.SetsockoptInt(syscall.Handle(s), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-			panic(err)
-		}
-		if err := syscall.SetNonblock(syscall.Handle(s), true); err != nil {
-			panic(err)
-		}
-	}
-	if err := rawConn.Control(fn); err != nil {
-		panic(err)
-	}
-
-	return nil
-}
-
 func (peer *SimplePeer) probe() error {
 
 	conn, err := shareport.DialUDP("udp4", "192.168.30.12:7001", "192.168.103.155:8001")
@@ -41,11 +23,7 @@ func (peer *SimplePeer) probe() error {
 		panic(err)
 	}
 
-	lc := &net.ListenConfig{
-		Control: sharePort,
-	}
-
-	_, err = lc.ListenPacket(context.Background(), "udp4", "192.168.30.12:7001")
+	_, err = shareport.ListenUDP("udp4", "192.168.30.12:7001")
 	if err != nil {
 		panic(err)
 	}
