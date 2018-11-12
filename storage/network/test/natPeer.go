@@ -13,10 +13,10 @@ import (
 
 type NatPeer struct {
 	peerID      string
-	conn        net.Conn
+	conn        *net.UDPConn
 	privateIP   string
 	privatePort string
-	p2pConn     net.PacketConn
+	p2pConn     *net.UDPConn
 	isApplier   bool
 }
 
@@ -37,13 +37,14 @@ func NewPeer() *NatPeer {
 		privatePort: port,
 	}
 
-	fmt.Println("dialed", dialHost, c.RemoteAddr())
-
 	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
 	if err != nil {
 		panic(err)
 	}
+
 	client.p2pConn = l
+
+	fmt.Println("dialed", dialHost, c.RemoteAddr())
 
 	return client
 }
