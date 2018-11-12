@@ -11,6 +11,10 @@ import (
 *
 *********************************************************************************/
 
+const AddrInet4AnyPort = 0
+
+var AddrInet4AnyIp = [4]byte{0, 0, 0, 0}
+
 func UDPAddrToSockAddr(network, addr string) (*syscall.SockaddrInet4, error) {
 
 	address, err := net.ResolveUDPAddr(network, addr)

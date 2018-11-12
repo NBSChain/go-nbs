@@ -11,9 +11,6 @@ import (
 )
 
 const filePrefix = "windows_sharePort."
-const AddrInet4AnyPort = 0
-
-var AddrInet4AnyIp = [4]byte{0, 0, 0, 0}
 
 type winShareConn struct {
 	fd         syscall.Handle
@@ -165,15 +162,17 @@ func getLocalAddr(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
 	if err != nil {
 		fmt.Println("get sock name failed:", err)
 		return nil, err
-	} else {
-		switch realLocal.(type) {
-		case *syscall.SockaddrInet4:
-			address := realLocal.(*syscall.SockaddrInet4)
-			fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
-			return address, nil
-		default:
-			return nil, fmt.Errorf("only support udp4 right now")
-		}
+	}
+
+	switch realLocal.(type) {
+
+	case *syscall.SockaddrInet4:
+		address := realLocal.(*syscall.SockaddrInet4)
+		fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
+		return address, nil
+
+	default:
+		return nil, fmt.Errorf("only support udp4 right now")
 	}
 }
 
@@ -181,53 +180,53 @@ func socket() (syscall.Handle, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
-		return 0, err
+		return 0, os.NewSyscallError("Socket", err)
 	}
 
 	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
 		return 0, os.NewSyscallError("setSocketOption", err)
 	}
 
+	if err := syscall.Bind(fd, localAddress); err != nil {
+		return 0, os.NewSyscallError("Bind", err)
+	}
+
 	if err := syscall.SetNonblock(fd, true); err != nil {
-		return 0, fmt.Errorf("set noblock flag to file descrition error=%s", err.Error())
+		return 0, os.NewSyscallError("SetNonblock", err)
 	}
 
 	return fd, nil
 }
 
-func dial(localAddress, remoteAddress *syscall.SockaddrInet4) (net.Conn, error) {
+func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 
 	fd, err := socket()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, localAddress); err != nil {
-		return nil, err
-	}
-
-	if localAddress.Port == AddrInet4AnyPort {
+	if localAddr.Port == AddrInet4AnyPort {
 		addr, err := getLocalAddr(fd)
 		if err != nil {
 			return nil, err
 		}
-		localAddress.Port = addr.Port
+		localAddr.Port = addr.Port
 	}
 
-	if err := syscall.Connect(fd, remoteAddress); err != nil {
+	if err := syscall.Connect(fd, remoteAddr); err != nil {
 		syscall.Close(fd)
 		return nil, err
 	}
 
-	if localAddress.Addr == AddrInet4AnyIp {
+	if localAddr.Addr == AddrInet4AnyIp {
 		addr, err := getLocalAddr(fd)
 		if err != nil {
 			return nil, err
 		}
-		localAddress.Addr = addr.Addr
+		localAddr.Addr = addr.Addr
 	}
 
-	return newConn(fd, localAddress, remoteAddress), nil
+	return newConn(fd, localAddr, remoteAddr), nil
 }
 
 func newConn(fd syscall.Handle, localAddr, remoteAddr *syscall.SockaddrInet4) *winShareConn {

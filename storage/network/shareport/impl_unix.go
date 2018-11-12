@@ -16,7 +16,7 @@ func socket(addr *syscall.SockaddrInet4) (int, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
-		return 0, err
+		return 0, os.NewSyscallError("Socket", err)
 	}
 
 	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
@@ -28,11 +28,11 @@ func socket(addr *syscall.SockaddrInet4) (int, error) {
 	}
 
 	if err := syscall.Bind(fd, addr); err != nil {
-		return 0, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
+		return 0, os.NewSyscallError("Bind", err)
 	}
 
 	if err := syscall.SetNonblock(fd, true); err != nil {
-		return 0, fmt.Errorf("set noblock flag to file descrition error=%s", err.Error())
+		return 0, os.NewSyscallError("SetNonblock", err)
 	}
 
 	return fd, nil
@@ -67,17 +67,25 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	return fdToPacketConn(fd)
 }
 
-func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
-	fd, err := socket(localAddr)
+func getLocalAddr(fd int) (*syscall.SockaddrInet4, error) {
+
+	realLocal, err := syscall.Getsockname(fd)
 	if err != nil {
+		fmt.Println("get sock name failed:", err)
 		return nil, err
 	}
 
-	if err := syscall.Connect(fd, remoteAddr); err != nil {
-		syscall.Close(fd)
-		return nil, err
+	switch realLocal.(type) {
+	case *syscall.SockaddrInet4:
+		address := realLocal.(*syscall.SockaddrInet4)
+		fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
+		return address, nil
+	default:
+		return nil, fmt.Errorf("only support udp4 right now")
 	}
+}
 
+func fdToConn(fd int) (net.Conn, error) {
 	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
 	conn, err := net.FileConn(file)
 	if err != nil {
@@ -91,4 +99,35 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	return conn, nil
+}
+
+func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
+
+	fd, err := socket(localAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if localAddr.Port == AddrInet4AnyPort {
+		addr, err := getLocalAddr(fd)
+		if err != nil {
+			return nil, err
+		}
+		localAddr.Port = addr.Port
+	}
+
+	if err := syscall.Connect(fd, remoteAddr); err != nil {
+		syscall.Close(fd)
+		return nil, err
+	}
+
+	if localAddr.Addr == AddrInet4AnyIp {
+		addr, err := getLocalAddr(fd)
+		if err != nil {
+			return nil, err
+		}
+		localAddr.Addr = addr.Addr
+	}
+
+	return fdToConn(fd)
 }

@@ -3,7 +3,6 @@
 package shareport
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -16,7 +15,7 @@ func socket(addr *syscall.SockaddrInet4) (int, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
-		return 0, err
+		return 0, os.NewSyscallError("Socket", err)
 	}
 
 	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
@@ -24,11 +23,11 @@ func socket(addr *syscall.SockaddrInet4) (int, error) {
 	}
 
 	if err := syscall.Bind(fd, addr); err != nil {
-		return 0, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
+		return 0, os.NewSyscallError("Bind", err)
 	}
 
 	if err := syscall.SetNonblock(fd, true); err != nil {
-		return 0, fmt.Errorf("set noblock flag to file descrition error=%s", err.Error())
+		return 0, os.NewSyscallError("SetNonblock", err)
 	}
 
 	return fd, nil
