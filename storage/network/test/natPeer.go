@@ -128,7 +128,8 @@ func (peer *NatPeer) punchAHole(targetId string) {
 func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 	if !peer.isApplier {
-		time.Sleep(1 * time.Second)
+		time.Sleep(3 * time.Second)
+		fmt.Println("I will send data later....")
 	}
 
 	holeMsg := &nat_pb.Response{
@@ -151,12 +152,8 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		Port: dstPort,
 	}
 
-	go peer.p2pReader()
-
 	for {
 		var no int
-
-		time.Sleep(3 * time.Second)
 
 		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
@@ -165,35 +162,33 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 		fmt.Println("\n\n********************write data len:->", no, peer.p2pConn.LocalAddr().String(), peerAddr)
 
+		peer.p2pReader()
 	}
+
+	fmt.Println("===================>failed")
 }
 
 func (peer *NatPeer) p2pReader() {
 
-	for {
+	fmt.Println("********************start reading********************")
 
-		time.Sleep(time.Second * 4)
+	readBuff := make([]byte, 2048)
 
-		fmt.Println("********************start reading********************")
+	peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
-		readBuff := make([]byte, 2048)
-
-		peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
-
-		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
-		if err != nil {
-			fmt.Println("****************reading from:->", err)
-			continue
-		}
-
-		fmt.Println("****************has read :->", hasRead, peerAddr)
-
-		holeMsg := &nat_pb.Response{}
-
-		proto.Unmarshal(readBuff[:hasRead], holeMsg)
-
-		fmt.Println("********************unmarshal:->", holeMsg)
+	hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
+	if err != nil {
+		fmt.Println("****************reading from:->", err)
+		return
 	}
+
+	fmt.Println("****************has read :->", hasRead, peerAddr)
+
+	holeMsg := &nat_pb.Response{}
+
+	proto.Unmarshal(readBuff[:hasRead], holeMsg)
+
+	fmt.Println("********************unmarshal:->", holeMsg)
 }
 
 func main() {
