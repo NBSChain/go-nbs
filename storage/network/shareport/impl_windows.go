@@ -57,9 +57,6 @@ func sharePort(network, address string, rawConn syscall.RawConn) (err error) {
 		if err = syscall.SetNonblock(syscall.Handle(s), true); err != nil {
 			return
 		}
-		if err = syscall.SetNonblock(syscall.Handle(s), true); err != nil {
-			return
-		}
 	}
 
 	if err != nil {

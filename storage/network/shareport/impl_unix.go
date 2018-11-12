@@ -3,136 +3,88 @@
 package shareport
 
 import (
-	"fmt"
-	"net"
-	"os"
-	"strconv"
 	"syscall"
 )
 
-const filePrefix = "unix_sharePort."
+func dial(network, localAddr, remoteAddr string) (*net.UDPConn, error) {
 
-func newShareSocket() (int, error) {
+	var localUdpAddr *net.UDPAddr
 
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
-	if err != nil {
-		return 0, os.NewSyscallError("Socket", err)
+	if localAddr != "" {
+
+		host, port, err := net.SplitHostPort(localAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		intPort, err := strconv.Atoi(port)
+		if err != nil {
+			return nil, err
+		}
+
+		localUdpAddr = &net.UDPAddr{
+			Port: intPort,
+			IP:   net.ParseIP(host),
+		}
 	}
 
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-		return 0, os.NewSyscallError("setSocketOption", err)
+	d := &net.Dialer{
+		LocalAddr: localUdpAddr,
+		Control:   sharePort,
 	}
 
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1); err != nil {
-		return 0, os.NewSyscallError("setSocketOption", err)
-	}
-
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		return 0, os.NewSyscallError("SetNonblock", err)
-	}
-
-	return fd, nil
-}
-
-func fdToPacketConn(fd int) (net.PacketConn, error) {
-
-	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
-
-	packetConn, err := net.FilePacketConn(file)
-	if err != nil {
-		syscall.Close(fd)
-		return nil, err
-	}
-
-	if err := file.Close(); err != nil {
-		syscall.Close(fd)
-		packetConn.Close()
-		return nil, err
-	}
-
-	return packetConn, nil
-}
-
-func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
-
-	fd, err := newShareSocket()
+	c, err := d.Dial(network, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, address); err != nil {
-		return nil, os.NewSyscallError("Bind", err)
-	}
-
-	return fdToPacketConn(fd)
-}
-
-func getAddrByFD(fd int) (*syscall.SockaddrInet4, error) {
-
-	realLocal, err := syscall.Getsockname(fd)
-	if err != nil {
-		fmt.Println("get sock name failed:", err)
-		return nil, err
-	}
-
-	switch realLocal.(type) {
-	case *syscall.SockaddrInet4:
-		address := realLocal.(*syscall.SockaddrInet4)
-		fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
-		return address, nil
-	default:
-		return nil, fmt.Errorf("only support udp4 right now")
-	}
-}
-
-func fdToConn(fd int) (net.Conn, error) {
-
-	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
-	conn, err := net.FileConn(file)
-	if err != nil {
-		file.Close()
-		return nil, err
-	}
-
-	if err = file.Close(); err != nil {
-		conn.Close()
-		return nil, err
+	conn, ok := c.(*net.UDPConn)
+	if !ok {
+		return nil, fmt.Errorf("not a udp connection")
 	}
 
 	return conn, nil
 }
 
-func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
+func sharePort(network, address string, rawConn syscall.RawConn) (err error) {
 
-	fd, err := newShareSocket()
+	fn := func(s uintptr) {
+		if err = syscall.SetsockoptInt(int(s), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+			return
+		}
+		if err = syscall.SetsockoptInt(int(s), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1); err != nil {
+			return
+		}
+		if err = syscall.SetNonblock(int(s), true); err != nil {
+			return
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	if err = rawConn.Control(fn); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func listenUDP(network, address string) (*net.UDPConn, error) {
+
+	lc := &net.ListenConfig{
+		Control: sharePort,
+	}
+
+	c, err := lc.ListenPacket(context.Background(), network, address)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, localAddr); err != nil {
-		return nil, os.NewSyscallError("Bind", err)
+	conn, ok := c.(*net.UDPConn)
+	if !ok {
+		return nil, ENotSupported
 	}
 
-	if localAddr.Port == AddrInet4AnyPort {
-		addr, err := getAddrByFD(fd)
-		if err != nil {
-			return nil, err
-		}
-		localAddr.Port = addr.Port
-	}
-
-	if err := syscall.Connect(fd, remoteAddr); err != nil {
-		syscall.Close(fd)
-		return nil, err
-	}
-
-	if localAddr.Addr == AddrInet4AnyIp {
-		addr, err := getAddrByFD(fd)
-		if err != nil {
-			return nil, err
-		}
-		localAddr.Addr = addr.Addr
-	}
-
-	return fdToConn(fd)
+	return conn, nil
 }
