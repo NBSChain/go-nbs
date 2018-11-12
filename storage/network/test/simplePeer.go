@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"syscall"
@@ -35,25 +36,16 @@ func sharePort(network, address string, rawConn syscall.RawConn) error {
 
 func (peer *SimplePeer) probe() error {
 
-	lc := &net.ListenConfig{
-		Control: sharePort,
-	}
-
-	_, err := lc.ListenPacket(context.Background(), "udp4", "0.0.0.0:7001")
+	conn, err := shareport.DialUDP("udp4", "192.168.30.12:7001", "192.168.103.155:8001")
 	if err != nil {
 		panic(err)
 	}
 
-	d := &net.Dialer{
-		Timeout: time.Second * 20,
-		LocalAddr: &net.UDPAddr{
-			Port: 7001,
-		},
+	lc := &net.ListenConfig{
 		Control: sharePort,
 	}
 
-	conn, err := d.Dial("udp4", "192.168.103.155:8001")
-
+	_, err = lc.ListenPacket(context.Background(), "udp4", "192.168.30.12:7001")
 	if err != nil {
 		panic(err)
 	}
@@ -94,15 +86,14 @@ func (peer *SimplePeer) probe() error {
 	return nil
 }
 
-func read(conn net.Conn) {
+func read(conn *net.UDPConn) {
 
 	time.Sleep(time.Second * 2)
 
 	for {
-
 		conn.SetReadDeadline(time.Now().Add(time.Second * 5))
 		responseData := make([]byte, 2048)
-		hasRead, err := conn.Read(responseData)
+		hasRead, addr, err := conn.ReadFrom(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
 			continue
@@ -114,6 +105,6 @@ func read(conn net.Conn) {
 			continue
 		}
 
-		fmt.Println("=======response=>", response)
+		fmt.Println("=======response=>", response, addr)
 	}
 }

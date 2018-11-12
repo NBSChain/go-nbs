@@ -1,6 +1,7 @@
 package shareport
 
 import (
+	"errors"
 	"net"
 	"syscall"
 )
@@ -11,7 +12,7 @@ import (
 *
 *********************************************************************************/
 
-const AddrInet4AnyPort = 0
+var ENotSupported = errors.New("we only support udp4 right now")
 
 var AddrInet4AnyIp = [4]byte{0, 0, 0, 0}
 
@@ -33,26 +34,11 @@ func UDPAddrToSockAddr(network, addr string) (*syscall.SockaddrInet4, error) {
 	return socket, nil
 }
 
-func DialUDP(network, laddr, raddr string) (conn net.Conn, err error) {
+func DialUDP(network, localAddr, remoteAddr string) (conn *net.UDPConn, err error) {
 
-	remoteAddress, err := UDPAddrToSockAddr(network, raddr)
-	if err != nil {
-		return nil, err
-	}
-
-	localAddress, err := UDPAddrToSockAddr(network, laddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return dial(localAddress, remoteAddress)
+	return dial(network, localAddr, remoteAddr)
 }
 
-func ListenUDP(network, addr string) (net.PacketConn, error) {
-
-	address, err := UDPAddrToSockAddr(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	return listenUDP(address)
+func ListenUDP(network, addr string) (*net.UDPConn, error) {
+	return listenUDP(network, addr)
 }

@@ -1,260 +1,84 @@
 package shareport
 
 import (
+	"context"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"syscall"
-	"time"
-	"unsafe"
 )
 
-const filePrefix = "windows_sharePort."
+func dial(network, localAddr, remoteAddr string) (*net.UDPConn, error) {
 
-type winShareConn struct {
-	fd         syscall.Handle
-	localAddr  *syscall.SockaddrInet4
-	remoteAddr *syscall.SockaddrInet4
-}
+	var localUdpAddr *net.UDPAddr
 
-func init() {
+	if localAddr != "" {
 
-	var wsaData syscall.WSAData
-	if err := syscall.WSAStartup(makeWord(2, 2), &wsaData); err != nil {
-		fmt.Println(err)
-	}
-}
-
-func (winConn *winShareConn) Read(b []byte) (n int, err error) {
-	buffer := &syscall.WSABuf{
-		Len: uint32(len(b)),
-		Buf: &b[0],
-	}
-
-	dataReceived := uint32(0)
-	flags := uint32(0)
-	if err := syscall.WSARecv(winConn.fd, buffer, 1,
-		&dataReceived, &flags, nil, nil); err != nil {
-		return 0, err
-	}
-
-	return int(dataReceived), nil
-}
-func (winConn *winShareConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
-
-	buffer := &syscall.WSABuf{
-		Len: uint32(len(p)),
-		Buf: &p[0],
-	}
-
-	dataReceived := uint32(n)
-	flags := uint32(0)
-	var asIp4 syscall.RawSockaddrInet4
-	fromAny := (*syscall.RawSockaddrAny)(unsafe.Pointer(&asIp4))
-	fromSize := int32(unsafe.Sizeof(asIp4))
-
-	err = syscall.WSARecvFrom(winConn.fd, buffer, 1,
-		&dataReceived, &flags, fromAny, &fromSize, nil, nil)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	addr = &net.UDPAddr{
-		IP:   net.IPv4(asIp4.Addr[0], asIp4.Addr[1], asIp4.Addr[2], asIp4.Addr[3]),
-		Port: int(asIp4.Port),
-	}
-
-	return n, addr, nil
-}
-
-func (winConn *winShareConn) Write(b []byte) (n int, err error) {
-
-	msgLen := uint32(len(b))
-	buffer := syscall.WSABuf{
-		Len: msgLen,
-		Buf: &b[0],
-	}
-
-	if err != nil {
-		return 0, err
-	}
-
-	err = syscall.WSASend(winConn.fd, &buffer, 1,
-		&msgLen, 0, nil, nil)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return int(msgLen), nil
-}
-
-func (winConn *winShareConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
-	msgLen := uint32(len(p))
-	buffer := syscall.WSABuf{
-		Len: msgLen,
-		Buf: &p[0],
-	}
-
-	host, port, err := net.SplitHostPort(addr.String())
-
-	portInt, err := strconv.Atoi(port)
-	to := &syscall.SockaddrInet4{
-		Port: portInt,
-		Addr: [4]byte{host[0], host[1], host[2], host[3]},
-	}
-
-	if err != nil {
-		return 0, err
-	}
-
-	err = syscall.WSASendto(winConn.fd, &buffer, 1,
-		&msgLen, 0, to, nil, nil)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return int(msgLen), nil
-}
-
-func (winConn *winShareConn) Close() error {
-
-	if err := syscall.Closesocket(winConn.fd); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (winConn *winShareConn) LocalAddr() net.Addr {
-	la := winConn.localAddr.Addr
-	addr := net.UDPAddr{
-		IP:   net.IPv4(la[0], la[1], la[2], la[3]),
-		Port: winConn.localAddr.Port,
-	}
-	return &addr
-}
-func (winConn *winShareConn) RemoteAddr() net.Addr {
-
-	ra := winConn.remoteAddr.Addr
-	addr := net.UDPAddr{
-		IP:   net.IPv4(ra[0], ra[1], ra[2], ra[3]),
-		Port: winConn.remoteAddr.Port,
-	}
-	return &addr
-}
-
-func (winConn *winShareConn) SetDeadline(t time.Time) error {
-	return nil
-}
-func (winConn *winShareConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-func (winConn *winShareConn) SetWriteDeadline(t time.Time) error {
-	return nil
-}
-
-func getAddrByFD(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
-
-	realLocal, err := syscall.Getsockname(fd)
-	if err != nil {
-		fmt.Println("get sock name failed:", err)
-		return nil, err
-	}
-
-	switch realLocal.(type) {
-
-	case *syscall.SockaddrInet4:
-		address := realLocal.(*syscall.SockaddrInet4)
-		fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
-		return address, nil
-
-	default:
-		return nil, fmt.Errorf("only support udp4 right now")
-	}
-}
-
-func newShareSocket() (syscall.Handle, error) {
-
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
-	if err != nil {
-		return 0, os.NewSyscallError("Socket", err)
-	}
-
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-		return 0, os.NewSyscallError("setSocketOption", err)
-	}
-
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		return 0, os.NewSyscallError("SetNonblock", err)
-	}
-
-	return fd, nil
-}
-
-func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
-
-	fd, err := newShareSocket()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := syscall.Bind(fd, localAddr); err != nil {
-		return nil, os.NewSyscallError("Bind", err)
-	}
-
-	if localAddr.Port == AddrInet4AnyPort {
-		addr, err := getAddrByFD(fd)
+		host, port, err := net.SplitHostPort(localAddr)
 		if err != nil {
 			return nil, err
 		}
-		localAddr.Port = addr.Port
-	}
 
-	if err := syscall.Connect(fd, remoteAddr); err != nil {
-		syscall.Close(fd)
-		return nil, err
-	}
-
-	if localAddr.Addr == AddrInet4AnyIp {
-		addr, err := getAddrByFD(fd)
+		intPort, err := strconv.Atoi(port)
 		if err != nil {
 			return nil, err
 		}
-		localAddr.Addr = addr.Addr
+
+		localUdpAddr = &net.UDPAddr{
+			Port: intPort,
+			IP:   net.ParseIP(host),
+		}
 	}
 
-	return newConn(fd, localAddr, remoteAddr), nil
-}
-
-func newConn(fd syscall.Handle, localAddr, remoteAddr *syscall.SockaddrInet4) *winShareConn {
-
-	winConn := &winShareConn{
-		fd:         fd,
-		localAddr:  localAddr,
-		remoteAddr: remoteAddr,
+	d := &net.Dialer{
+		LocalAddr: localUdpAddr,
+		Control:   sharePort,
 	}
 
-	return winConn
-}
-
-func makeWord(low, high uint8) uint32 {
-	var ret uint16 = uint16(high)<<8 + uint16(low)
-	return uint32(ret)
-}
-
-func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
-
-	fd, err := newShareSocket()
+	c, err := d.Dial(network, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, address); err != nil {
-		return nil, fmt.Errorf("bind newShareSocket to file descrition error=%s", err.Error())
+	conn, ok := c.(*net.UDPConn)
+	if !ok {
+		return nil, fmt.Errorf("not a udp connection")
 	}
 
-	return newConn(fd, address, nil), nil
+	return conn, nil
+}
+
+func sharePort(network, address string, rawConn syscall.RawConn) error {
+	fn := func(s uintptr) {
+		if err := syscall.SetsockoptInt(syscall.Handle(s), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+			panic(err)
+		}
+		if err := syscall.SetNonblock(syscall.Handle(s), true); err != nil {
+			panic(err)
+		}
+	}
+	if err := rawConn.Control(fn); err != nil {
+		panic(err)
+	}
+
+	return nil
+}
+
+func listenUDP(network, address string) (*net.UDPConn, error) {
+
+	lc := &net.ListenConfig{
+		Control: sharePort,
+	}
+
+	c, err := lc.ListenPacket(context.Background(), network, address)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, ok := c.(*net.UDPConn)
+	if !ok {
+		return nil, ENotSupported
+	}
+
+	return conn, nil
 }
