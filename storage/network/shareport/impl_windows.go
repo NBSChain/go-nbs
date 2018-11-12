@@ -176,7 +176,7 @@ func getLocalAddr(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
 	}
 }
 
-func socket() (syscall.Handle, error) {
+func newShareSocket() (syscall.Handle, error) {
 
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
@@ -200,7 +200,7 @@ func socket() (syscall.Handle, error) {
 
 func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 
-	fd, err := socket()
+	fd, err := newShareSocket()
 	if err != nil {
 		return nil, err
 	}
@@ -247,13 +247,13 @@ func makeWord(low, high uint8) uint32 {
 
 func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 
-	fd, err := socket()
+	fd, err := newShareSocket()
 	if err != nil {
 		return nil, err
 	}
 
 	if err := syscall.Bind(fd, address); err != nil {
-		return nil, fmt.Errorf("bind socket to file descrition error=%s", err.Error())
+		return nil, fmt.Errorf("bind newShareSocket to file descrition error=%s", err.Error())
 	}
 
 	getLocalAddr(fd)
