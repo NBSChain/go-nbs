@@ -17,11 +17,12 @@ type NatPeer struct {
 	privateIP   string
 	privatePort string
 	p2pConn     net.PacketConn
+	isApplier   bool
 }
 
 func NewPeer() *NatPeer {
 
-	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "192.168.103.155:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -100,7 +101,9 @@ func (peer *NatPeer) runLoop() {
 
 func (peer *NatPeer) punchAHole(targetId string) {
 
-	time.Sleep(5 * time.Second)
+	peer.isApplier = true
+
+	time.Sleep(2 * time.Second)
 
 	inviteRequest := &nat_pb.NatConReq{
 		FromPeerId: peer.peerID,
@@ -123,6 +126,10 @@ func (peer *NatPeer) punchAHole(targetId string) {
 }
 
 func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
+
+	if !peer.isApplier {
+		time.Sleep(1 * time.Second)
+	}
 
 	holeMsg := &nat_pb.Response{
 		MsgType: nat_pb.NatMsgType_Ping,
