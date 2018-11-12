@@ -39,6 +39,12 @@ func NewPeer() *NatPeer {
 
 	fmt.Println("dialed", dialHost, c.RemoteAddr())
 
+	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
+	if err != nil {
+		fmt.Println("********************dial share port failed:-> ", err)
+		panic(err)
+	}
+	client.p2pConn = l
 	return client
 }
 
@@ -139,12 +145,6 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		Port: dstPort,
 	}
 
-	peer.p2pConn, err = shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
-	if err != nil {
-		fmt.Println("********************dial share port failed:-> ", err)
-		return
-	}
-
 	for {
 		var no int
 
@@ -178,9 +178,9 @@ func (peer *NatPeer) p2pReader() {
 
 		//peer.p2pConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
-		hasRead, err := peer.p2pConn.Read(readBuff)
+		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
 		if err != nil {
-			fmt.Println("****************reading from:->", err)
+			fmt.Println("****************reading from:->", err, peerAddr)
 			continue
 		}
 
