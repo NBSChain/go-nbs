@@ -62,6 +62,24 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	return fdToPacketConn(fd)
 }
 
+func getAddrByFD(fd int) (*syscall.SockaddrInet4, error) {
+
+	realLocal, err := syscall.Getsockname(fd)
+	if err != nil {
+		fmt.Println("get sock name failed:", err)
+		return nil, err
+	}
+
+	switch realLocal.(type) {
+	case *syscall.SockaddrInet4:
+		address := realLocal.(*syscall.SockaddrInet4)
+		fmt.Printf("====%v:%d====\n", address.Addr, address.Port)
+		return address, nil
+	default:
+		return nil, fmt.Errorf("only support udp4 right now")
+	}
+}
+
 func fdToConn(fd int) (net.Conn, error) {
 
 	file := os.NewFile(uintptr(fd), filePrefix+strconv.Itoa(os.Getpid()))
@@ -91,7 +109,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Port == AddrInet4AnyPort {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +122,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Addr == AddrInet4AnyIp {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}

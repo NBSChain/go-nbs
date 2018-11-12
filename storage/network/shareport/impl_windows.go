@@ -156,7 +156,7 @@ func (winConn *winShareConn) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-func getLocalAddr(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
+func getAddrByFD(fd syscall.Handle) (*syscall.SockaddrInet4, error) {
 
 	realLocal, err := syscall.Getsockname(fd)
 	if err != nil {
@@ -206,7 +206,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Port == AddrInet4AnyPort {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Addr == AddrInet4AnyIp {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}

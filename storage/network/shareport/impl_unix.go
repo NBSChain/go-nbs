@@ -67,7 +67,7 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	return fdToPacketConn(fd)
 }
 
-func getLocalAddr(fd int) (*syscall.SockaddrInet4, error) {
+func getAddrByFD(fd int) (*syscall.SockaddrInet4, error) {
 
 	realLocal, err := syscall.Getsockname(fd)
 	if err != nil {
@@ -114,7 +114,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Port == AddrInet4AnyPort {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +127,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	}
 
 	if localAddr.Addr == AddrInet4AnyIp {
-		addr, err := getLocalAddr(fd)
+		addr, err := getAddrByFD(fd)
 		if err != nil {
 			return nil, err
 		}
