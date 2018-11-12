@@ -55,7 +55,7 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, addr); err != nil {
+	if err := syscall.Bind(fd, address); err != nil {
 		return nil, os.NewSyscallError("Bind", err)
 	}
 
@@ -86,7 +86,7 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 		return nil, err
 	}
 
-	if err := syscall.Bind(fd, address); err != nil {
+	if err := syscall.Bind(fd, localAddr); err != nil {
 		return nil, os.NewSyscallError("Bind", err)
 	}
 
