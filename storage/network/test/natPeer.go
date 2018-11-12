@@ -133,7 +133,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 	data, err := proto.Marshal(holeMsg)
 	if err != nil {
-		fmt.Println("hole message:", err)
+		fmt.Println("********************err hole message:->", err)
 		return
 	}
 
@@ -152,11 +152,11 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		time.Sleep(3 * time.Second)
 
 		if no, err = peer.p2pConn.WriteTo(data, peerAddr); err != nil || no == 0 {
-			fmt.Println("failed to make p2p connection-> ", err, no)
+			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
 
-		fmt.Println("\n\n---write data len:->", no, peer.p2pConn.LocalAddr().String(), peerAddr)
+		fmt.Println("\n\n********************write data len:->", no, peer.p2pConn.LocalAddr().String(), peerAddr)
 
 	}
 }
@@ -167,7 +167,7 @@ func (peer *NatPeer) p2pReader() {
 
 		time.Sleep(time.Second * 4)
 
-		fmt.Println("-----------p2pReader----------------")
+		fmt.Println("********************start reading********************")
 
 		readBuff := make([]byte, 2048)
 
@@ -175,17 +175,17 @@ func (peer *NatPeer) p2pReader() {
 
 		hasRead, peerAddr, err := peer.p2pConn.ReadFrom(readBuff)
 		if err != nil {
-			fmt.Println("****************hole message read:", err)
+			fmt.Println("****************reading from:->", err)
 			continue
 		}
 
-		fmt.Println("****************hole message ->", hasRead, peerAddr)
+		fmt.Println("****************has read :->", hasRead, peerAddr)
 
 		holeMsg := &nat_pb.Response{}
 
 		proto.Unmarshal(readBuff[:hasRead], holeMsg)
 
-		fmt.Println(holeMsg)
+		fmt.Println("********************unmarshal:->", holeMsg)
 	}
 }
 
