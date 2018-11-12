@@ -187,10 +187,6 @@ func newShareSocket() (syscall.Handle, error) {
 		return 0, os.NewSyscallError("setSocketOption", err)
 	}
 
-	if err := syscall.Bind(fd, localAddress); err != nil {
-		return 0, os.NewSyscallError("Bind", err)
-	}
-
 	if err := syscall.SetNonblock(fd, true); err != nil {
 		return 0, os.NewSyscallError("SetNonblock", err)
 	}
@@ -203,6 +199,10 @@ func dial(localAddr, remoteAddr *syscall.SockaddrInet4) (net.Conn, error) {
 	fd, err := newShareSocket()
 	if err != nil {
 		return nil, err
+	}
+
+	if err := syscall.Bind(fd, localAddr); err != nil {
+		return nil, os.NewSyscallError("Bind", err)
 	}
 
 	if localAddr.Port == AddrInet4AnyPort {
@@ -255,8 +255,6 @@ func listenUDP(address *syscall.SockaddrInet4) (net.PacketConn, error) {
 	if err := syscall.Bind(fd, address); err != nil {
 		return nil, fmt.Errorf("bind newShareSocket to file descrition error=%s", err.Error())
 	}
-
-	getLocalAddr(fd)
 
 	return newConn(fd, address, nil), nil
 }
