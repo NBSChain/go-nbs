@@ -18,7 +18,7 @@ func NewSimplePeer() *SimplePeer {
 func (peer *SimplePeer) probe() error {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP("47.52.172.234"),
+		IP:   net.ParseIP("192.168.103.101"),
 		Port: NatServerTestPort,
 	})
 

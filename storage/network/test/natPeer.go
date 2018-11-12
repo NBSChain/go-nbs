@@ -21,7 +21,7 @@ type NatPeer struct {
 
 func NewPeer() *NatPeer {
 
-	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "192.168.103.101:8001")
+	c, err := shareport.DialUDP("udp4", "0.0.0.0:0", "192.168.103.155:8001")
 	if err != nil {
 		panic(err)
 	}
