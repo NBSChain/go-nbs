@@ -48,17 +48,25 @@ func dial(network, localAddr, remoteAddr string) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-func sharePort(network, address string, rawConn syscall.RawConn) error {
+func sharePort(network, address string, rawConn syscall.RawConn) (err error) {
+
 	fn := func(s uintptr) {
-		if err := syscall.SetsockoptInt(syscall.Handle(s), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
-			panic(err)
+		if err = syscall.SetsockoptInt(syscall.Handle(s), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+			return
 		}
-		if err := syscall.SetNonblock(syscall.Handle(s), true); err != nil {
-			panic(err)
+		if err = syscall.SetNonblock(syscall.Handle(s), true); err != nil {
+			return
+		}
+		if err = syscall.SetNonblock(syscall.Handle(s), true); err != nil {
+			return
 		}
 	}
-	if err := rawConn.Control(fn); err != nil {
-		panic(err)
+
+	if err != nil {
+		return err
+	}
+	if err = rawConn.Control(fn); err != nil {
+		return err
 	}
 
 	return nil
