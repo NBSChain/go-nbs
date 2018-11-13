@@ -9,7 +9,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -32,12 +31,6 @@ func NewPeer() *NatPeer {
 
 	fmt.Println("dialed----1--->", c1.LocalAddr().String(), c1.RemoteAddr())
 
-	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
-
 	dialHost := c1.LocalAddr().String()
 	host, port, _ := net.SplitHostPort(dialHost)
 
@@ -49,7 +42,6 @@ func NewPeer() *NatPeer {
 
 	client := &NatPeer{
 		sendingGun1:  c1,
-		sendingGun2:  c2,
 		peerID:       os.Args[2],
 		privateIP:    host,
 		privatePort:  port,
@@ -79,29 +71,20 @@ func (peer *NatPeer) runLoop() {
 
 	go peer.readingHub()
 	go peer.readingGun1()
-	go peer.readingGun2()
 
 	for {
-		time.Sleep(time.Second * 10)
-
 		peer.sendingGun1.SetDeadline(time.Now().Add(time.Second * 5))
 		if no, err := peer.sendingGun1.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
-			continue
 		}
-
-		peer.sendingGun2.SetDeadline(time.Now().Add(time.Second * 5))
-		if no, err := peer.sendingGun2.Write(requestData); err != nil || no == 0 {
-			fmt.Println("---gun2 write---->", err, no)
-			continue
-		}
+		time.Sleep(time.Second * 10)
 	}
 }
 
 func (peer *NatPeer) readingGun2() {
 
 	for {
-		peer.sendingGun2.SetReadDeadline(time.Now().Add(time.Second * 15))
+		peer.sendingGun2.SetReadDeadline(time.Now().Add(time.Second * 5))
 
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.sendingGun2.Read(responseData)
@@ -199,11 +182,13 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 	requestData, err := proto.Marshal(request)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 
 	if _, err := peer.sendingGun1.Write(requestData); err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 }
 
@@ -218,63 +203,29 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 
 	data, err := proto.Marshal(holeMsg)
 	if err != nil {
-		fmt.Println("********************err hole message:->", err)
+		fmt.Println("***************err hole message:->", err)
 		return
 	}
 
-	dstPort, _ := strconv.Atoi(response.PublicPort)
-
-	peerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(response.PublicIp),
-		Port: dstPort,
+	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
+	if err != nil {
+		panic(err)
 	}
+	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
+	peer.sendingGun2 = c2
 
 	for {
-		var no int
+		go peer.readingGun2()
 
-		if no, err = peer.sendingGun1.WriteTo(data, peerAddr); err != nil || no == 0 {
+		var no int
+		if no, err = peer.sendingGun2.Write(data); err != nil || no == 0 {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
 
-		fmt.Println("\n\n********************write data len:->", no, peerAddr)
+		fmt.Println("\n\n********************write data len:->", no)
 
-		if peer.isApplier {
-			go peer.p2pReader()
-			break
-		} else {
-			time.Sleep(3 * time.Second)
-		}
-
-	}
-
-}
-
-func (peer *NatPeer) p2pReader() {
-
-	for {
-
-		//time.Sleep(time.Second * 4)
-
-		fmt.Println("********************start reading********************")
-
-		readBuff := make([]byte, 2048)
-
-		peer.sendingGun1.SetReadDeadline(time.Now().Add(time.Second * 5))
-
-		hasRead, peerAddr, err := peer.sendingGun1.ReadFrom(readBuff)
-		if err != nil {
-			fmt.Println("****************reading from:->", err, peerAddr)
-			continue
-		}
-
-		fmt.Println("****************has read :->", hasRead)
-
-		holeMsg := &nat_pb.Response{}
-
-		proto.Unmarshal(readBuff[:hasRead], holeMsg)
-
-		fmt.Println("********************unmarshal:->", holeMsg)
+		time.Sleep(5 * time.Second)
 	}
 }
 
