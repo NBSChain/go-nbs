@@ -9,13 +9,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
-	"strconv"
 	"time"
 )
 
 type NatPeer struct {
 	peerID        string
 	keepAliveConn *net.UDPConn
+	holePunchConn *net.UDPConn
 	privateIP     string
 	privatePort   string
 	receivingHub  *net.UDPConn
@@ -23,6 +23,11 @@ type NatPeer struct {
 }
 
 func NewPeer() *NatPeer {
+	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
+	if err != nil {
+		fmt.Println("********************dial share port failed:-> ", err)
+		panic(err)
+	}
 
 	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "192.168.103.155:8001")
 	if err != nil {
@@ -33,12 +38,6 @@ func NewPeer() *NatPeer {
 
 	dialHost := c1.LocalAddr().String()
 	host, port, _ := net.SplitHostPort(dialHost)
-
-	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
-	if err != nil {
-		fmt.Println("********************dial share port failed:-> ", err)
-		panic(err)
-	}
 
 	client := &NatPeer{
 		keepAliveConn: c1,
@@ -73,7 +72,6 @@ func (peer *NatPeer) runLoop() {
 	go peer.readingKA()
 
 	for {
-		peer.keepAliveConn.SetDeadline(time.Now().Add(time.Second * 5))
 		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
 		}
@@ -84,18 +82,16 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) readingKA() {
 
 	for {
-		peer.keepAliveConn.SetReadDeadline(time.Now().Add(time.Second * 5))
-
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.keepAliveConn.Read(responseData)
 		if err != nil {
-			fmt.Println("---gun1 read failed --->", err)
+			fmt.Println("---keep alive read failed --->", err)
 			continue
 		}
 
 		response := &nat_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-			fmt.Println("gun2 response data", err)
+			fmt.Println("keep alive response data", err)
 			continue
 		}
 
@@ -111,12 +107,28 @@ func (peer *NatPeer) readingKA() {
 	}
 }
 
+func (peer *NatPeer) readHoleMessage() {
+	for {
+		responseData := make([]byte, 2048)
+		hasRead, err := peer.holePunchConn.Read(responseData)
+		if err != nil {
+			fmt.Println("---keep alive read failed --->", err)
+			continue
+		}
+
+		response := &nat_pb.Response{}
+		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
+			fmt.Println("keep alive response data", err)
+			continue
+		}
+
+		fmt.Println("\n$$$$$$$$$$$hole punching$$$$$$$$$$$$$$", response)
+	}
+}
+
 func (peer *NatPeer) readingHub() {
 
 	for {
-
-		peer.receivingHub.SetReadDeadline(time.Now().Add(time.Second * 5))
-
 		responseData := make([]byte, 2048)
 		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
 		if err != nil {
@@ -183,20 +195,29 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		return
 	}
 
-	port, err := strconv.Atoi(response.PublicPort)
-	peerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(response.PublicIp),
-		Port: port,
+	//port, err := strconv.Atoi(response.PublicPort)
+	//peerAddr := &net.UDPAddr{
+	//	IP:   net.ParseIP(response.PublicIp),
+	//	Port: port,
+	//}
+
+	p, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
+	if err != nil {
+		fmt.Println("******dial hole peer failed***", err)
+		return
 	}
+	peer.holePunchConn = p
+
+	go peer.readHoleMessage()
 
 	for {
-		no, err := peer.receivingHub.WriteTo(data, peerAddr)
+		no, err := peer.holePunchConn.Write(data)
 		if err != nil {
-			fmt.Println("********************failed to make p2p connection:-> ", err, no)
+			fmt.Println("*************punch conn*******failed to write hole message:-> ", err, no)
 			break
 		}
 
-		fmt.Println("\n\n**********gun2**********write data len:->", no)
+		fmt.Println("\n\n**********punch**********write data len:->", no)
 
 		time.Sleep(5 * time.Second)
 	}
