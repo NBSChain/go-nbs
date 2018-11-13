@@ -29,7 +29,7 @@ func NewPeer() *NatPeer {
 		panic(err)
 	}
 
-	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "192.168.103.155:8001")
+	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
@@ -200,6 +200,10 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 	//	IP:   net.ParseIP(response.PublicIp),
 	//	Port: port,
 	//}
+
+	if peer.holePunchConn != nil {
+		peer.holePunchConn.Close()
+	}
 
 	p, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
 	if err != nil {
