@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -89,7 +90,7 @@ func (peer *NatPeer) readingGun2() {
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.sendingGun2.Read(responseData)
 		if err != nil {
-			fmt.Println("read failed ", err)
+			fmt.Println("---gun1 read failed ---> ", err)
 			continue
 		}
 
@@ -117,7 +118,7 @@ func (peer *NatPeer) readingGun1() {
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.sendingGun1.Read(responseData)
 		if err != nil {
-			fmt.Println("read failed ", err)
+			fmt.Println("---gun1 read failed --->", err)
 			continue
 		}
 
@@ -146,13 +147,13 @@ func (peer *NatPeer) readingHub() {
 		responseData := make([]byte, 2048)
 		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
 		if err != nil {
-			fmt.Println("failed to read nat response from natServer", err)
+			fmt.Println("---reading hub-->failed ReadFrom->", err)
 			continue
 		}
 
 		response := &nat_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-			fmt.Println("failed to unmarshal nat response data", err)
+			fmt.Println("---reading hub-->failed response data", err)
 			continue
 		}
 
@@ -207,23 +208,20 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		return
 	}
 
-	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
-	if err != nil {
-		panic(err)
+	port, err := strconv.Atoi(response.PublicPort)
+	peerAddr := &net.UDPAddr{
+		IP:   net.ParseIP(response.PublicIp),
+		Port: port,
 	}
-	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
-	peer.sendingGun2 = c2
 
 	for {
-		go peer.readingGun2()
-
-		var no int
-		if no, err = peer.sendingGun2.Write(data); err != nil || no == 0 {
+		no, err := peer.receivingHub.WriteTo(data, peerAddr)
+		if err != nil {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
 
-		fmt.Println("\n\n********************write data len:->", no)
+		fmt.Println("\n\n**********gun2**********write data len:->", no)
 
 		time.Sleep(5 * time.Second)
 	}
