@@ -1,5 +1,3 @@
-// +build !windows
-
 package main
 
 import (
@@ -14,13 +12,12 @@ import (
 )
 
 type NatPeer struct {
-	peerID       string
-	sendingGun1  *net.UDPConn
-	sendingGun2  *net.UDPConn
-	privateIP    string
-	privatePort  string
-	receivingHub *net.UDPConn
-	isApplier    bool
+	peerID        string
+	keepAliveConn *net.UDPConn
+	privateIP     string
+	privatePort   string
+	receivingHub  *net.UDPConn
+	isApplier     bool
 }
 
 func NewPeer() *NatPeer {
@@ -42,11 +39,11 @@ func NewPeer() *NatPeer {
 	}
 
 	client := &NatPeer{
-		sendingGun1:  c1,
-		peerID:       os.Args[2],
-		privateIP:    host,
-		privatePort:  port,
-		receivingHub: l,
+		keepAliveConn: c1,
+		peerID:        os.Args[2],
+		privateIP:     host,
+		privatePort:   port,
+		receivingHub:  l,
 	}
 
 	return client
@@ -71,52 +68,24 @@ func (peer *NatPeer) runLoop() {
 	fmt.Println("start to keep alive......")
 
 	go peer.readingHub()
-	go peer.readingGun1()
+	go peer.readingKA()
 
 	for {
-		peer.sendingGun1.SetDeadline(time.Now().Add(time.Second * 5))
-		if no, err := peer.sendingGun1.Write(requestData); err != nil || no == 0 {
+		peer.keepAliveConn.SetDeadline(time.Now().Add(time.Second * 5))
+		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
 		}
 		time.Sleep(time.Second * 10)
 	}
 }
 
-func (peer *NatPeer) readingGun2() {
+func (peer *NatPeer) readingKA() {
 
 	for {
-		peer.sendingGun2.SetReadDeadline(time.Now().Add(time.Second * 5))
+		peer.keepAliveConn.SetReadDeadline(time.Now().Add(time.Second * 15))
 
 		responseData := make([]byte, 2048)
-		hasRead, err := peer.sendingGun2.Read(responseData)
-		if err != nil {
-			fmt.Println("---gun1 read failed ---> ", err)
-			continue
-		}
-
-		response := &nat_pb.Response{}
-		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-			fmt.Println("gun2 response data", err)
-			continue
-		}
-
-		fmt.Println("---gun2 reading--->", response)
-
-		switch response.MsgType {
-		case nat_pb.NatMsgType_BootStrapReg:
-		case nat_pb.NatMsgType_Connect:
-			go peer.connectToPeers(response.ConnRes)
-		}
-	}
-}
-
-func (peer *NatPeer) readingGun1() {
-
-	for {
-		peer.sendingGun1.SetReadDeadline(time.Now().Add(time.Second * 15))
-
-		responseData := make([]byte, 2048)
-		hasRead, err := peer.sendingGun1.Read(responseData)
+		hasRead, err := peer.keepAliveConn.Read(responseData)
 		if err != nil {
 			fmt.Println("---gun1 read failed --->", err)
 			continue
@@ -128,12 +97,14 @@ func (peer *NatPeer) readingGun1() {
 			continue
 		}
 
-		fmt.Println("---gun1 reading--->", response)
-
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
+			fmt.Println("---keep alive reading--->", response)
 		case nat_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
+			fmt.Println("++++keep alive+++++++peer connect invite+++++++++++>", response)
+		case nat_pb.NatMsgType_Ping:
+			fmt.Println("\n$$$$keep alive$$$$$$$hole punching$$$$$$$$$$$$$$", response)
 		}
 	}
 }
@@ -157,12 +128,14 @@ func (peer *NatPeer) readingHub() {
 			continue
 		}
 
-		fmt.Println("---reading hub--->", peerAddr, response)
-
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
+			fmt.Println("---reading hub--->", peerAddr, response)
 		case nat_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
+			fmt.Println("++++++reading hub+++++peer connect invite+++++++++++>", peerAddr, response)
+		case nat_pb.NatMsgType_Ping:
+			fmt.Println("\n$$$$$reading hub$$$$$$hole punching$$$$$$$$$$$$$$", peerAddr, response)
 		}
 	}
 }
@@ -187,7 +160,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		return
 	}
 
-	if _, err := peer.sendingGun1.Write(requestData); err != nil {
+	if _, err := peer.keepAliveConn.Write(requestData); err != nil {
 		fmt.Println(err)
 		return
 	}
