@@ -217,9 +217,9 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 			break
 		}
 
-		fmt.Println("\n\n**********punch**********write data len:->", no)
+		fmt.Println("punch write done:->", no)
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
