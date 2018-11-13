@@ -82,7 +82,7 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) readingKA() {
 
 	for {
-		peer.keepAliveConn.SetReadDeadline(time.Now().Add(time.Second * 15))
+		peer.keepAliveConn.SetReadDeadline(time.Now().Add(time.Second * 5))
 
 		responseData := make([]byte, 2048)
 		hasRead, err := peer.keepAliveConn.Read(responseData)
@@ -113,7 +113,7 @@ func (peer *NatPeer) readingHub() {
 
 	for {
 
-		peer.receivingHub.SetReadDeadline(time.Now().Add(time.Second * 15))
+		peer.receivingHub.SetReadDeadline(time.Now().Add(time.Second * 5))
 
 		responseData := make([]byte, 2048)
 		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
