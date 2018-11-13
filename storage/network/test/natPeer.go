@@ -12,44 +12,49 @@ import (
 )
 
 type NatPeer struct {
-	peerID      string
-	conn        *net.UDPConn
-	privateIP   string
-	privatePort string
-	//p2pConn     *net.UDPConn
-	isApplier bool
-}
-
-var hostAddress = &net.UDPAddr{
-	IP:   net.ParseIP("52.8.190.235"),
-	Port: 8001,
+	peerID       string
+	sendingGun1  *net.UDPConn
+	sendingGun2  *net.UDPConn
+	privateIP    string
+	privatePort  string
+	receivingHub *net.UDPConn
+	isApplier    bool
 }
 
 func NewPeer() *NatPeer {
 
-	c, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
+	l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
+	if err != nil {
+		fmt.Println("********************dial share port failed:-> ", err)
+		panic(err)
+	}
+
+	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "192.168.103.155:8001")
 	if err != nil {
 		panic(err)
 	}
 
-	dialHost := c.LocalAddr().String()
+	dialHost := c1.LocalAddr().String()
 	host, port, _ := net.SplitHostPort(dialHost)
 
 	client := &NatPeer{
-		conn:        c,
-		peerID:      os.Args[2],
-		privateIP:   host,
-		privatePort: port,
+		sendingGun1:  c1,
+		peerID:       os.Args[2],
+		privateIP:    host,
+		privatePort:  port,
+		receivingHub: l,
 	}
 
-	fmt.Println("dialed", dialHost, c.RemoteAddr())
+	fmt.Println("dialed----1--->", c1.LocalAddr().String(), c1.RemoteAddr())
 
-	//l, err := shareport.ListenUDP("udp4", "0.0.0.0:7001")
-	//if err != nil {
-	//	fmt.Println("********************dial share port failed:-> ", err)
-	//	panic(err)
-	//}
-	//client.p2pConn = l
+	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
+	if err != nil {
+		panic(err)
+	}
+	client.sendingGun2 = c2
+
+	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
+
 	return client
 }
 
@@ -71,17 +76,34 @@ func (peer *NatPeer) runLoop() {
 
 	fmt.Println("start to keep alive......")
 
+	go peer.readingHub()
+
 	for {
 
-		peer.conn.SetDeadline(time.Now().Add(time.Second * 5))
+		time.Sleep(time.Second * 10)
 
-		if no, err := peer.conn.WriteTo(requestData, hostAddress); err != nil || no == 0 {
-			fmt.Println("failed to send nat request to natServer ", err, no)
+		peer.sendingGun1.SetDeadline(time.Now().Add(time.Second * 5))
+		if no, err := peer.sendingGun1.Write(requestData); err != nil || no == 0 {
+			fmt.Println("---gun1---->", err, no)
 			continue
 		}
 
+		peer.sendingGun2.SetDeadline(time.Now().Add(time.Second * 5))
+		if no, err := peer.sendingGun2.Write(requestData); err != nil || no == 0 {
+			fmt.Println("---gun2---->", err, no)
+			continue
+		}
+	}
+}
+
+func (peer *NatPeer) readingHub() {
+
+	for {
+
+		peer.receivingHub.SetReadDeadline(time.Now().Add(time.Second * 15))
+
 		responseData := make([]byte, 2048)
-		hasRead, peerAddr, err := peer.conn.ReadFrom(responseData)
+		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
 		if err != nil {
 			fmt.Println("failed to read nat response from natServer", err)
 			continue
@@ -93,11 +115,10 @@ func (peer *NatPeer) runLoop() {
 			continue
 		}
 
-		fmt.Println("----->", peerAddr, response)
+		fmt.Println("---reading hub--->", peerAddr, response)
 
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
-			time.Sleep(10 * time.Second)
 		case nat_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
 		}
@@ -123,7 +144,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		panic(err)
 	}
 
-	if _, err := peer.conn.WriteTo(requestData, hostAddress); err != nil {
+	if _, err := peer.sendingGun1.Write(requestData); err != nil {
 		panic(err)
 	}
 }
@@ -153,7 +174,7 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 	for {
 		var no int
 
-		if no, err = peer.conn.WriteTo(data, peerAddr); err != nil || no == 0 {
+		if no, err = peer.sendingGun1.WriteTo(data, peerAddr); err != nil || no == 0 {
 			fmt.Println("********************failed to make p2p connection:-> ", err, no)
 			break
 		}
@@ -181,9 +202,9 @@ func (peer *NatPeer) p2pReader() {
 
 		readBuff := make([]byte, 2048)
 
-		peer.conn.SetReadDeadline(time.Now().Add(time.Second * 5))
+		peer.sendingGun1.SetReadDeadline(time.Now().Add(time.Second * 5))
 
-		hasRead, peerAddr, err := peer.conn.ReadFrom(readBuff)
+		hasRead, peerAddr, err := peer.sendingGun1.ReadFrom(readBuff)
 		if err != nil {
 			fmt.Println("****************reading from:->", err, peerAddr)
 			continue
