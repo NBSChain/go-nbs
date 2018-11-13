@@ -11,13 +11,13 @@ import (
 )
 
 type NatPeer struct {
-	peerID       string
-	sendingGun1  *net.UDPConn
-	sendingGun2  *net.UDPConn
-	privateIP    string
-	privatePort  string
-	receivingHub *net.UDPConn
-	isApplier    bool
+	peerID        string
+	keepAliveConn *net.UDPConn
+	holePunchConn *net.UDPConn
+	privateIP     string
+	privatePort   string
+	receivingHub  *net.UDPConn
+	isApplier     bool
 }
 
 func NewPeer() *NatPeer {
@@ -37,11 +37,11 @@ func NewPeer() *NatPeer {
 	host, port, _ := net.SplitHostPort(dialHost)
 
 	client := &NatPeer{
-		sendingGun1:  c1,
-		peerID:       os.Args[2],
-		privateIP:    host,
-		privatePort:  port,
-		receivingHub: l,
+		keepAliveConn: c1,
+		peerID:        os.Args[2],
+		privateIP:     host,
+		privatePort:   port,
+		receivingHub:  l,
 	}
 
 	fmt.Println("dialed----1--->", c1.LocalAddr().String(), c1.RemoteAddr())
@@ -70,8 +70,7 @@ func (peer *NatPeer) runLoop() {
 	go peer.readingHub()
 
 	for {
-		peer.sendingGun1.SetDeadline(time.Now().Add(time.Second * 5))
-		if no, err := peer.sendingGun1.Write(requestData); err != nil || no == 0 {
+		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1---->", err, no)
 		}
 		time.Sleep(time.Second * 10)
@@ -81,9 +80,6 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) readingHub() {
 
 	for {
-
-		peer.receivingHub.SetReadDeadline(time.Now().Add(time.Second * 15))
-
 		responseData := make([]byte, 2048)
 		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
 		if err != nil {
@@ -97,14 +93,14 @@ func (peer *NatPeer) readingHub() {
 			continue
 		}
 
-		fmt.Println("---reading hub--->", peerAddr, response)
-
 		switch response.MsgType {
 		case nat_pb.NatMsgType_BootStrapReg:
+			fmt.Println("---reading hub--->", peerAddr, response)
 		case nat_pb.NatMsgType_Connect:
+			fmt.Println("*******hole punch message--->", peerAddr, response)
 			go peer.connectToPeers(response.ConnRes)
 		case nat_pb.NatMsgType_Ping:
-			fmt.Println("$$$$$$$$$$$$$$$$$$we got hole punching$$$$$$$$$$$$$$$$$$$$$")
+			fmt.Println("$$$$$$$$$$$punching message---->", peerAddr, response)
 		}
 	}
 }
@@ -128,7 +124,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		panic(err)
 	}
 
-	if _, err := peer.sendingGun1.Write(requestData); err != nil {
+	if _, err := peer.keepAliveConn.Write(requestData); err != nil {
 		panic(err)
 	}
 }
@@ -153,17 +149,15 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		fmt.Println("---gun2---dial failed->", err)
 		return
 	}
-	peer.sendingGun2 = c2
+	peer.holePunchConn = c2
 	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
 
 	for {
-
-		peer.sendingGun2.SetDeadline(time.Now().Add(time.Second * 5))
-		if no, err := peer.sendingGun2.Write(requestData); err != nil || no == 0 {
+		if no, err := peer.holePunchConn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun2---->", err, no)
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 
 }
