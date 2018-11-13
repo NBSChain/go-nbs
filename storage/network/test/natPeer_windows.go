@@ -28,7 +28,7 @@ func NewPeer() *NatPeer {
 		panic(err)
 	}
 
-	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "192.168.103.155:8001")
+	c1, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
 	if err != nil {
 		panic(err)
 	}
