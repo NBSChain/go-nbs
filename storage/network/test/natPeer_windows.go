@@ -7,7 +7,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -47,14 +46,6 @@ func NewPeer() *NatPeer {
 
 	fmt.Println("dialed----1--->", c1.LocalAddr().String(), c1.RemoteAddr())
 
-	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", "52.8.190.235:8001")
-	if err != nil {
-		panic(err)
-	}
-	client.sendingGun2 = c2
-
-	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
-
 	return client
 }
 
@@ -79,20 +70,11 @@ func (peer *NatPeer) runLoop() {
 	go peer.readingHub()
 
 	for {
-
-		time.Sleep(time.Second * 10)
-
 		peer.sendingGun1.SetDeadline(time.Now().Add(time.Second * 5))
 		if no, err := peer.sendingGun1.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1---->", err, no)
-			continue
 		}
-
-		peer.sendingGun2.SetDeadline(time.Now().Add(time.Second * 5))
-		if no, err := peer.sendingGun2.Write(requestData); err != nil || no == 0 {
-			fmt.Println("---gun2---->", err, no)
-			continue
-		}
+		time.Sleep(time.Second * 10)
 	}
 }
 
@@ -121,6 +103,8 @@ func (peer *NatPeer) readingHub() {
 		case nat_pb.NatMsgType_BootStrapReg:
 		case nat_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
+		case nat_pb.NatMsgType_Ping:
+			fmt.Println("$$$$$$$$$$$$$$$$$$we got hole punching$$$$$$$$$$$$$$$$$$$$$")
 		}
 	}
 }
@@ -158,66 +142,30 @@ func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
 		},
 	}
 
-	data, err := proto.Marshal(holeMsg)
+	requestData, err := proto.Marshal(holeMsg)
 	if err != nil {
 		fmt.Println("********************err hole message:->", err)
 		return
 	}
 
-	dstPort, _ := strconv.Atoi(response.PublicPort)
-
-	peerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(response.PublicIp),
-		Port: dstPort,
+	c2, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
+	if err != nil {
+		fmt.Println("---gun2---dial failed->", err)
+		return
 	}
-
-	for {
-		var no int
-
-		if no, err = peer.sendingGun1.WriteTo(data, peerAddr); err != nil || no == 0 {
-			fmt.Println("********************failed to make p2p connection:-> ", err, no)
-			break
-		}
-
-		fmt.Println("\n\n********************write data len:->", no, peerAddr)
-
-		if peer.isApplier {
-			go peer.p2pReader()
-			break
-		} else {
-			time.Sleep(3 * time.Second)
-		}
-
-	}
-
-}
-
-func (peer *NatPeer) p2pReader() {
+	peer.sendingGun2 = c2
+	fmt.Println("dialed----2--->", c2.LocalAddr().String(), c2.RemoteAddr())
 
 	for {
 
-		//time.Sleep(time.Second * 4)
-
-		fmt.Println("********************start reading********************")
-
-		readBuff := make([]byte, 2048)
-
-		peer.sendingGun1.SetReadDeadline(time.Now().Add(time.Second * 5))
-
-		hasRead, peerAddr, err := peer.sendingGun1.ReadFrom(readBuff)
-		if err != nil {
-			fmt.Println("****************reading from:->", err, peerAddr)
-			continue
+		peer.sendingGun2.SetDeadline(time.Now().Add(time.Second * 5))
+		if no, err := peer.sendingGun2.Write(requestData); err != nil || no == 0 {
+			fmt.Println("---gun2---->", err, no)
 		}
 
-		fmt.Println("****************has read :->", hasRead)
-
-		holeMsg := &nat_pb.Response{}
-
-		proto.Unmarshal(readBuff[:hasRead], holeMsg)
-
-		fmt.Println("********************unmarshal:->", holeMsg)
+		time.Sleep(5 * time.Second)
 	}
+
 }
 
 func main() {
