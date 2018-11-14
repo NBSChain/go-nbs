@@ -67,12 +67,13 @@ func (app *NbsApplication) Start() error {
 		// TIPS:: if no account exist, we can't identify the network.
 		// so there are no connections right now.
 		network.GetInstance().StartUp(app.nodeId)
+
+		//TODO:: configure this property when nbs node startup.
+		gossip.GetGossipInstance().StartUp(app.nodeId)
+
 	} else {
 		logger.Warning("no account now so the network is down now")
 	}
-
-	//TODO:: configure this property when nbs node startup.
-	gossip.GetGossipInstance()
 
 	return nil
 }

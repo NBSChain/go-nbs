@@ -23,14 +23,6 @@ var rootCmd = &cobra.Command{
 
 	Run: mainRun,
 }
-var natServiceConf *bool
-
-func init() {
-	natServiceConf = rootCmd.Flags().BoolP("without-nat",
-		"n", false,
-		"Without nat service, this is used when you're sure in private network")
-
-}
 
 func Execute() {
 
@@ -48,10 +40,6 @@ type CmdConnection struct {
 
 func mainRun(cmd *cobra.Command, args []string) {
 
-	logger.Info("get command args:(", args, ")-->", *natServiceConf)
-
-	utils.GetConfig().NatServiceOff = *natServiceConf
-
 	application.GetInstance().Start()
 
 	rpcService.StartCmdService()
@@ -62,7 +50,7 @@ func DialToCmdService() *CmdConnection {
 
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
-		logger.Fatalf("did not connect: %v", err)
+		logger.Fatalf("can not connect rpc server:", err)
 		return nil
 	}
 

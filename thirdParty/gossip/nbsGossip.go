@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/NBSChain/go-nbs/thirdParty/gossip/memership"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -12,6 +13,8 @@ var (
 )
 
 type nbsGossip struct {
+	peerId        string
+	memberManager memership.MemberManager
 }
 
 func GetGossipInstance() BasicProtocol {
@@ -27,13 +30,7 @@ func newNbsGossip() *nbsGossip {
 
 	gossipObj := &nbsGossip{}
 
-	go gossipObj.registerToNetwork()
-
 	return gossipObj
-}
-
-func (manager *nbsGossip) registerToNetwork() {
-
 }
 
 /*****************************************************************
@@ -58,5 +55,13 @@ func (manager *nbsGossip) AllMyTopics() []string {
 }
 
 func (manager *nbsGossip) Unsubscribe(channel string) error {
+	return nil
+}
+
+func (manager *nbsGossip) StartUp(peerId string) error {
+
+	manager.peerId = peerId
+	manager.memberManager = memership.NewMemberNode()
+
 	return nil
 }

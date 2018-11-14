@@ -1,6 +1,8 @@
 package gossip
 
 type BasicProtocol interface {
+	StartUp(peerId string) error
+
 	Publish(channel string, message []byte) error
 
 	Subscribe(channel string) error

@@ -3,7 +3,7 @@ syntax = "proto3";
 package nat.pb;
 
 enum NatMsgType {
-    UnknownReq         = 0;
+    UnknownReq      = 0;
     BootStrapReg    = 1;
     KeepAlive       = 2;
     Connect         = 3;

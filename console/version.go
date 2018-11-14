@@ -17,22 +17,13 @@ var versionCmd = &cobra.Command{
 
 		request := &pb.VersionRequest{CmdName: "version"}
 
-		response := versionReq(request)
-		logger.Info(response)
+		conn := DialToCmdService()
+		defer conn.Close()
+
+		client := pb.NewVersionTaskClient(conn.c)
+
+		response, err := client.SystemVersion(conn.ctx, request)
+
+		logger.Info(response, err)
 	},
-}
-
-func versionReq(request *pb.VersionRequest) *pb.VersionResponse {
-
-	conn := DialToCmdService()
-	defer conn.Close()
-
-	client := pb.NewVersionTaskClient(conn.c)
-
-	response, err := client.SystemVersion(conn.ctx, request)
-	if err != nil {
-		logger.Fatalf("could not greet: %v", err)
-	}
-
-	return response
 }

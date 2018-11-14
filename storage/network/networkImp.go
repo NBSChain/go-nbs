@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 )
 
 func (network *nbsNetwork) NewHost(options ...HostOption) Host {
@@ -36,10 +37,15 @@ func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error 
 	}
 	return nil
 }
+
 func (network *nbsNetwork) GetNatInfo() string {
 	if network.natManager == nil {
 		return "nat manager isn't initialized."
 	}
 
 	return network.natManager.GetStatus()
+}
+
+func (network *nbsNetwork) NatType() nat_pb.NatType {
+	return network.natManager.NatType()
 }

@@ -29,9 +29,12 @@ type nbsAccount struct {
 	dataStore     dataStore.DataStore
 }
 
-var instance *nbsAccount
-var once sync.Once
-var logger = utils.GetLogInstance()
+var (
+	instance            *nbsAccount
+	once                sync.Once
+	logger              = utils.GetLogInstance()
+	ENoAvailableAccount = fmt.Errorf("you need to create a NBS account first")
+)
 
 const ParameterKeyForAccount = "keys_for_account_local_info"
 

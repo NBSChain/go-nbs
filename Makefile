@@ -29,20 +29,22 @@ build:
 deps:
 	go get -u -d -v github.com/libp2p/go-libp2p/...
 
-dir := console/pb
-dir2 := storage/application/pb
-dir3 := storage/merkledag/pb
-dir4 := storage/bitswap/pb
-dir5 := storage/network/pb
-dir6 := thirdParty/account/pb
+console := console/pb
+application := storage/application/pb
+ipld := storage/merkledag/pb
+bitswap := storage/bitswap/pb
+network := storage/network/pb
+account := thirdParty/account/pb
+gossip := thirdParty/gossip/pb
 
 pbs:
-	protoc -I=$(dir)  --go_out=plugins=grpc:${dir} ${dir}/*.proto
-	protoc -I=$(dir2) --go_out=plugins=grpc:${dir2} ${dir2}/*.proto
-	protoc -I=$(dir4) --go_out=plugins=grpc:${dir4} ${dir4}/*.proto
-	protoc -I=$(dir5) --go_out=plugins=grpc:${dir5} ${dir5}/*.proto
-	protoc -I=$(dir6) --go_out=plugins=grpc:${dir6} ${dir6}/*.proto
-	protoc -I=$(dir3) --go_out=plugins=grpc:${dir3} ${dir3}/*.proto
+	protoc -I=$(console)  		--go_out=plugins=grpc:${console} 		${console}/*.proto
+	protoc -I=$(application) 	--go_out=plugins=grpc:${application} 	${application}/*.proto
+	protoc -I=$(ipld) 			--go_out=plugins=grpc:${ipld} 			${ipld}/*.proto
+	protoc -I=$(bitswap) 		--go_out=plugins=grpc:${bitswap} 		${bitswap}/*.proto
+	protoc -I=$(network) 		--go_out=plugins=grpc:${network} 		${network}/*.proto
+	protoc -I=$(account) 		--go_out=plugins=grpc:${account} 		${account}/*.proto
+	protoc -I=$(gossip) 		--go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
 
 clean:
 	rm -rf nbs

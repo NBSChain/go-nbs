@@ -8,28 +8,35 @@ import (
 )
 
 type Configure struct {
-	BaseDir        string
-	LevelDBDir     string
-	BlocksDir      string
-	ShardFun       string
-	LogFileName    string
-	CmdServicePort string
-	CurrentVersion string
-	SysTimeFormat  string
-	BootStrapPeers []string
-	NatServerPort  int
-	NatServerIP    []string
-	NatServiceOff  bool
+	BaseDir                   string
+	LevelDBDir                string
+	BlocksDir                 string
+	ShardFun                  string
+	LogFileName               string
+	CmdServicePort            string
+	CurrentVersion            string
+	SysTimeFormat             string
+	BootStrapPeers            []string
+	NatServerPort             int
+	NatServerIP               []string
+	GossipBootStrapContracts  []string
+	GossipContractServicePort int
 }
 
 const cmdServicePort = "6080"
-const currentVersion = "0.0.1"
-const natServerPort = 6001
+const currentVersion = "0.1.4"
+const natServerPort = 11001
+const gossipServicePort = 12001
 
 var natServerIP = []string{
 	"52.8.190.235",
 	"47.52.172.234",
 	"172.168.30.18",
+}
+
+var gossipContracts = []string{
+	"52.8.190.235",
+	"47.52.172.234",
 }
 
 var defaultBootstrapAddresses = []string{
@@ -62,17 +69,19 @@ func initConfig() *Configure {
 	logFileName := filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
 
 	return &Configure{
-		BaseDir:        baseDir,
-		LevelDBDir:     levelDBDir,
-		BlocksDir:      blockStoreDir,
-		ShardFun:       "/repo/flatfs/shard/v1/next-to-last/2",
-		LogFileName:    logFileName,
-		CmdServicePort: cmdServicePort,
-		CurrentVersion: currentVersion,
-		SysTimeFormat:  "2006-01-02 15:04:05",
-		BootStrapPeers: defaultBootstrapAddresses,
-		NatServerPort:  natServerPort,
-		NatServerIP:    natServerIP,
+		BaseDir:                   baseDir,
+		LevelDBDir:                levelDBDir,
+		BlocksDir:                 blockStoreDir,
+		ShardFun:                  "/repo/flatfs/shard/v1/next-to-last/2",
+		LogFileName:               logFileName,
+		CmdServicePort:            cmdServicePort,
+		CurrentVersion:            currentVersion,
+		SysTimeFormat:             "2006-01-02 15:04:05",
+		BootStrapPeers:            defaultBootstrapAddresses,
+		NatServerPort:             natServerPort,
+		NatServerIP:               natServerIP,
+		GossipBootStrapContracts:  gossipContracts,
+		GossipContractServicePort: gossipServicePort,
 	}
 }
 

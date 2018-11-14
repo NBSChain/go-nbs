@@ -72,7 +72,7 @@ func publish(cmd *cobra.Command, args []string) {
 
 	response, err := client.Publish(conn.ctx, request)
 
-	fmt.Println(response, err)
+	logger.Info(response, err)
 }
 
 func subscribe(cmd *cobra.Command, args []string) {
@@ -88,7 +88,7 @@ func subscribe(cmd *cobra.Command, args []string) {
 
 	response, err := client.Subscribe(conn.ctx, request)
 
-	fmt.Println(response, err)
+	logger.Info(response, err)
 }
 
 func listAllPeers(cmd *cobra.Command, args []string) {
@@ -105,7 +105,7 @@ func listAllPeers(cmd *cobra.Command, args []string) {
 
 	response, err := client.Peers(conn.ctx, request)
 
-	fmt.Println(response, err)
+	logger.Info(response, err)
 }
 
 func listAllTopics(cmd *cobra.Command, args []string) {
@@ -121,5 +121,5 @@ func listAllTopics(cmd *cobra.Command, args []string) {
 
 	response, err := client.Topics(conn.ctx, request)
 
-	fmt.Println(response, err)
+	logger.Info(response, err)
 }

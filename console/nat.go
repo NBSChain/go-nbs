@@ -42,8 +42,6 @@ func natStatus(cmd *cobra.Command, args []string) {
 	}
 
 	response, err := client.NatStatus(conn.ctx, request)
-	if err != nil {
-		logger.Fatalf("failed to create account:", err.Error())
-	}
-	logger.Info(response.Message)
+
+	logger.Info(response, err)
 }

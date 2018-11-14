@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.gossip.pb";
+option java_outer_classname = "GossipMessage";
+
+package pb;
+
+import "initSub.proto";
+
+enum type{
+    unknown         = 0;
+    init            = 1;
+    reqContract     = 2;
+    reqContractAck  = 3;
+    forwardSubReq   = 4;
+    subReqAck       = 5;
+    redirectContract= 6;
+    dropOutView     = 7;
+    dropInView      = 8;
+    updateOutView   = 9;
+    updateInView    = 10;
+    reSubReqContract= 11;
+    heartBeat       = 12;
+}
+
+message gossip{
+    type msgType    = 1;
+    InitSub initMsg = 2;
+}

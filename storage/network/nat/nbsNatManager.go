@@ -38,12 +38,9 @@ func NewNatManager(networkId string) Manager {
 		networkId: networkId,
 	}
 
-	if !utils.GetConfig().NatServiceOff {
+	natObj.startNatService()
 
-		natObj.startNatService()
-
-		go natObj.natService()
-	}
+	go natObj.natService()
 
 	return natObj
 }
@@ -149,22 +146,6 @@ func (nat *nbsNatManager) confirmNatType() {
 
 		nat.natType = nat_pb.NatType_CanBeNatServer
 	}
-}
-
-func (nat *nbsNatManager) GetStatus() string {
-
-	status := fmt.Sprintf("\n=========================================================================\n"+
-		"\tnetworkId:\t%s\n"+
-		"\tnatType:\t%v\n"+
-		"\tpublicAddress:\t%s\n"+
-		"\tprivateIP:\t%s\n"+
-		"=========================================================================",
-		nat.networkId,
-		nat.natType,
-		nat.publicAddress.String(),
-		nat.privateIP)
-
-	return status
 }
 
 func ExternalIP() []string {

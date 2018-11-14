@@ -3,6 +3,7 @@ package console
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/console/pb"
+	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/spf13/cobra"
 )
@@ -29,11 +30,15 @@ var accountCreateCmd = &cobra.Command{
 	Run:   createAccount,
 	Args:  cobra.MinimumNArgs(1),
 }
+var offlineMode *bool
 
 func init() {
 	rootCmd.AddCommand(accountCmd)
 	accountCmd.AddCommand(accountUnlockCmd)
 	accountCmd.AddCommand(accountCreateCmd)
+	offlineMode = accountCreateCmd.Flags().BoolP("offline",
+		"o", false,
+		"Create account in offline model")
 }
 
 func accountAction(cmd *cobra.Command, args []string) {
@@ -59,10 +64,8 @@ func unlockAccount(cmd *cobra.Command, args []string) {
 	client := pb.NewAccountTaskClient(conn.c)
 
 	response, err := client.AccountUnlock(conn.ctx, request)
-	if err != nil {
-		logger.Fatalf("failed to unlock account:", err.Error())
-	}
-	logger.Info(response)
+
+	logger.Info(response, err)
 }
 
 func createAccount(cmd *cobra.Command, args []string) {
@@ -77,14 +80,32 @@ func createAccount(cmd *cobra.Command, args []string) {
 		Password: crypto.MD5SS(password),
 	}
 
+	if *offlineMode {
+		createAccountOffline(crypto.MD5SS(password))
+		return
+	}
+
 	conn := DialToCmdService()
 	defer conn.Close()
 
 	client := pb.NewAccountTaskClient(conn.c)
 
 	response, err := client.CreateAccount(conn.ctx, request)
-	if err != nil {
-		logger.Fatalf("failed to create account:", err.Error())
+
+	logger.Info(response, err)
+}
+
+func createAccountOffline(password string) {
+
+	acc := account.GetAccountInstance()
+	if acc.GetPeerID() != "" {
+		logger.Error("can't create another account, we support only one account right now!!")
+		return
 	}
-	logger.Info(response)
+
+	accId, err := acc.CreateAccount(password)
+	if err != nil {
+		logger.Info(err)
+	}
+	logger.Info("create account success:", accId)
 }

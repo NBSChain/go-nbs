@@ -129,7 +129,7 @@ func sendFileStream(sessionId, fileName string) {
 	}
 
 	response, err := stream.CloseAndRecv()
-	logger.Info("Send file stream success......", response, err)
+	logger.Info(response, err)
 
 }
 

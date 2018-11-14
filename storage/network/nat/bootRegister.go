@@ -92,32 +92,3 @@ func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 
 	return response, nil
 }
-
-func (nat *nbsNatManager) FindWhoAmI() error {
-
-	config := utils.GetConfig()
-
-	for _, serverIP := range config.NatServerIP {
-
-		//TIPS:: no need to bind local host and local port right now
-		connection, err := nat.connectToNatServer(serverIP)
-		if err != nil {
-			logger.Error("can't know who am I", err)
-			goto CloseConn
-		}
-
-		if err := nat.sendNatRequest(connection); err != nil {
-			goto CloseConn
-		}
-
-		_, err = nat.parseNatResponse(connection)
-		if err == nil {
-			break
-		}
-
-	CloseConn:
-		connection.Close()
-	}
-
-	return nil
-}
