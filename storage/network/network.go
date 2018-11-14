@@ -9,4 +9,6 @@ type Network interface {
 	NewHost(options ...HostOption) Host
 
 	ListenAddrString(address string) HostOption
+
+	GetNatInfo() string
 }

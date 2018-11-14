@@ -31,9 +31,16 @@ func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error 
 
 	network.natManager = nat.NewNatManager(network.netWorkId)
 
-	if err := network.natManager.FetchNatInfo(); err != nil {
+	if err := network.natManager.FindWhoAmI(); err != nil {
 		logger.Warning("boot strap err:", err)
 	}
 
 	return nil
+}
+func (network *nbsNetwork) GetNatInfo() string {
+	if network.natManager == nil {
+		return "nat manager isn't initialized."
+	}
+
+	return network.natManager.GetStatus()
 }

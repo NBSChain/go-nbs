@@ -10,6 +10,11 @@ import (
 
 type accountService struct{}
 
+/*****************************************************************
+*
+*		service callback function.
+*
+*****************************************************************/
 func (service *accountService) AccountUnlock(ctx context.Context,
 	request *pb.AccountUnlockRequest) (*pb.AccountUnlockResponse, error) {
 
@@ -31,13 +36,14 @@ func (service *accountService) CreateAccount(ctx context.Context,
 		return nil, fmt.Errorf("can't create another account, we support only one account right now")
 	}
 
-	if err := acc.CreateAccount(request.Password); err != nil {
+	accId, err := acc.CreateAccount(request.Password)
+	if err != nil {
 		return nil, err
 	}
 
 	application.GetInstance().ReloadForNewAccount()
 
 	return &pb.CreateAccountResponse{
-		Message: "Create account success!",
+		Message: "Create account(" + accId + ") success!",
 	}, nil
 }

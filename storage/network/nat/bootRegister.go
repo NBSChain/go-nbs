@@ -93,8 +93,7 @@ func (nat *nbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 	return response, nil
 }
 
-//TODO:: set multiple servers to make it stronger.
-func (nat *nbsNatManager) FetchNatInfo() error {
+func (nat *nbsNatManager) FindWhoAmI() error {
 
 	config := utils.GetConfig()
 

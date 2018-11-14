@@ -151,6 +151,22 @@ func (nat *nbsNatManager) confirmNatType() {
 	}
 }
 
+func (nat *nbsNatManager) GetStatus() string {
+
+	status := fmt.Sprintf("\n=========================================================================\n"+
+		"\tnetworkId:\t%s\n"+
+		"\tnatType:\t%v\n"+
+		"\tpublicAddress:\t%s\n"+
+		"\tprivateIP:\t%s\n"+
+		"=========================================================================",
+		nat.networkId,
+		nat.natType,
+		nat.publicAddress.String(),
+		nat.privateIP)
+
+	return status
+}
+
 func ExternalIP() []string {
 
 	interfaces, err := net.Interfaces()

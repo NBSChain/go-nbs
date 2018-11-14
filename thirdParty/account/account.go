@@ -18,7 +18,7 @@ import (
 type Account interface {
 	UnlockAccount(password string) error
 	GetPeerID() string
-	CreateAccount(password string) error
+	CreateAccount(password string) (string, error)
 }
 
 type nbsAccount struct {
@@ -138,14 +138,14 @@ func (account *nbsAccount) monitorPrivateKey() {
 	}
 }
 
-func (account *nbsAccount) CreateAccount(password string) error {
+func (account *nbsAccount) CreateAccount(password string) (string, error) {
 
 	account.dataLock.Lock()
 	defer account.dataLock.Unlock()
 
 	id, err := idService.GetInstance().GenerateId(password)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	account.accountId = id
@@ -158,12 +158,12 @@ func (account *nbsAccount) CreateAccount(password string) error {
 
 	accountData, err := proto.Marshal(accountInfo)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := account.dataStore.Put(ParameterKeyForAccount, accountData); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return accountInfo.PeerID, nil
 }
