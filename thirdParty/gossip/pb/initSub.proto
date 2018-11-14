@@ -7,5 +7,8 @@ option java_outer_classname = "InitMessage";
 package pb;
 
 message InitSub{
-
+    string nodeId       = 1;
+    string publicAddr   = 2;
+    string privateAddr  = 3;
+    bool canBeServer    = 4;
 }

@@ -1,11 +1,22 @@
 package nat
 
-import "github.com/NBSChain/go-nbs/storage/network/pb"
+import (
+	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"net"
+	"sync"
+)
 
-type Manager interface {
-	FindWhoAmI() error
+var logger = utils.GetLogInstance()
 
-	GetStatus() string
+const NetIoBufferSize = 1 << 11
+const BootStrapNatServerTimeOutInSec = 6
 
-	NatType() nat_pb.NatType
+type NbsNatManager struct {
+	sync.Mutex
+	natServer     *net.UDPConn
+	natType       nat_pb.NatType
+	publicAddress *net.UDPAddr
+	privateIP     string
+	networkId     string
 }

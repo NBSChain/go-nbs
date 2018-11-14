@@ -4,38 +4,46 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
+	"time"
 )
 
-func (nat *nbsNatManager) FindWhoAmI() error {
+func (nat *NbsNatManager) FindWhoAmI() error {
 
 	config := utils.GetConfig()
-
+	var success = false
 	for _, serverIP := range config.NatServerIP {
 
-		//TIPS:: no need to bind local host and local port right now
-		connection, err := nat.connectToNatServer(serverIP)
+		conn, err := nat.connectToNatServer(serverIP)
 		if err != nil {
 			logger.Error("can't know who am I", err)
 			goto CloseConn
 		}
+		conn.SetDeadline(time.Now().Add(time.Second * 3))
 
-		if err := nat.sendNatRequest(connection); err != nil {
+		if err := nat.sendNatRequest(conn); err != nil {
+			logger.Error("failed to read nat response:", err)
 			goto CloseConn
 		}
 
-		_, err = nat.parseNatResponse(connection)
+		_, err = nat.parseNatResponse(conn)
 		if err == nil {
+			logger.Debug("get NAT server info success.")
+			success = true
 			break
 		}
 
 	CloseConn:
-		connection.Close()
+		conn.Close()
+	}
+
+	if !success {
+		return fmt.Errorf("failed to get nat information")
 	}
 
 	return nil
 }
 
-func (nat *nbsNatManager) GetStatus() string {
+func (nat *NbsNatManager) GetStatus() string {
 
 	status := fmt.Sprintf("\n=========================================================================\n"+
 		"\tnetworkId:\t%s\n"+
@@ -51,7 +59,7 @@ func (nat *nbsNatManager) GetStatus() string {
 	return status
 }
 
-func (nat *nbsNatManager) NatType() nat_pb.NatType {
+func (nat *NbsNatManager) NatType() nat_pb.NatType {
 	nat.Lock()
 	defer nat.Unlock()
 	return nat.natType

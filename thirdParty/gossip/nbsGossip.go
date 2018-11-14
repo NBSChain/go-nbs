@@ -14,7 +14,7 @@ var (
 
 type nbsGossip struct {
 	peerId        string
-	memberManager memership.MemberManager
+	memberManager *memership.MemberNode
 }
 
 func GetGossipInstance() BasicProtocol {
@@ -61,7 +61,7 @@ func (manager *nbsGossip) Unsubscribe(channel string) error {
 func (manager *nbsGossip) StartUp(peerId string) error {
 
 	manager.peerId = peerId
-	manager.memberManager = memership.NewMemberNode()
+	manager.memberManager = memership.NewMemberNode(peerId)
 
 	return nil
 }

@@ -7,25 +7,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"net"
 	"strconv"
-	"sync"
 )
 
-var logger = utils.GetLogInstance()
-
-const NetIoBufferSize = 1 << 11
-const BootStrapNatServerTimeOutInSec = 6
-
-type nbsNatManager struct {
-	sync.Mutex
-	natServer     *net.UDPConn
-	natType       nat_pb.NatType
-	publicAddress *net.UDPAddr
-	privateIP     string
-	networkId     string
-}
-
 //TODO::support multiple local ip address.
-func NewNatManager(networkId string) Manager {
+func NewNatManager(networkId string) *NbsNatManager {
 
 	localPeers := ExternalIP()
 	if len(localPeers) == 0 {
@@ -34,7 +19,7 @@ func NewNatManager(networkId string) Manager {
 
 	logger.Debug("all network interfaces:", localPeers)
 
-	natObj := &nbsNatManager{
+	natObj := &NbsNatManager{
 		networkId: networkId,
 	}
 
@@ -46,7 +31,7 @@ func NewNatManager(networkId string) Manager {
 }
 
 //TODO:: support ipv6 later.
-func (nat *nbsNatManager) startNatService() {
+func (nat *NbsNatManager) startNatService() {
 
 	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().NatServerPort,
@@ -59,7 +44,7 @@ func (nat *nbsNatManager) startNatService() {
 	nat.natServer = natServer
 }
 
-func (nat *nbsNatManager) natService() {
+func (nat *NbsNatManager) natService() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
 
@@ -82,7 +67,7 @@ func (nat *nbsNatManager) natService() {
 	}
 }
 
-func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, error) {
+func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, error) {
 
 	data := make([]byte, NetIoBufferSize)
 
@@ -103,7 +88,7 @@ func (nat *nbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, er
 	return peerAddr, request, nil
 }
 
-func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *NbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
 
 	response := &nat_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
@@ -137,7 +122,7 @@ func (nat *nbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 	return nil
 }
 
-func (nat *nbsNatManager) confirmNatType() {
+func (nat *NbsNatManager) confirmNatType() {
 	nat.Lock()
 	defer nat.Unlock()
 

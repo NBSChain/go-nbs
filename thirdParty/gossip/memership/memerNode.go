@@ -2,23 +2,50 @@ package memership
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 )
 
-type MemberManager interface {
-}
-
-type memberNode struct {
-	contractNode *contractNode
+type MemberNode struct {
+	peerId       string
+	isPublic     bool
+	contractNode *ContractNode
 	serviceConn  *net.UDPConn
 }
 
-func NewMemberNode() MemberManager {
+func isInPublic() bool {
 
-	node := &memberNode{
+	natType := network.GetInstance().NatType()
+
+	var canService bool
+	switch natType {
+	case nat_pb.NatType_UnknownRES:
+		canService = false
+
+	case nat_pb.NatType_NoNatDevice:
+		canService = true
+
+	case nat_pb.NatType_BehindNat:
+		canService = false
+
+	case nat_pb.NatType_CanBeNatServer:
+		canService = true
+
+	case nat_pb.NatType_ToBeChecked:
+		canService = false
+	}
+
+	return canService
+}
+
+func NewMemberNode(peerId string) *MemberNode {
+
+	node := &MemberNode{
+		peerId:       peerId,
+		isPublic:     isInPublic(),
 		contractNode: newContractNode(),
 	}
 
@@ -26,12 +53,14 @@ func NewMemberNode() MemberManager {
 		panic(err)
 	}
 
-	go node.registerToNetwork()
+	if err := node.initSubRequest(); err != nil {
+		panic(err)
+	}
 
 	return node
 }
 
-func (node *memberNode) startService() error {
+func (node *MemberNode) startService() error {
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().GossipContractServicePort,
@@ -49,11 +78,7 @@ func (node *memberNode) startService() error {
 	return nil
 }
 
-func (node *memberNode) registerToNetwork() {
-
-}
-
-func (node *memberNode) runLoop() {
+func (node *MemberNode) runLoop() {
 
 	for {
 		buffer := make([]byte, network.NormalReadBuffer)
@@ -78,7 +103,7 @@ func (node *memberNode) runLoop() {
 
 		switch message.MsgType {
 		case pb.Type_init:
-			node.contractNode.initSub(message.InitMsg)
+			node.contractNode.proxyInit(message.InitMsg)
 		default:
 			continue
 		}
