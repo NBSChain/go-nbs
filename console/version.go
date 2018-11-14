@@ -3,8 +3,6 @@ package console
 import (
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
-	"time"
 )
 
 func init() {
@@ -27,14 +25,11 @@ var versionCmd = &cobra.Command{
 func versionReq(request *pb.VersionRequest) *pb.VersionResponse {
 
 	conn := DialToCmdService()
-
 	defer conn.Close()
-	client := pb.NewVersionTaskClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	client := pb.NewVersionTaskClient(conn.c)
 
-	response, err := client.SystemVersion(ctx, request)
+	response, err := client.SystemVersion(conn.ctx, request)
 	if err != nil {
 		logger.Fatalf("could not greet: %v", err)
 	}

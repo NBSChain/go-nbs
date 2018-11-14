@@ -1,7 +1,6 @@
 package console
 
 import (
-	"context"
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
 	"io"
@@ -41,11 +40,9 @@ func getFile(cmd *cobra.Command, args []string) {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewGetTaskClient(conn)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	client := pb.NewGetTaskClient(conn.c)
 
-	stream, err := client.Get(ctx, request)
+	stream, err := client.Get(conn.ctx, request)
 	if err != nil {
 		log.Fatalf("could not add file : %v", err)
 	}

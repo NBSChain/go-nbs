@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/application"
 	"github.com/NBSChain/go-nbs/storage/application/rpcService"
@@ -39,6 +40,12 @@ func Execute() {
 	}
 }
 
+type CmdConnection struct {
+	c      *grpc.ClientConn
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
 func mainRun(cmd *cobra.Command, args []string) {
 
 	logger.Info("get command args:(", args, ")-->", *natServiceConf)
@@ -50,7 +57,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 	rpcService.StartCmdService()
 }
 
-func DialToCmdService() *grpc.ClientConn {
+func DialToCmdService() *CmdConnection {
 	var address = "127.0.0.1:" + utils.GetConfig().CmdServicePort
 
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
@@ -58,5 +65,17 @@ func DialToCmdService() *grpc.ClientConn {
 		logger.Fatalf("did not connect: %v", err)
 		return nil
 	}
-	return conn
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &CmdConnection{
+		c:      conn,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+func (conn *CmdConnection) Close() {
+	conn.c.Close()
+	conn.cancel()
 }

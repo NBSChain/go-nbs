@@ -1,7 +1,6 @@
 package console
 
 import (
-	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
@@ -36,16 +35,13 @@ func natStatus(cmd *cobra.Command, args []string) {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewNatTaskClient(conn)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	client := pb.NewNatTaskClient(conn.c)
 
 	request := &pb.NatStatusResQuest{
 		Password: "", //TODO:: Need to check password?
 	}
 
-	response, err := client.NatStatus(ctx, request)
+	response, err := client.NatStatus(conn.ctx, request)
 	if err != nil {
 		logger.Fatalf("failed to create account:", err.Error())
 	}

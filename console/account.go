@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var accountCmd = &cobra.Command{
@@ -30,8 +29,6 @@ var accountCreateCmd = &cobra.Command{
 	Run:   createAccount,
 	Args:  cobra.MinimumNArgs(1),
 }
-
-var accountPassword string
 
 func init() {
 	rootCmd.AddCommand(accountCmd)
@@ -59,12 +56,9 @@ func unlockAccount(cmd *cobra.Command, args []string) {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewAccountTaskClient(conn)
+	client := pb.NewAccountTaskClient(conn.c)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	response, err := client.AccountUnlock(ctx, request)
+	response, err := client.AccountUnlock(conn.ctx, request)
 	if err != nil {
 		logger.Fatalf("failed to unlock account:", err.Error())
 	}
@@ -86,12 +80,9 @@ func createAccount(cmd *cobra.Command, args []string) {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewAccountTaskClient(conn)
+	client := pb.NewAccountTaskClient(conn.c)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	response, err := client.CreateAccount(ctx, request)
+	response, err := client.CreateAccount(conn.ctx, request)
 	if err != nil {
 		logger.Fatalf("failed to create account:", err.Error())
 	}

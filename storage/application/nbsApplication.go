@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/routing"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -63,11 +64,15 @@ func (app *NbsApplication) Start() error {
 	routing.GetInstance()
 
 	if app.nodeId != "" {
-		//TIPS:: if no account exist, we can't identify the network. so there are no connections right now.
+		// TIPS:: if no account exist, we can't identify the network.
+		// so there are no connections right now.
 		network.GetInstance().StartUp(app.nodeId)
 	} else {
 		logger.Warning("no account now so the network is down now")
 	}
+
+	//TODO:: configure this property when nbs node startup.
+	gossip.GetGossipInstance()
 
 	return nil
 }

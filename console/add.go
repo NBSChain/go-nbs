@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/application/rpcService"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 	"io"
 	"log"
@@ -94,12 +93,10 @@ func sendFileStream(sessionId, fileName string) {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewAddTaskClient(conn)
+	client := pb.NewAddTaskClient(conn.c)
 
-	ctx, cancel := context.WithCancel(context.Background())
 	header := metadata.Pairs(rpcService.StreamSessionIDKey, sessionId)
-	ctx = metadata.NewOutgoingContext(ctx, header)
-	defer cancel()
+	ctx := metadata.NewOutgoingContext(conn.ctx, header)
 
 	stream, err := client.TransLargeFile(ctx)
 	if err != nil {
@@ -141,12 +138,9 @@ func addFile(request *pb.AddRequest) *pb.AddResponse {
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	client := pb.NewAddTaskClient(conn)
+	client := pb.NewAddTaskClient(conn.c)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	response, err := client.AddFile(ctx, request)
+	response, err := client.AddFile(conn.ctx, request)
 	if err != nil {
 		logger.Fatalf("could not add file : %v", err)
 	}

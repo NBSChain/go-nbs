@@ -5,12 +5,14 @@ import (
 	"sync"
 )
 
+var (
+	instance *nbsGossip
+	once     sync.Once
+	logger   = utils.GetLogInstance()
+)
+
 type nbsGossip struct {
 }
-
-var instance *nbsGossip
-var once sync.Once
-var logger = utils.GetLogInstance()
 
 func GetGossipInstance() BasicProtocol {
 
@@ -25,5 +27,36 @@ func newNbsGossip() *nbsGossip {
 
 	gossipObj := &nbsGossip{}
 
+	go gossipObj.registerToNetwork()
+
 	return gossipObj
+}
+
+func (manager *nbsGossip) registerToNetwork() {
+
+}
+
+/*****************************************************************
+*
+*		interface implementations
+*
+*****************************************************************/
+func (manager *nbsGossip) Publish(channel string, message []byte) error {
+	return nil
+}
+
+func (manager *nbsGossip) Subscribe(channel string) error {
+	return nil
+}
+
+func (manager *nbsGossip) AllPeers(channel string, depth int) ([]string, []string) {
+	return nil, nil
+}
+
+func (manager *nbsGossip) AllMyTopics() []string {
+	return nil
+}
+
+func (manager *nbsGossip) Unsubscribe(channel string) error {
+
 }

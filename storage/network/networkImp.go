@@ -34,7 +34,6 @@ func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error 
 	if err := network.natManager.FindWhoAmI(); err != nil {
 		logger.Warning("boot strap err:", err)
 	}
-
 	return nil
 }
 func (network *nbsNetwork) GetNatInfo() string {
