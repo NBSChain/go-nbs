@@ -25,7 +25,7 @@ func NewNatManager(networkId string) *NbsNatManager {
 
 	natObj.startNatService()
 
-	go natObj.natService()
+	go natObj.runLoop()
 
 	return natObj
 }
@@ -44,7 +44,7 @@ func (nat *NbsNatManager) startNatService() {
 	nat.natServer = natServer
 }
 
-func (nat *NbsNatManager) natService() {
+func (nat *NbsNatManager) runLoop() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
 
@@ -126,10 +126,10 @@ func (nat *NbsNatManager) confirmNatType() {
 	nat.Lock()
 	defer nat.Unlock()
 
-	if nat.natType == nat_pb.NatType_BehindNat ||
-		nat.natType == nat_pb.NatType_ToBeChecked {
+	if nat.NatType == nat_pb.NatType_BehindNat ||
+		nat.NatType == nat_pb.NatType_ToBeChecked {
 
-		nat.natType = nat_pb.NatType_CanBeNatServer
+		nat.NatType = nat_pb.NatType_CanBeNatServer
 	}
 }
 

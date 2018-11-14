@@ -32,7 +32,7 @@ func (nat *NbsNatManager) sendNatRequest(connection *net.UDPConn) error {
 	localAddr := connection.LocalAddr().String()
 
 	host, port, err := net.SplitHostPort(localAddr)
-	nat.privateIP = host
+	nat.PrivateIP = host
 	bootRequest := &nat_pb.BootNatRegReq{
 		NodeId:      nat.networkId,
 		PrivateIp:   host,
@@ -78,12 +78,12 @@ func (nat *NbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 	port, _ := strconv.Atoi(response.PublicPort)
 
 	nat.Lock()
-	nat.natType = response.NatType
+	nat.NatType = response.NatType
 	nat.Unlock()
 
 	if response.NatType == nat_pb.NatType_BehindNat ||
 		response.NatType == nat_pb.NatType_ToBeChecked {
-		nat.publicAddress = &net.UDPAddr{
+		nat.PublicAddress = &net.UDPAddr{
 			IP:   net.ParseIP(response.PublicIp),
 			Port: port,
 			Zone: response.Zone,

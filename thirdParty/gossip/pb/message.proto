@@ -10,6 +10,7 @@ import "initSub.proto";
 
 enum type{
     unknown         = 0;
+
     init            = 1;
     reqContract     = 2;
     reqContractAck  = 3;
@@ -22,6 +23,8 @@ enum type{
     updateInView    = 10;
     reSubReqContract= 11;
     heartBeat       = 12;
+
+    initACK         = 13;
 }
 
 message gossip{

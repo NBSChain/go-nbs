@@ -9,16 +9,16 @@ var (
 	logger = utils.GetLogInstance()
 )
 
-type ContractNode struct {
+type contractNode struct {
 }
 
-func newContractNode() *ContractNode {
+func newContractNode() *contractNode {
 
-	node := &ContractNode{}
+	node := &contractNode{}
 
 	return node
 }
 
-func (node *ContractNode) proxyInit(request *pb.InitSub) {
+func (node *contractNode) proxyInit(request *pb.InitSub) {
 
 }

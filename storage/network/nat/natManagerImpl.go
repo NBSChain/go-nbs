@@ -2,7 +2,6 @@ package nat
 
 import (
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"time"
 )
@@ -52,15 +51,9 @@ func (nat *NbsNatManager) GetStatus() string {
 		"\tprivateIP:\t%s\n"+
 		"=========================================================================",
 		nat.networkId,
-		nat.natType,
-		nat.publicAddress.String(),
-		nat.privateIP)
+		nat.NatType,
+		nat.PublicAddress.String(),
+		nat.PrivateIP)
 
 	return status
-}
-
-func (nat *NbsNatManager) NatType() nat_pb.NatType {
-	nat.Lock()
-	defer nat.Unlock()
-	return nat.natType
 }

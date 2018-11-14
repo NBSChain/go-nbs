@@ -3,7 +3,14 @@ package network
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"net"
 )
+
+type NbsAddress struct {
+	PublicAddr *net.UDPAddr
+	PrivateIp  string
+	NatType    nat_pb.NatType
+}
 
 func (network *nbsNetwork) NewHost(options ...HostOption) Host {
 
@@ -46,6 +53,13 @@ func (network *nbsNetwork) GetNatInfo() string {
 	return network.natManager.GetStatus()
 }
 
-func (network *nbsNetwork) NatType() nat_pb.NatType {
-	return network.natManager.NatType()
+func (network *nbsNetwork) LocalAddrInfo() NbsAddress {
+
+	addr := NbsAddress{
+		PublicAddr: network.natManager.PublicAddress,
+		PrivateIp:  network.natManager.PrivateIP,
+		NatType:    network.natManager.NatType,
+	}
+
+	return addr
 }

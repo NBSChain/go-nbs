@@ -12,3 +12,8 @@ message InitSub{
     string privateAddr  = 3;
     bool canBeServer    = 4;
 }
+
+message InitSubACK{
+    string contactId       = 1;
+    string applierId       = 2;
+}

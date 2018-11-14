@@ -12,16 +12,18 @@ import (
 type MemberNode struct {
 	peerId       string
 	isPublic     bool
-	contractNode *ContractNode
 	serviceConn  *net.UDPConn
+	contractNode *contractNode
+	inPut        *inputView
+	outPut       *outputView
 }
 
-func isInPublic() bool {
+func IsInPublic() bool {
 
-	natType := network.GetInstance().NatType()
+	addrInfo := network.GetInstance().LocalAddrInfo()
 
 	var canService bool
-	switch natType {
+	switch addrInfo.NatType {
 	case nat_pb.NatType_UnknownRES:
 		canService = false
 
@@ -45,22 +47,29 @@ func NewMemberNode(peerId string) *MemberNode {
 
 	node := &MemberNode{
 		peerId:       peerId,
-		isPublic:     isInPublic(),
+		isPublic:     IsInPublic(),
 		contractNode: newContractNode(),
-	}
-
-	if err := node.startService(); err != nil {
-		panic(err)
-	}
-
-	if err := node.initSubRequest(); err != nil {
-		panic(err)
+		inPut:        newInputView(),
+		outPut:       newOutPutView(),
 	}
 
 	return node
 }
 
-func (node *MemberNode) startService() error {
+func (node *MemberNode) InitNode() error {
+
+	if err := node.initMsgService(); err != nil {
+		return err
+	}
+
+	if err := node.initSubRequest(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (node *MemberNode) initMsgService() error {
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().GossipContractServicePort,

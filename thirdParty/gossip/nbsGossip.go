@@ -61,7 +61,10 @@ func (manager *nbsGossip) Unsubscribe(channel string) error {
 func (manager *nbsGossip) StartUp(peerId string) error {
 
 	manager.peerId = peerId
-	manager.memberManager = memership.NewMemberNode(peerId)
+
+	memberNode := memership.NewMemberNode(peerId)
+	memberNode.InitNode()
+	manager.memberManager = memberNode
 
 	return nil
 }

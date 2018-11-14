@@ -2,10 +2,12 @@ package memership
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -53,7 +55,16 @@ func (node *MemberNode) initSubRequest() error {
 
 func (node *MemberNode) sendInitSubRequest(conn *net.UDPConn) error {
 
-	payload := &pb.InitSub{}
+	addrInfo := network.GetInstance().LocalAddrInfo()
+	localServicePort := utils.GetConfig().GossipContractServicePort
+	port := strconv.Itoa(localServicePort)
+
+	payload := &pb.InitSub{
+		NodeId:      node.peerId,
+		PublicAddr:  addrInfo.PublicAddr.String(),
+		PrivateAddr: addrInfo.PrivateIp + ":" + port,
+		CanBeServer: node.isPublic,
+	}
 
 	msg := &pb.Gossip{
 		MsgType: pb.Type_init,
@@ -72,5 +83,21 @@ func (node *MemberNode) sendInitSubRequest(conn *net.UDPConn) error {
 }
 
 func (node *MemberNode) readInitSubResponse(conn *net.UDPConn) error {
+
+	buffer := make([]byte, network.NormalReadBuffer)
+	hasRead, err := conn.Read(buffer)
+	if err != nil {
+		return err
+	}
+
+	msg := &pb.Gossip{}
+	if err := proto.Unmarshal(buffer[:hasRead], msg); err != nil {
+		return err
+	}
+
+	if msg.MsgType != pb.Type_initACK {
+		return fmt.Errorf("failed to send init sub request")
+	}
+
 	return nil
 }

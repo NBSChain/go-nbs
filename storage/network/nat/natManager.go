@@ -15,8 +15,8 @@ const BootStrapNatServerTimeOutInSec = 6
 type NbsNatManager struct {
 	sync.Mutex
 	natServer     *net.UDPConn
-	natType       nat_pb.NatType
-	publicAddress *net.UDPAddr
-	privateIP     string
+	NatType       nat_pb.NatType
+	PublicAddress *net.UDPAddr
+	PrivateIP     string
 	networkId     string
 }
