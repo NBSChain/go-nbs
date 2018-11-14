@@ -52,5 +52,7 @@ func (nat *nbsNatManager) GetStatus() string {
 }
 
 func (nat *nbsNatManager) NatType() nat_pb.NatType {
+	nat.Lock()
+	defer nat.Unlock()
 	return nat.natType
 }
