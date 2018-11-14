@@ -58,5 +58,5 @@ func (manager *nbsGossip) AllMyTopics() []string {
 }
 
 func (manager *nbsGossip) Unsubscribe(channel string) error {
-
+	return nil
 }

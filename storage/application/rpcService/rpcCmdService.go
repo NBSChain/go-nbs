@@ -41,6 +41,8 @@ func StartCmdService() {
 
 	pb.RegisterNatTaskServer(theServer, &natService{})
 
+	pb.RegisterPubSubTaskServer(theServer, &pubSubService{})
+
 	reflection.Register(theServer)
 	if err := theServer.Serve(listener); err != nil {
 		logger.Fatalf("Failed to serve: %v", err)

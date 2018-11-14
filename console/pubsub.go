@@ -2,17 +2,18 @@ package console
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/spf13/cobra"
 )
 
-var pubsubCmd = &cobra.Command{
-	Use:   "pubsub",
+var pubSubCmd = &cobra.Command{
+	Use:   "pubSub",
 	Short: "gossip protocol publish and subscribe actions",
 	Long:  `gossip protocol publish and subscribe actions`,
 	Run:   pubAndSub,
 }
 
-var pubsubPubCmd = &cobra.Command{
+var pubSubPubCmd = &cobra.Command{
 	Use:   "pub [# topic] [# message]",
 	Short: "publish message to topic.",
 	Long:  `publish message to topic.`,
@@ -20,7 +21,7 @@ var pubsubPubCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 }
 
-var pubsubSubCmd = &cobra.Command{
+var pubSubSubCmd = &cobra.Command{
 	Use:   "sub [# topic]",
 	Short: "subscribe a topic",
 	Long:  `subscribe a topic.`,
@@ -28,46 +29,97 @@ var pubsubSubCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 }
 
-var pubsubPeersCmd = &cobra.Command{
+var pubSubPeersCmd = &cobra.Command{
 	Use:   "peers",
 	Short: "list all peers in my current node",
 	Long:  `list all peers in my current node`,
 	Run:   listAllPeers,
+	Args:  cobra.MinimumNArgs(1),
 }
 
-var pubsubLsCmd = &cobra.Command{
+var pubSubLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "list all topics has subscribed",
 	Long:  `list all topics has subscribed.`,
 	Run:   listAllTopics,
 }
+var peerSearchDepth *int32
 
 func init() {
-	rootCmd.AddCommand(pubsubCmd)
-	pubsubCmd.AddCommand(pubsubPubCmd)
-	pubsubCmd.AddCommand(pubsubSubCmd)
-	pubsubCmd.AddCommand(pubsubPeersCmd)
-	pubsubCmd.AddCommand(pubsubLsCmd)
+	rootCmd.AddCommand(pubSubCmd)
+	pubSubCmd.AddCommand(pubSubPubCmd)
+	pubSubCmd.AddCommand(pubSubSubCmd)
+	pubSubCmd.AddCommand(pubSubPeersCmd)
+	pubSubCmd.AddCommand(pubSubLsCmd)
+	peerSearchDepth = pubSubPeersCmd.Flags().Int32P("depth", "d", 4, "the depth you want to search")
 }
 
 func pubAndSub(cmd *cobra.Command, args []string) {
 	fmt.Println("I'm ok!")
 }
+
 func publish(cmd *cobra.Command, args []string) {
-	fmt.Println("I'm ok!")
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewPubSubTaskClient(conn.c)
+
+	request := &pb.PublishRequest{
+		Topics:  args[0],
+		Message: args[1],
+	}
+
+	response, err := client.Publish(conn.ctx, request)
+
+	fmt.Println(response, err)
 }
+
 func subscribe(cmd *cobra.Command, args []string) {
 
 	conn := DialToCmdService()
 	defer conn.Close()
 
-	//client := pb.NewAddTaskClient(conn.c)
+	client := pb.NewPubSubTaskClient(conn.c)
 
-	fmt.Println("I'm ok!")
+	request := &pb.SubscribeRequest{
+		Topics: args[0],
+	}
+
+	response, err := client.Subscribe(conn.ctx, request)
+
+	fmt.Println(response, err)
 }
+
 func listAllPeers(cmd *cobra.Command, args []string) {
-	fmt.Println("I'm ok!")
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewPubSubTaskClient(conn.c)
+
+	request := &pb.PeersRequest{
+		Topics: args[0],
+		Depth:  *peerSearchDepth,
+	}
+
+	response, err := client.Peers(conn.ctx, request)
+
+	fmt.Println(response, err)
 }
+
 func listAllTopics(cmd *cobra.Command, args []string) {
-	fmt.Println("I'm ok!")
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewPubSubTaskClient(conn.c)
+
+	request := &pb.TopicsRequest{
+		Message: "", //TODO:: I don't know what we need right now.
+	}
+
+	response, err := client.Topics(conn.ctx, request)
+
+	fmt.Println(response, err)
 }
