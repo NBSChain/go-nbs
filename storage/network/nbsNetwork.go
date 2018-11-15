@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -11,7 +12,8 @@ type nbsNetwork struct {
 	Context    context.Context
 	natManager *nat.NbsNatManager
 	netWorkId  string
-	addresses  *nat.NbsAddress
+	addresses  *net_pb.NbsAddress
+	peerStore  map[string]*net_pb.NbsAddress
 }
 
 var once sync.Once
@@ -30,7 +32,8 @@ func GetInstance() Network {
 func newNetwork() *nbsNetwork {
 
 	network := &nbsNetwork{
-		Context: context.Background(),
+		Context:   context.Background(),
+		peerStore: make(map[string]*net_pb.NbsAddress),
 	}
 
 	return network

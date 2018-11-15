@@ -18,10 +18,12 @@ func (node *MemManager) registerMySelf() error {
 
 	for _, serverIp := range servers {
 
-		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-			IP:   net.ParseIP(serverIp),
-			Port: utils.GetConfig().GossipCtrlPort,
-		})
+		conn, err := network.GetInstance().DialUDP("udp4",
+			nil, &net.UDPAddr{
+				IP:   net.ParseIP(serverIp),
+				Port: utils.GetConfig().GossipCtrlPort,
+			})
+
 		if err != nil {
 			logger.Error("dial to contract boot server failed:", err)
 			goto CloseConn
@@ -42,7 +44,6 @@ func (node *MemManager) registerMySelf() error {
 
 	CloseConn:
 		conn.Close()
-
 	}
 
 	if !success {
@@ -52,11 +53,10 @@ func (node *MemManager) registerMySelf() error {
 	return nil
 }
 
-func (node *MemManager) sendInitSubRequest(conn *net.UDPConn) error {
+func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
 
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
-
 		InitMsg: &pb.InitSub{
 			NodeId: node.peerId,
 		},
@@ -73,7 +73,7 @@ func (node *MemManager) sendInitSubRequest(conn *net.UDPConn) error {
 	return nil
 }
 
-func (node *MemManager) readInitSubResponse(conn *net.UDPConn) error {
+func (node *MemManager) readInitSubResponse(conn *network.NbsUdpConn) error {
 
 	buffer := make([]byte, network.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)

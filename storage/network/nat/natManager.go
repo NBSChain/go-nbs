@@ -15,9 +15,3 @@ type NbsNatManager struct {
 	networkId string
 	canServe  chan bool
 }
-
-type NbsAddress struct {
-	PublicIP  string
-	PrivateIp string
-	IsInPub   bool
-}

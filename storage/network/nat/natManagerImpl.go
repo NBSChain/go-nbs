@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (nat *NbsNatManager) FindWhoAmI() (address *NbsAddress, err error) {
+func (nat *NbsNatManager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 
 	config := utils.GetConfig()
 
@@ -35,19 +35,19 @@ func (nat *NbsNatManager) FindWhoAmI() (address *NbsAddress, err error) {
 			continue
 		}
 
-		address = &NbsAddress{
-			PublicIP:  response.PublicIp,
-			PrivateIp: localHost,
-			IsInPub:   IsPublic(response.NatType),
+		address = &net_pb.NbsAddress{
+			PublicIp:     response.PublicIp,
+			PrivateIp:    localHost,
+			CanBeService: IsPublic(response.NatType),
 		}
 
 		if response.NatType == net_pb.NatType_ToBeChecked {
 
 			select {
 			case canServer := <-nat.canServe:
-				address.IsInPub = canServer
+				address.CanBeService = canServer
 			case <-time.After(time.Second * BootStrapNatServerTimeOutInSec / 2):
-				address.IsInPub = false
+				address.CanBeService = false
 			}
 			close(nat.canServe)
 		}

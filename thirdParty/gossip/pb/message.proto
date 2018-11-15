@@ -6,7 +6,7 @@ option java_outer_classname = "GossipMessage";
 
 package pb;
 
-import "basicHost.proto";
+//import "basicHost.proto";
 import "initSub.proto";
 
 enum MsgType {

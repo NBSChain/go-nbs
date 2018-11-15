@@ -4,6 +4,7 @@ package net.pb;
 
 message NbsAddress{
     bool canBeService   = 10;
-    string publicAddr   = 20;
-    string privateAddr  = 30;
+    string publicIp     = 20;
+    string privateIp    = 30;
+    string  peerId      = 40;
 }

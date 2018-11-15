@@ -1,5 +1,10 @@
 package network
 
+import (
+	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"net"
+)
+
 type HostOption func() error
 type SetupOption func() error
 
@@ -10,9 +15,9 @@ const (
 type Network interface {
 	StartUp(id string, options ...SetupOption) error
 
-	NewHost(options ...HostOption) Host
-
-	ListenAddrString(address string) HostOption
-
 	GetNatInfo() string
+
+	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error)
+
+	StorePeerInfo(addr *net_pb.NbsAddress)
 }
