@@ -7,7 +7,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -55,20 +54,12 @@ func (node *MemManager) registerMySelf() error {
 
 func (node *MemManager) sendInitSubRequest(conn *net.UDPConn) error {
 
-	addrInfo := network.GetInstance().LocalAddrInfo()
-	localServicePort := utils.GetConfig().GossipCtrlPort
-	port := strconv.Itoa(localServicePort)
-
-	payload := &pb.InitSub{
-		NodeId:      node.peerId,
-		PublicAddr:  addrInfo.PublicAddr.String(),
-		PrivateAddr: addrInfo.PrivateIp + ":" + port,
-		CanBeServer: node.isPublic,
-	}
-
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
-		InitMsg:     payload,
+
+		InitMsg: &pb.InitSub{
+			NodeId: node.peerId,
+		},
 	}
 	msgData, err := proto.Marshal(msg)
 	if err != nil {

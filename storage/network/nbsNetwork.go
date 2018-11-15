@@ -11,6 +11,7 @@ type nbsNetwork struct {
 	Context    context.Context
 	natManager *nat.NbsNatManager
 	netWorkId  string
+	addresses  *nat.NbsAddress
 }
 
 var once sync.Once

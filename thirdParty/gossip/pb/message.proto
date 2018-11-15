@@ -6,6 +6,7 @@ option java_outer_classname = "GossipMessage";
 
 package pb;
 
+import "basicHost.proto";
 import "initSub.proto";
 
 enum MsgType {
@@ -27,8 +28,11 @@ enum MsgType {
     initACK         = 13;
 }
 
+
 message gossip {
-    MsgType messageType = 1;
-    InitSub initMsg     = 2;
-    InitSubACK initACK  = 3;
+    MsgType messageType         = 1;
+    InitSub initMsg             = 10;
+    InitSubACK initACK          = 11;
+    ReqContact contactReq       = 12;
+    ReqContactACK contactRes    = 13;
 }

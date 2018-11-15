@@ -21,6 +21,7 @@ func NewNatManager(networkId string) *NbsNatManager {
 
 	natObj := &NbsNatManager{
 		networkId: networkId,
+		canServe:  make(chan bool),
 	}
 
 	natObj.startNatService()
@@ -55,11 +56,11 @@ func (nat *NbsNatManager) runLoop() {
 		}
 
 		switch request.MsgType {
-		case nat_pb.NatMsgType_BootStrapReg:
+		case net_pb.NatMsgType_BootStrapReg:
 			if err := nat.bootNatResponse(request.BootRegReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case nat_pb.NatMsgType_Ping:
+		case net_pb.NatMsgType_Ping:
 			if err := nat.pong(request.Ping, peerAddr); err != nil {
 				logger.Error(err)
 			}
@@ -67,7 +68,7 @@ func (nat *NbsNatManager) runLoop() {
 	}
 }
 
-func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, error) {
+func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 
 	data := make([]byte, NetIoBufferSize)
 
@@ -77,7 +78,7 @@ func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, er
 		return nil, nil, err
 	}
 
-	request := &nat_pb.NatRequest{}
+	request := &net_pb.NatRequest{}
 	if err := proto.Unmarshal(data[:n], request); err != nil {
 		logger.Warning("can't parse the nat request", err, peerAddr)
 		return nil, nil, err
@@ -88,24 +89,24 @@ func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *nat_pb.NatRequest, er
 	return peerAddr, request, nil
 }
 
-func (nat *NbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *NbsNatManager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
 
-	response := &nat_pb.BootNatRegRes{}
+	response := &net_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
 	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
 	response.Zone = peerAddr.Zone
 
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 
-		response.NatType = nat_pb.NatType_NoNatDevice
+		response.NatType = net_pb.NatType_NoNatDevice
 	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
 
-		response.NatType = nat_pb.NatType_ToBeChecked
+		response.NatType = net_pb.NatType_ToBeChecked
 		go nat.ping(peerAddr)
 
 	} else {
 
-		response.NatType = nat_pb.NatType_BehindNat
+		response.NatType = net_pb.NatType_BehindNat
 	}
 
 	responseData, err := proto.Marshal(response)
@@ -120,17 +121,6 @@ func (nat *NbsNatManager) bootNatResponse(request *nat_pb.BootNatRegReq, peerAdd
 	}
 
 	return nil
-}
-
-func (nat *NbsNatManager) confirmNatType() {
-	nat.Lock()
-	defer nat.Unlock()
-
-	if nat.NatType == nat_pb.NatType_BehindNat ||
-		nat.NatType == nat_pb.NatType_ToBeChecked {
-
-		nat.NatType = nat_pb.NatType_CanBeNatServer
-	}
 }
 
 func ExternalIP() []string {
@@ -176,4 +166,27 @@ func ExternalIP() []string {
 	}
 
 	return ips
+}
+
+func IsPublic(natType net_pb.NatType) bool {
+
+	var canService bool
+	switch natType {
+	case net_pb.NatType_UnknownRES:
+		canService = false
+
+	case net_pb.NatType_NoNatDevice:
+		canService = true
+
+	case net_pb.NatType_BehindNat:
+		canService = false
+
+	case net_pb.NatType_CanBeNatServer:
+		canService = true
+
+	case net_pb.NatType_ToBeChecked:
+		canService = false
+	}
+
+	return canService
 }

@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -27,38 +26,37 @@ func (nat *NbsNatManager) connectToNatServer(serverIP string) (*net.UDPConn, err
 	return conn, nil
 }
 
-func (nat *NbsNatManager) sendNatRequest(connection *net.UDPConn) error {
+func (nat *NbsNatManager) sendNatRequest(connection *net.UDPConn) (string, error) {
 
 	localAddr := connection.LocalAddr().String()
 
 	host, port, err := net.SplitHostPort(localAddr)
-	nat.PrivateIP = host
-	bootRequest := &nat_pb.BootNatRegReq{
+	bootRequest := &net_pb.BootNatRegReq{
 		NodeId:      nat.networkId,
 		PrivateIp:   host,
 		PrivatePort: port,
 	}
 
-	request := &nat_pb.NatRequest{
-		MsgType:    nat_pb.NatMsgType_BootStrapReg,
+	request := &net_pb.NatRequest{
+		MsgType:    net_pb.NatMsgType_BootStrapReg,
 		BootRegReq: bootRequest,
 	}
 
 	requestData, err := proto.Marshal(request)
 	if err != nil {
 		logger.Error("failed to marshal nat request", err)
-		return err
+		return "", err
 	}
 
 	if no, err := connection.Write(requestData); err != nil || no == 0 {
 		logger.Error("failed to send nat request to natServer ", err, no)
-		return err
+		return "", err
 	}
 
-	return nil
+	return host, nil
 }
 
-func (nat *NbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.BootNatRegRes, error) {
+func (nat *NbsNatManager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRegRes, error) {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)
@@ -67,28 +65,13 @@ func (nat *NbsNatManager) parseNatResponse(connection *net.UDPConn) (*nat_pb.Boo
 		return nil, err
 	}
 
-	response := &nat_pb.BootNatRegRes{}
+	response := &net_pb.BootNatRegRes{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("unmarshal err:", err)
 		return nil, err
 	}
 
 	logger.Debug("response:", response)
-
-	port, _ := strconv.Atoi(response.PublicPort)
-
-	nat.Lock()
-	nat.NatType = response.NatType
-	nat.Unlock()
-
-	if response.NatType == nat_pb.NatType_BehindNat ||
-		response.NatType == nat_pb.NatType_ToBeChecked {
-		nat.PublicAddress = &net.UDPAddr{
-			IP:   net.ParseIP(response.PublicIp),
-			Port: port,
-			Zone: response.Zone,
-		}
-	}
 
 	return response, nil
 }

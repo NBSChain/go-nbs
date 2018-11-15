@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package net.pb;
+
+message NbsAddress{
+    bool canBeService   = 10;
+    string publicAddr   = 20;
+    string privateAddr  = 30;
+}

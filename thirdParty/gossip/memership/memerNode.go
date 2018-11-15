@@ -2,7 +2,6 @@ package memership
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -15,15 +14,8 @@ const (
 	ProxyInitSubRequest TaskType = iota + 1
 )
 
-type networkInfo struct {
-	isPublic   bool
-	publicAddr string
-	privateIP  string
-}
-
 type peerNodeItem struct {
 	nodeId string
-	host   networkInfo
 }
 
 type innerTask struct {
@@ -33,7 +25,6 @@ type innerTask struct {
 
 type MemManager struct {
 	peerId      string
-	isPublic    bool
 	serviceConn *net.UDPConn
 	inPut       map[string]peerNodeItem
 	outPut      map[string]peerNodeItem
@@ -44,37 +35,11 @@ var (
 	logger = utils.GetLogInstance()
 )
 
-func IsInPublic() bool {
-
-	addrInfo := network.GetInstance().LocalAddrInfo()
-
-	var canService bool
-	switch addrInfo.NatType {
-	case nat_pb.NatType_UnknownRES:
-		canService = false
-
-	case nat_pb.NatType_NoNatDevice:
-		canService = true
-
-	case nat_pb.NatType_BehindNat:
-		canService = false
-
-	case nat_pb.NatType_CanBeNatServer:
-		canService = true
-
-	case nat_pb.NatType_ToBeChecked:
-		canService = false
-	}
-
-	return canService
-}
-
 func NewMemberNode(peerId string) *MemManager {
 
 	node := &MemManager{
 		peerId:     peerId,
 		taskSignal: make(chan innerTask),
-		isPublic:   IsInPublic(),
 		inPut:      make(map[string]peerNodeItem),
 		outPut:     make(map[string]peerNodeItem),
 	}

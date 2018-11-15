@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package nat.pb;
+package net.pb;
 
 enum NatMsgType {
     UnknownReq      = 0;

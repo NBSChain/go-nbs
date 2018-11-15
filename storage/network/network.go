@@ -15,6 +15,4 @@ type Network interface {
 	ListenAddrString(address string) HostOption
 
 	GetNatInfo() string
-
-	LocalAddrInfo() NbsAddress
 }

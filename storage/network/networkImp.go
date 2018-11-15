@@ -1,16 +1,9 @@
 package network
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"net"
 )
-
-type NbsAddress struct {
-	PublicAddr *net.UDPAddr
-	PrivateIp  string
-	NatType    nat_pb.NatType
-}
 
 func (network *nbsNetwork) NewHost(options ...HostOption) Host {
 
@@ -39,9 +32,13 @@ func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error 
 
 	network.natManager = nat.NewNatManager(network.netWorkId)
 
-	if err := network.natManager.FindWhoAmI(); err != nil {
+	addr, err := network.natManager.FindWhoAmI()
+	if err != nil {
 		logger.Warning("boot strap err:", err)
 	}
+
+	network.addresses = addr
+
 	return nil
 }
 
@@ -50,16 +47,16 @@ func (network *nbsNetwork) GetNatInfo() string {
 		return "nat manager isn't initialized."
 	}
 
-	return network.natManager.GetStatus()
-}
+	status := fmt.Sprintf("\n=========================================================================\n"+
+		"\tnetworkId:\t%s\n"+
+		"\tisInPbulic:\t%v\n"+
+		"\tpublicIP:\t%s\n"+
+		"\tprivateIP:\t%s\n"+
+		"=========================================================================",
+		network.netWorkId,
+		network.addresses.IsInPub,
+		network.addresses.PublicIP,
+		network.addresses.PrivateIp)
 
-func (network *nbsNetwork) LocalAddrInfo() NbsAddress {
-
-	addr := NbsAddress{
-		PublicAddr: network.natManager.PublicAddress,
-		PrivateIp:  network.natManager.PrivateIP,
-		NatType:    network.natManager.NatType,
-	}
-
-	return addr
+	return status
 }
