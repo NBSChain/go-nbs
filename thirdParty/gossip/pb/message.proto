@@ -8,7 +8,7 @@ package pb;
 
 import "initSub.proto";
 
-enum type{
+enum MsgType {
     unknown         = 0;
 
     init            = 1;
@@ -27,7 +27,8 @@ enum type{
     initACK         = 13;
 }
 
-message gossip{
-    type msgType    = 1;
-    InitSub initMsg = 2;
+message gossip {
+    MsgType messageType = 1;
+    InitSub initMsg     = 2;
+    InitSubACK initACK  = 3;
 }

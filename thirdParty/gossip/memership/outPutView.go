@@ -1,10 +1,5 @@
 package memership
 
-type outputView struct {
-}
+func (node *MemManager) randomContact() {
 
-func newOutPutView() *outputView {
-	view := &outputView{}
-
-	return view
 }

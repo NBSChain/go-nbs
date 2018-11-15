@@ -14,7 +14,7 @@ var (
 
 type nbsGossip struct {
 	peerId        string
-	memberManager *memership.MemberNode
+	memberManager *memership.MemManager
 }
 
 func GetGossipInstance() BasicProtocol {
@@ -65,6 +65,8 @@ func (manager *nbsGossip) StartUp(peerId string) error {
 	memberNode := memership.NewMemberNode(peerId)
 	memberNode.InitNode()
 	manager.memberManager = memberNode
+
+	logger.Info("gossip service start up......")
 
 	return nil
 }

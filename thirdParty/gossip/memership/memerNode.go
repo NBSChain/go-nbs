@@ -9,14 +9,40 @@ import (
 	"net"
 )
 
-type MemberNode struct {
-	peerId       string
-	isPublic     bool
-	serviceConn  *net.UDPConn
-	contractNode *contractNode
-	inPut        *inputView
-	outPut       *outputView
+type TaskType int
+
+const (
+	ProxyInitSubRequest TaskType = iota + 1
+)
+
+type networkInfo struct {
+	isPublic   bool
+	publicAddr string
+	privateIP  string
 }
+
+type peerNodeItem struct {
+	nodeId string
+	host   networkInfo
+}
+
+type innerTask struct {
+	taskType TaskType
+	taskData interface{}
+}
+
+type MemManager struct {
+	peerId      string
+	isPublic    bool
+	serviceConn *net.UDPConn
+	inPut       map[string]peerNodeItem
+	outPut      map[string]peerNodeItem
+	taskSignal  chan innerTask
+}
+
+var (
+	logger = utils.GetLogInstance()
+)
 
 func IsInPublic() bool {
 
@@ -43,36 +69,40 @@ func IsInPublic() bool {
 	return canService
 }
 
-func NewMemberNode(peerId string) *MemberNode {
+func NewMemberNode(peerId string) *MemManager {
 
-	node := &MemberNode{
-		peerId:       peerId,
-		isPublic:     IsInPublic(),
-		contractNode: newContractNode(),
-		inPut:        newInputView(),
-		outPut:       newOutPutView(),
+	node := &MemManager{
+		peerId:     peerId,
+		taskSignal: make(chan innerTask),
+		isPublic:   IsInPublic(),
+		inPut:      make(map[string]peerNodeItem),
+		outPut:     make(map[string]peerNodeItem),
 	}
 
 	return node
 }
 
-func (node *MemberNode) InitNode() error {
+func (node *MemManager) InitNode() error {
 
 	if err := node.initMsgService(); err != nil {
 		return err
 	}
 
-	if err := node.initSubRequest(); err != nil {
+	go node.receivingCmd()
+
+	go node.taskDispatcher()
+
+	if err := node.registerMySelf(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (node *MemberNode) initMsgService() error {
+func (node *MemManager) initMsgService() error {
 
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: utils.GetConfig().GossipContractServicePort,
+		Port: utils.GetConfig().GossipCtrlPort,
 	})
 
 	if err != nil {
@@ -82,17 +112,15 @@ func (node *MemberNode) initMsgService() error {
 
 	node.serviceConn = conn
 
-	go node.runLoop()
-
 	return nil
 }
 
-func (node *MemberNode) runLoop() {
+func (node *MemManager) receivingCmd() {
 
 	for {
 		buffer := make([]byte, network.NormalReadBuffer)
 
-		n, peerAddr, err := node.serviceConn.ReadFrom(buffer)
+		n, peerAddr, err := node.serviceConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("reading contract application err:", err)
 			continue
@@ -110,11 +138,30 @@ func (node *MemberNode) runLoop() {
 			continue
 		}
 
-		switch message.MsgType {
-		case pb.Type_init:
-			node.contractNode.proxyInit(message.InitMsg)
+		switch message.MessageType {
+		case pb.MsgType_init:
+			node.initSubReqHandle(message.InitMsg, peerAddr)
 		default:
 			continue
 		}
 	}
+}
+
+func (node *MemManager) taskWorker(task innerTask) {
+
+	switch task.taskType {
+	case ProxyInitSubRequest:
+		node.proxyTheInitSub(task.taskData.(*pb.InitSub))
+	}
+}
+
+func (node *MemManager) taskDispatcher() {
+
+	for {
+		select {
+		case task := <-node.taskSignal:
+			node.taskWorker(task)
+		}
+	}
+
 }
