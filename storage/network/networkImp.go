@@ -6,6 +6,10 @@ import (
 	"net"
 )
 
+const (
+	ConnectionSeperator = "-"
+)
+
 func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.netWorkId = peerId
@@ -58,6 +62,14 @@ func (network *nbsNetwork) GetNatInfo() string {
 	return status
 }
 
+func (network *nbsNetwork) GetPublicIp() string {
+	if network.addresses.CanBeService {
+		return network.addresses.PublicIp
+	}
+
+	return ""
+}
+
 func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error) {
 
 	c, err := net.DialUDP(nt, localAddr, remoteAddr)
@@ -67,10 +79,73 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 
 	conn := &NbsUdpConn{
 		realConn: c,
+		cType:    ConnType_Normal,
 		parent:   network.connManager,
-		connId:   localAddr.String() + "-" + remoteAddr.String(),
+		connId:   localAddr.String() + ConnectionSeperator + remoteAddr.String(),
 	}
 
+	network.connManager.put(conn)
+
+	return conn, nil
+}
+
+func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*NbsUdpConn, error) {
+
+	c, err := net.ListenUDP(nt, lAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := &NbsUdpConn{
+		realConn: c,
+		cType:    ConnType_Normal,
+		parent:   network.connManager,
+		connId:   lAddr.String(),
+	}
+
+	network.connManager.put(conn)
+
+	return conn, nil
+}
+
+func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*NbsUdpConn, error) {
+
+	var conn *NbsUdpConn
+	var connId = fromId + ConnectionSeperator + toId
+
+	if toPubIp == "" { //TIPS::it means the target is behind a nat server.
+
+		natTunnel := network.connManager.natKATun
+
+		c, err := natTunnel.MakeANatConn(fromId, toId, toPort)
+		if err != nil {
+			return nil, err
+		}
+
+		conn = &NbsUdpConn{
+			realConn: c,
+			cType:    ConnType_Nat,
+			connId:   connId,
+		}
+
+	} else {
+
+		c, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+			Port: toPort,
+			IP:   net.ParseIP(toPubIp),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		conn = &NbsUdpConn{
+			realConn: c,
+			cType:    ConnType_Normal,
+			connId:   connId,
+		}
+	}
+
+	conn.parent = network.connManager
 	network.connManager.put(conn)
 
 	return conn, nil

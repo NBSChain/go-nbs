@@ -2,6 +2,7 @@ package nat
 
 import (
 	"fmt"
+	das "github.com/NBSChain/go-nbs/storage/network/decentralizeNatSys"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"net"
@@ -21,7 +22,7 @@ func NewNatManager(networkId string) *Manager {
 	natObj := &Manager{
 		networkId:  networkId,
 		canServe:   make(chan bool),
-		dNatServer: newDecentralizedNatServer(),
+		dNatServer: das.NewDecentralizedNatServer(),
 	}
 
 	natObj.startNatService()
@@ -82,7 +83,6 @@ func (nat *Manager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 
 	return nil, fmt.Errorf("can't find available NAT server")
 }
-
 
 func ExternalIP() []string {
 

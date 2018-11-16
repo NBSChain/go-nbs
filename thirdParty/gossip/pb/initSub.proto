@@ -6,10 +6,9 @@ option java_outer_classname = "InitMessage";
 
 package pb;
 
-import "basicHost.proto";
-
 message InitSub{
-    string nodeId   = 1;
+    string nodeId       = 1;
+    string publicIp     = 2;
 }
 
 message InitSubACK{
@@ -20,7 +19,7 @@ message InitSubACK{
 message ReqContact{
      string applierId    = 1;
      int32 ttl           = 2;
-     BasicHost fromHost  = 3;
+     string publicIp     = 3;
 }
 
 message ReqContactACK{

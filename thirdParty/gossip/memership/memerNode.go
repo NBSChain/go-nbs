@@ -1,6 +1,7 @@
 package memership
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -24,7 +25,7 @@ type innerTask struct {
 
 type MemManager struct {
 	peerId      string
-	serviceConn *net.UDPConn
+	serviceConn *network.NbsUdpConn
 	inPut       map[string]peerNodeItem
 	outPut      map[string]peerNodeItem
 	taskSignal  chan innerTask
@@ -65,7 +66,7 @@ func (node *MemManager) InitNode() error {
 
 func (node *MemManager) initMsgService() error {
 
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+	conn, err := network.GetInstance().ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().GossipCtrlPort,
 	})
 
@@ -92,6 +93,7 @@ func (node *MemManager) receivingCmd() {
 
 		if n >= utils.NormalReadBuffer {
 			//TODO:: check what we can to support this situation.
+			logger.Error("we didn't implement the package combination.")
 		}
 
 		logger.Debug("receive contract apply:", peerAddr)
@@ -127,5 +129,4 @@ func (node *MemManager) taskDispatcher() {
 			node.taskWorker(task)
 		}
 	}
-
 }

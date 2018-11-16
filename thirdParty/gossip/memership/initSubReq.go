@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+/*****************************************************************
+*
+*	member client functions about init subscribe request.
+*
+*****************************************************************/
 func (node *MemManager) registerMySelf() error {
 
 	servers := utils.GetConfig().GossipBootStrapIP
@@ -55,10 +60,12 @@ func (node *MemManager) registerMySelf() error {
 
 func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
 
+	pubIp := network.GetInstance().GetPublicIp()
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId: node.peerId,
+			NodeId:   node.peerId,
+			PublicIp: pubIp,
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -93,6 +100,11 @@ func (node *MemManager) readInitSubResponse(conn *network.NbsUdpConn) error {
 	return nil
 }
 
+/*****************************************************************
+*
+*	member server functions about init subscribe request.
+*
+*****************************************************************/
 func (node *MemManager) initSubReqHandle(request *pb.InitSub, applierAddr *net.UDPAddr) {
 
 	payLoad := &pb.InitSubACK{

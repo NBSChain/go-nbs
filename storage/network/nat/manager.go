@@ -2,6 +2,7 @@ package nat
 
 import (
 	"fmt"
+	das "github.com/NBSChain/go-nbs/storage/network/decentralizeNatSys"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -18,7 +19,7 @@ type Manager struct {
 	selfNatServer *net.UDPConn
 	networkId     string
 	canServe      chan bool
-	dNatServer    *decentralizedNatServer
+	dNatServer    *das.DecentralizedNatServer
 }
 
 //TODO:: support ipv6 later.
@@ -100,8 +101,8 @@ func (nat *Manager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net
 	}
 
 	pbRes := &net_pb.Response{
-		MsgType:net_pb.NatMsgType_BootStrapReg,
-		BootRegRes:response,
+		MsgType:    net_pb.NatMsgType_BootStrapReg,
+		BootRegRes: response,
 	}
 
 	pbResData, err := proto.Marshal(pbRes)

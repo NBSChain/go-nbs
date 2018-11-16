@@ -1,26 +1,45 @@
 package memership
 
-import "github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
+import (
+	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/gogo/protobuf/proto"
+)
 
 func (node *MemManager) proxyTheInitSub(request *pb.InitSub) {
 
 	nextNodeId := node.randomContact()
 
 	if node.peerId == nextNodeId {
-		//payLoad := &pb.ReqContactACK{
-		//	ApplierId: request.NodeId,
-		//	SupplierId:nextNodeId,
-		//}
+		payLoad := &pb.ReqContactACK{
+			ApplierId:  request.NodeId,
+			SupplierId: nextNodeId,
+		}
 
-		//msg := &pb.Gossip{
-		//	MessageType:pb.MsgType_reqContractAck,
-		//	FromHost:node.host,
-		//	ContactRes:payLoad,
-		//}
+		msg := &pb.Gossip{
+			MessageType: pb.MsgType_reqContractAck,
+			ContactRes:  payLoad,
+		}
 
-		//network.dial()
+		port := utils.GetConfig().GossipCtrlPort
+		conn, err := network.GetInstance().Connect(node.peerId, request.NodeId, request.PublicIp, port)
+		if err != nil {
+			logger.Error("the contact failed to notify the subscriber:", err)
+			return
+		}
+		defer conn.Close()
+
+		msgData, err := proto.Marshal(msg)
+		if err != nil {
+			logger.Error("failed to marshal the contact init msg:", err)
+			return
+		}
+
+		conn.Send(msgData)
+
 	} else {
-
+		//TODO:: forward this request to next contact server.
 	}
 
 }

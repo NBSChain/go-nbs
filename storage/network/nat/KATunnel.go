@@ -89,6 +89,11 @@ func (nat *Manager) NewKAChannel() (*KATunnel, error) {
 	return channel, nil
 }
 
+func (nat *KATunnel) MakeANatConn(fromId, toId string, port int) (*net.UDPConn, error) {
+
+	return nil, nil
+}
+
 func (ch *KATunnel) Close() {
 
 	ch.receiveHub.Close()
