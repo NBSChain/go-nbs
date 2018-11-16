@@ -59,15 +59,18 @@ func (network *nbsNetwork) GetNatInfo() string {
 }
 
 func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error) {
+
 	c, err := net.DialUDP(nt, localAddr, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	conn := &NbsUdpConn{
-		c:      c,
-		connId: localAddr.String() + "-" + remoteAddr.String(),
+		realConn: c,
+		parent:   network.connManager,
+		connId:   localAddr.String() + "-" + remoteAddr.String(),
 	}
+
 	network.connManager.put(conn)
 
 	return conn, nil

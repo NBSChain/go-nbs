@@ -12,6 +12,7 @@ type ConnManager struct {
 }
 
 func newConnManager() *ConnManager {
+
 	cm := &ConnManager{
 		queue: make(map[string]*NbsUdpConn),
 	}
@@ -32,5 +33,18 @@ func (manager *ConnManager) put(conn *NbsUdpConn) {
 	manager.queue[conn.connId] = conn
 }
 
+func (manager *ConnManager) Close(connId string) {
+	delete(manager.queue, connId)
+}
+
 func (manager *ConnManager) runLoop() {
+
+	//for {
+	//	for id, conn := range manager.queue{
+	//		if conn.isClosed{
+	//
+	//		}
+	//	}
+	//	time.Sleep(time.Second * 5)//TODO::
+	//}
 }

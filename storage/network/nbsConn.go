@@ -6,22 +6,26 @@ import (
 )
 
 type NbsUdpConn struct {
-	connId string
-	c      *net.UDPConn
+	connId   string
+	realConn *net.UDPConn
+	isClosed bool
+	parent   *ConnManager
 }
 
 func (conn *NbsUdpConn) SetDeadline(t time.Time) {
-	conn.c.SetDeadline(t)
+	conn.realConn.SetDeadline(t)
 }
 
 func (conn *NbsUdpConn) Write(d []byte) (int, error) {
-	return conn.c.Write(d)
+	return conn.realConn.Write(d)
 }
 
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
-	return conn.c.Read(b)
+	return conn.realConn.Read(b)
 }
 
 func (conn *NbsUdpConn) Close() error {
-	return conn.c.Close()
+	conn.isClosed = true
+	conn.parent.Close(conn.connId)
+	return conn.realConn.Close()
 }
