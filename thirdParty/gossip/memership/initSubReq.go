@@ -75,7 +75,7 @@ func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
 
 func (node *MemManager) readInitSubResponse(conn *network.NbsUdpConn) error {
 
-	buffer := make([]byte, network.NormalReadBuffer)
+	buffer := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)
 	if err != nil {
 		return err

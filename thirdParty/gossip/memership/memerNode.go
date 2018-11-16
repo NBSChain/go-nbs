@@ -1,7 +1,6 @@
 package memership
 
 import (
-	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -83,7 +82,7 @@ func (node *MemManager) initMsgService() error {
 func (node *MemManager) receivingCmd() {
 
 	for {
-		buffer := make([]byte, network.NormalReadBuffer)
+		buffer := make([]byte, utils.NormalReadBuffer)
 
 		n, peerAddr, err := node.serviceConn.ReadFromUDP(buffer)
 		if err != nil {
@@ -91,7 +90,7 @@ func (node *MemManager) receivingCmd() {
 			continue
 		}
 
-		if n >= network.NormalReadBuffer {
+		if n >= utils.NormalReadBuffer {
 			//TODO:: check what we can to support this situation.
 		}
 

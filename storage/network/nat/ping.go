@@ -28,7 +28,7 @@ func (nat *Manager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
 		return err
 	}
 
-	if _, err := nat.natServer.WriteToUDP(pongData, peerAddr); err != nil {
+	if _, err := nat.selfNatServer.WriteToUDP(pongData, peerAddr); err != nil {
 		logger.Warning("failed to send pong", err)
 		return err
 	}

@@ -19,8 +19,9 @@ func NewNatManager(networkId string) *Manager {
 	logger.Debug("all network interfaces:", localPeers)
 
 	natObj := &Manager{
-		networkId: networkId,
-		canServe:  make(chan bool),
+		networkId:  networkId,
+		canServe:   make(chan bool),
+		dNatServer: newDecentralizedNatServer(),
 	}
 
 	natObj.startNatService()
@@ -30,6 +31,7 @@ func NewNatManager(networkId string) *Manager {
 	return natObj
 }
 
+//TODO:: we will replace this nat server by gossip protocol based nat server chose logic.
 func (nat *Manager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 
 	config := utils.GetConfig()
@@ -81,11 +83,6 @@ func (nat *Manager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 	return nil, fmt.Errorf("can't find available NAT server")
 }
 
-func (nat *Manager) NewKAChannel() *KAChannel {
-	channel := &KAChannel{}
-
-	return channel
-}
 
 func ExternalIP() []string {
 

@@ -25,5 +25,6 @@ func (conn *NbsUdpConn) Read(b []byte) (int, error) {
 }
 
 func (conn *NbsUdpConn) Close() error {
+	conn.kaChannel.Close()
 	return conn.c.Close()
 }

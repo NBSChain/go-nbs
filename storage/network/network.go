@@ -7,10 +7,6 @@ import (
 type HostOption func() error
 type SetupOption func() error
 
-const (
-	NormalReadBuffer = 1 << 11
-)
-
 type Network interface {
 	StartUp(id string, options ...SetupOption) error
 

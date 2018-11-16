@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
@@ -52,9 +53,9 @@ func NewPeer() *NatPeer {
 
 func (peer *NatPeer) runLoop() {
 
-	request := &nat_pb.NatRequest{
-		MsgType: nat_pb.NatMsgType_BootStrapReg,
-		BootRegReq: &nat_pb.BootNatRegReq{
+	request := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_BootStrapReg,
+		BootRegReq: &net_pb.BootNatRegReq{
 			NodeId:      peer.peerID,
 			PrivateIp:   peer.privateIP,
 			PrivatePort: peer.privatePort,
@@ -82,26 +83,26 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) readingKA() {
 
 	for {
-		responseData := make([]byte, 2048)
+		responseData := make([]byte, network.NormalReadBuffer)
 		hasRead, err := peer.keepAliveConn.Read(responseData)
 		if err != nil {
 			fmt.Println("---keep alive read failed --->", err)
 			continue
 		}
 
-		response := &nat_pb.Response{}
+		response := &net_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("keep alive response data", err)
 			continue
 		}
 
 		switch response.MsgType {
-		case nat_pb.NatMsgType_BootStrapReg:
+		case net_pb.NatMsgType_BootStrapReg:
 			fmt.Println("---keep alive reading--->", response)
-		case nat_pb.NatMsgType_Connect:
+		case net_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
 			fmt.Println("++++keep alive+++++++peer connect invite+++++++++++>", response)
-		case nat_pb.NatMsgType_Ping:
+		case net_pb.NatMsgType_Ping:
 			fmt.Println("\n$$$$keep alive$$$$$$$hole punching$$$$$$$$$$$$$$", response)
 		}
 	}
@@ -116,7 +117,7 @@ func (peer *NatPeer) readHoleMessage() {
 			continue
 		}
 
-		response := &nat_pb.Response{}
+		response := &net_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("keep alive response data", err)
 			continue
@@ -136,19 +137,19 @@ func (peer *NatPeer) readingHub() {
 			continue
 		}
 
-		response := &nat_pb.Response{}
+		response := &net_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("---reading hub-->failed response data", err)
 			continue
 		}
 
 		switch response.MsgType {
-		case nat_pb.NatMsgType_BootStrapReg:
+		case net_pb.NatMsgType_BootStrapReg:
 			fmt.Println("---reading hub--->", peerAddr, response)
-		case nat_pb.NatMsgType_Connect:
+		case net_pb.NatMsgType_Connect:
 			go peer.connectToPeers(response.ConnRes)
 			fmt.Println("++++++reading hub+++++peer connect invite+++++++++++>", peerAddr, response)
-		case nat_pb.NatMsgType_Ping:
+		case net_pb.NatMsgType_Ping:
 			fmt.Println("\n$$$$$reading hub$$$$$$hole punching$$$$$$$$$$$$$$", peerAddr, response)
 		}
 	}
@@ -158,13 +159,13 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 	peer.isApplier = true
 
-	inviteRequest := &nat_pb.NatConReq{
+	inviteRequest := &net_pb.NatConReq{
 		FromPeerId: peer.peerID,
 		ToPeerId:   targetId,
 	}
 
-	request := &nat_pb.NatRequest{
-		MsgType: nat_pb.NatMsgType_Connect,
+	request := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_Connect,
 		ConnReq: inviteRequest,
 	}
 
@@ -180,11 +181,11 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	}
 }
 
-func (peer *NatPeer) connectToPeers(response *nat_pb.NatConRes) {
+func (peer *NatPeer) connectToPeers(response *net_pb.NatConRes) {
 
-	holeMsg := &nat_pb.Response{
-		MsgType: nat_pb.NatMsgType_Ping,
-		Pong: &nat_pb.NatPing{
+	holeMsg := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_Ping,
+		Pong: &net_pb.NatPing{
 			Ping: peer.peerID,
 		},
 	}

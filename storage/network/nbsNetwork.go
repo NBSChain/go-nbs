@@ -9,11 +9,10 @@ import (
 )
 
 type nbsNetwork struct {
-	Context     context.Context
-	natManager  *nat.Manager
-	connManager *ConnManager
-	netWorkId   string
-	addresses   *net_pb.NbsAddress
+	Context    context.Context
+	natManager *nat.Manager
+	netWorkId  string
+	addresses  *net_pb.NbsAddress
 }
 
 var once sync.Once
@@ -32,8 +31,7 @@ func GetInstance() Network {
 func newNetwork() *nbsNetwork {
 
 	network := &nbsNetwork{
-		Context:     context.Background(),
-		connManager: newConnManager(),
+		Context: context.Background(),
 	}
 
 	return network

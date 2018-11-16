@@ -58,9 +58,18 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		c:      c,
 		connId: remoteAddr.String(),
 	}
+
 	if !network.addresses.CanBeService {
-		network.natManager.NewKAChannel()
-		network.connManager.KeepAliveConn(conn)
+
+		kc, err := network.natManager.NewKAChannel()
+		if err != nil {
+			logger.Warning("failed to create nat server ka channel.")
+			return nil, err
+		}
+
+		kc.InitNatChannel()
+
+		conn.kaChannel = kc
 	}
 
 	return conn, nil

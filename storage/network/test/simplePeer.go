@@ -30,9 +30,9 @@ func (peer *SimplePeer) probe() error {
 
 	host, port, _ := net.SplitHostPort(conn.LocalAddr().String())
 
-	request := &nat_pb.NatRequest{
-		MsgType: nat_pb.NatMsgType_BootStrapReg,
-		BootRegReq: &nat_pb.BootNatRegReq{
+	request := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_BootStrapReg,
+		BootRegReq: &net_pb.BootNatRegReq{
 			NodeId:      "this is a probe message.",
 			PrivateIp:   host,
 			PrivatePort: port,
@@ -77,7 +77,7 @@ func read(conn *net.UDPConn) {
 			continue
 		}
 
-		response := &nat_pb.Response{}
+		response := &net_pb.Response{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue

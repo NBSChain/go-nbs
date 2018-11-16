@@ -49,7 +49,7 @@ func (nat *Manager) sendNatRequest(connection *net.UDPConn) (string, error) {
 	}
 
 	if no, err := connection.Write(requestData); err != nil || no == 0 {
-		logger.Error("failed to send nat request to natServer ", err, no)
+		logger.Error("failed to send nat request to selfNatServer ", err, no)
 		return "", err
 	}
 
@@ -65,7 +65,7 @@ func (nat *Manager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRe
 		return nil, err
 	}
 
-	response := &net_pb.BootNatRegRes{}
+	response := &net_pb.Response{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("unmarshal err:", err)
 		return nil, err
@@ -73,5 +73,5 @@ func (nat *Manager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRe
 
 	logger.Debug("response:", response)
 
-	return response, nil
+	return response.BootRegRes, nil
 }

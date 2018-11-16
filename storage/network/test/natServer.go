@@ -56,7 +56,7 @@ func (s *NatServer) Processing() {
 			continue
 		}
 
-		request := &nat_pb.NatRequest{}
+		request := &net_pb.NatRequest{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
 			fmt.Println("can't parse the nat request", err)
 			continue
@@ -64,31 +64,31 @@ func (s *NatServer) Processing() {
 
 		fmt.Println("\nNat request:->", request)
 
-		if request.MsgType == nat_pb.NatMsgType_BootStrapReg {
+		if request.MsgType == net_pb.NatMsgType_BootStrapReg {
 			s.answerKA(peerAddr, request.BootRegReq)
-		} else if request.MsgType == nat_pb.NatMsgType_Connect {
+		} else if request.MsgType == net_pb.NatMsgType_Connect {
 			s.makeAMatch(peerAddr, request.ConnReq)
 		}
 	}
 }
 
-func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) error {
+func (s *NatServer) answerKA(peerAddr net.Addr, request *net_pb.BootNatRegReq) error {
 
-	response := &nat_pb.Response{
-		MsgType: nat_pb.NatMsgType_BootStrapReg,
+	response := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_BootStrapReg,
 	}
 
-	resKA := &nat_pb.BootNatRegRes{}
+	resKA := &net_pb.BootNatRegRes{}
 
 	peerAddrStr := peerAddr.String()
 	host, port, err := net.SplitHostPort(peerAddrStr)
 
 	if host == request.PrivateIp {
-		resKA.NatType = nat_pb.NatType_NoNatDevice
+		resKA.NatType = net_pb.NatType_NoNatDevice
 		resKA.PublicIp = host
 		resKA.PublicPort = port
 	} else {
-		resKA.NatType = nat_pb.NatType_BehindNat
+		resKA.NatType = net_pb.NatType_BehindNat
 		resKA.PublicIp = host
 		resKA.PublicPort = port
 	}
@@ -121,10 +121,10 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *nat_pb.BootNatRegReq) e
 	return nil
 }
 
-func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) error {
+func (s *NatServer) makeAMatch(peerAddr net.Addr, request *net_pb.NatConReq) error {
 
-	responseTo := &nat_pb.Response{
-		MsgType: nat_pb.NatMsgType_Connect,
+	responseTo := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_Connect,
 	}
 
 	cacheItem := s.natCache[request.ToPeerId]
@@ -133,7 +133,7 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) err
 		return fmt.Errorf("some peer is not in the cache")
 	}
 
-	toInfo := &nat_pb.NatConRes{
+	toInfo := &net_pb.NatConRes{
 		PeerId:      cacheItem.PeerId,
 		PublicIp:    cacheItem.PublicIp,
 		PublicPort:  cacheItem.PublicPort,
@@ -154,11 +154,11 @@ func (s *NatServer) makeAMatch(peerAddr net.Addr, request *nat_pb.NatConReq) err
 	}
 
 	//<<<<<<<-------------------------------------->>>>>>>>>>>>>
-	responseFrom := &nat_pb.Response{
-		MsgType: nat_pb.NatMsgType_Connect,
+	responseFrom := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_Connect,
 	}
 
-	fromInfo := &nat_pb.NatConRes{
+	fromInfo := &net_pb.NatConRes{
 		PeerId:      cacheItemFrom.PeerId,
 		PublicIp:    cacheItemFrom.PublicIp,
 		PublicPort:  cacheItemFrom.PublicPort,

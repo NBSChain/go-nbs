@@ -15,9 +15,10 @@ const NetIoBufferSize = 1 << 11
 const BootStrapNatServerTimeOutInSec = 4
 
 type Manager struct {
-	natServer *net.UDPConn
-	networkId string
-	canServe  chan bool
+	selfNatServer *net.UDPConn
+	networkId     string
+	canServe      chan bool
+	dNatServer    *decentralizedNatServer
 }
 
 //TODO:: support ipv6 later.
@@ -28,15 +29,15 @@ func (nat *Manager) startNatService() {
 	})
 
 	if err != nil {
-		logger.Panic("can't start nat natServer.", err)
+		logger.Panic("can't start nat selfNatServer.", err)
 	}
 
-	nat.natServer = natServer
+	nat.selfNatServer = natServer
 }
 
 func (nat *Manager) runLoop() {
 
-	logger.Info(">>>>>>Nat natServer start to listen......")
+	logger.Info(">>>>>>Nat selfNatServer start to listen......")
 
 	for {
 		peerAddr, request, err := nat.readNatRequest()
@@ -61,9 +62,9 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 
 	data := make([]byte, NetIoBufferSize)
 
-	n, peerAddr, err := nat.natServer.ReadFromUDP(data)
+	n, peerAddr, err := nat.selfNatServer.ReadFromUDP(data)
 	if err != nil {
-		logger.Warning("nat natServer read udp data failed:", err)
+		logger.Warning("nat selfNatServer read udp data failed:", err)
 		return nil, nil, err
 	}
 
@@ -98,13 +99,18 @@ func (nat *Manager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net
 		response.NatType = net_pb.NatType_BehindNat
 	}
 
-	responseData, err := proto.Marshal(response)
+	pbRes := &net_pb.Response{
+		MsgType:net_pb.NatMsgType_BootStrapReg,
+		BootRegRes:response,
+	}
+
+	pbResData, err := proto.Marshal(pbRes)
 	if err != nil {
 		logger.Warning("failed to marshal nat response data", err)
 		return err
 	}
 
-	if _, err := nat.natServer.WriteToUDP(responseData, peerAddr); err != nil {
+	if _, err := nat.selfNatServer.WriteToUDP(pbResData, peerAddr); err != nil {
 		logger.Warning("failed to send nat response", err)
 		return err
 	}
