@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (nat *NbsNatManager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
+func (nat *Manager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
 
 	if ping.TTL <= 0 {
 		nat.canServe <- true
@@ -36,7 +36,7 @@ func (nat *NbsNatManager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) erro
 	return nil
 }
 
-func (nat *NbsNatManager) ping(peerAddr *net.UDPAddr) {
+func (nat *Manager) ping(peerAddr *net.UDPAddr) {
 
 	conn, ping, err := nat.createPingConn(peerAddr)
 	defer conn.Close()
@@ -65,7 +65,7 @@ func (nat *NbsNatManager) ping(peerAddr *net.UDPAddr) {
 
 }
 
-func (nat *NbsNatManager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
+func (nat *Manager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := conn.ReadFromUDP(responseData)
@@ -85,7 +85,7 @@ func (nat *NbsNatManager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
 	return pong, nil
 }
 
-func (nat *NbsNatManager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, *net_pb.NatPing, error) {
+func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, *net_pb.NatPing, error) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   peerAddr.IP,
@@ -107,7 +107,7 @@ func (nat *NbsNatManager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, *
 	return conn, ping, nil
 }
 
-func (nat *NbsNatManager) sendPing(ping *net_pb.NatPing, conn *net.UDPConn) error {
+func (nat *Manager) sendPing(ping *net_pb.NatPing, conn *net.UDPConn) error {
 
 	request := &net_pb.NatRequest{
 		Ping:    ping,

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (nat *NbsNatManager) connectToNatServer(serverIP string) (*net.UDPConn, error) {
+func (nat *Manager) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 
 	config := utils.GetConfig()
 	natServerAddr := &net.UDPAddr{
@@ -26,7 +26,7 @@ func (nat *NbsNatManager) connectToNatServer(serverIP string) (*net.UDPConn, err
 	return conn, nil
 }
 
-func (nat *NbsNatManager) sendNatRequest(connection *net.UDPConn) (string, error) {
+func (nat *Manager) sendNatRequest(connection *net.UDPConn) (string, error) {
 
 	localAddr := connection.LocalAddr().String()
 
@@ -56,7 +56,7 @@ func (nat *NbsNatManager) sendNatRequest(connection *net.UDPConn) (string, error
 	return host, nil
 }
 
-func (nat *NbsNatManager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRegRes, error) {
+func (nat *Manager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRegRes, error) {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, _, err := connection.ReadFromUDP(responseData)

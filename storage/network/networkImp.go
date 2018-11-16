@@ -3,7 +3,6 @@ package network
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"net"
 )
 
@@ -56,13 +55,13 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 	}
 
 	conn := &NbsUdpConn{
-		c:    c,
-		addr: *network.addresses,
+		c:      c,
+		connId: remoteAddr.String(),
+	}
+	if !network.addresses.CanBeService {
+		network.natManager.NewKAChannel()
+		network.connManager.KeepAliveConn(conn)
 	}
 
 	return conn, nil
-}
-
-func (network *nbsNetwork) StorePeerInfo(addr *net_pb.NbsAddress) {
-	network.peerStore[addr.PeerId] = addr
 }

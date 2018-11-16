@@ -9,30 +9,19 @@ import (
 	"strconv"
 )
 
-//TODO::support multiple local ip address.
-func NewNatManager(networkId string) *NbsNatManager {
+var logger = utils.GetLogInstance()
 
-	localPeers := ExternalIP()
-	if len(localPeers) == 0 {
-		logger.Panic("no available network")
-	}
+const NetIoBufferSize = 1 << 11
+const BootStrapNatServerTimeOutInSec = 4
 
-	logger.Debug("all network interfaces:", localPeers)
-
-	natObj := &NbsNatManager{
-		networkId: networkId,
-		canServe:  make(chan bool),
-	}
-
-	natObj.startNatService()
-
-	go natObj.runLoop()
-
-	return natObj
+type Manager struct {
+	natServer *net.UDPConn
+	networkId string
+	canServe  chan bool
 }
 
 //TODO:: support ipv6 later.
-func (nat *NbsNatManager) startNatService() {
+func (nat *Manager) startNatService() {
 
 	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().NatServerPort,
@@ -45,7 +34,7 @@ func (nat *NbsNatManager) startNatService() {
 	nat.natServer = natServer
 }
 
-func (nat *NbsNatManager) runLoop() {
+func (nat *Manager) runLoop() {
 
 	logger.Info(">>>>>>Nat natServer start to listen......")
 
@@ -68,7 +57,7 @@ func (nat *NbsNatManager) runLoop() {
 	}
 }
 
-func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
+func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 
 	data := make([]byte, NetIoBufferSize)
 
@@ -89,7 +78,7 @@ func (nat *NbsNatManager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, er
 	return peerAddr, request, nil
 }
 
-func (nat *NbsNatManager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *Manager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
 
 	response := &net_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
@@ -121,72 +110,4 @@ func (nat *NbsNatManager) bootNatResponse(request *net_pb.BootNatRegReq, peerAdd
 	}
 
 	return nil
-}
-
-func ExternalIP() []string {
-
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return nil
-	}
-
-	var ips []string
-	for _, face := range interfaces {
-
-		if face.Flags&net.FlagUp == 0 ||
-			face.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		address, err := face.Addrs()
-		if err != nil {
-			continue
-		}
-
-		for _, addr := range address {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-
-			//TODO:: Support ip v6 lter.
-			if ip = ip.To4(); ip == nil {
-				continue
-			}
-
-			ips = append(ips, ip.String())
-		}
-	}
-
-	return ips
-}
-
-func IsPublic(natType net_pb.NatType) bool {
-
-	var canService bool
-	switch natType {
-	case net_pb.NatType_UnknownRES:
-		canService = false
-
-	case net_pb.NatType_NoNatDevice:
-		canService = true
-
-	case net_pb.NatType_BehindNat:
-		canService = false
-
-	case net_pb.NatType_CanBeNatServer:
-		canService = true
-
-	case net_pb.NatType_ToBeChecked:
-		canService = false
-	}
-
-	return canService
 }
