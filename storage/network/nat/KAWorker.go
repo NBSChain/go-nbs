@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (ch *KAChannel) readRegResponse() error{
+func (ch *KATunnel) readRegResponse() error {
 
 	responseData := make([]byte, NetIoBufferSize)
 	hasRead, err := ch.kaConn.Read(responseData)
@@ -37,24 +37,24 @@ func (ch *KAChannel) readRegResponse() error{
 	return nil
 }
 
-func (ch *KAChannel) runLoop() {
+func (ch *KATunnel) runLoop() {
 
 	for {
 		select {
-			case <- time.After(time.Second * NatKeepAlive):
-				ch.sendKeepAlive()
-			case <- ch.closed:
-				logger.Info("keep alive channel is closed.")
-				return
+		case <-time.After(time.Second * KeepAlive):
+			ch.sendKeepAlive()
+		case <-ch.closed:
+			logger.Info("keep alive channel is closed.")
+			return
 		}
 	}
 }
 
-func (ch *KAChannel) sendKeepAlive() error{
+func (ch *KATunnel) sendKeepAlive() error {
 
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_KeepAlive,
-		KeepAlive:&net_pb.NatKeepAlive{
+		KeepAlive: &net_pb.NatKeepAlive{
 			NodeId: ch.networkId,
 		},
 	}
@@ -75,28 +75,28 @@ func (ch *KAChannel) sendKeepAlive() error{
 	return nil
 }
 
-func (ch *KAChannel) readKeepAlive()  {
+func (ch *KATunnel) readKeepAlive() {
 
-	for{
+	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
 		n, err := ch.kaConn.Read(buffer)
-		if err != nil{
+		if err != nil {
 			logger.Warning("reading keep alive message failed:", err)
 			continue
 		}
 
-		if err := ch.processResponse(buffer[:n]); err != nil{
+		if err := ch.processResponse(buffer[:n]); err != nil {
 			logger.Warning("process nat response message failed")
 			continue
 		}
 	}
 }
 
-func (ch *KAChannel) processResponse(buffer []byte) error{
+func (ch *KATunnel) processResponse(buffer []byte) error {
 
-	response :=  &net_pb.Response{}
-	if err := proto.Unmarshal(buffer, response); err != nil{
+	response := &net_pb.Response{}
+	if err := proto.Unmarshal(buffer, response); err != nil {
 		logger.Warning("keep alive response Unmarshal failed:", err)
 		return err
 	}
@@ -104,32 +104,30 @@ func (ch *KAChannel) processResponse(buffer []byte) error{
 	switch response.MsgType {
 	case net_pb.NatMsgType_KeepAlive:
 		ch.updateTime = time.Now()
-		
+
 	}
 
 	return nil
 }
 
+func (ch *KATunnel) listening() {
 
-func (ch *KAChannel) listening() {
-
-	for{
+	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, err := ch.kaConn.Read(buffer)
-		if err != nil{
+		if err != nil {
 			logger.Warning("reading keep alive message failed:", err)
 			continue
 		}
 
-		if err := ch.processResponse(buffer[:n]); err != nil{
+		if err := ch.processResponse(buffer[:n]); err != nil {
 			logger.Warning("process nat response message failed")
 			continue
 		}
 	}
 
-
 }
 
-func (ch *KAChannel) restoreNatChannel(){
+func (ch *KATunnel) restoreNatChannel() {
 
 }

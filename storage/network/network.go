@@ -4,11 +4,8 @@ import (
 	"net"
 )
 
-type HostOption func() error
-type SetupOption func() error
-
 type Network interface {
-	StartUp(id string, options ...SetupOption) error
+	StartUp(id string) error
 
 	GetNatInfo() string
 

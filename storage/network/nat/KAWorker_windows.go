@@ -5,22 +5,22 @@ import (
 	"time"
 )
 
-func (ch *KAChannel) readRegResponse() error{
+func (ch *KATunnel) readRegResponse() error {
 
 	resChan := make(chan error)
+	defer close(resChan)
 
 	go ch.runLoop()
 
 	select {
-		case err := <-resChan:
-			return err
-		case <-time.After(time.Second * 2):
-			close(resChan)
-			return fmt.Errorf("timeout when reading channel register messae.")
+	case err := <-resChan:
+		return err
+	case <-time.After(time.Second * 2):
+		return fmt.Errorf("timeout when reading channel register messae.")
 	}
 }
 
-func (ch *KAChannel) runLoop(resChan chan error) {
+func (ch *KATunnel) runLoop(resChan chan error) {
 
 	for {
 		responseData := make([]byte, 2048)

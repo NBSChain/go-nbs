@@ -6,14 +6,7 @@ import (
 	"net"
 )
 
-func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error {
-
-	for _, opt := range options {
-
-		if err := opt(); err != nil {
-			logger.Warning("one network startup option applies failed", opt)
-		}
-	}
+func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.netWorkId = peerId
 
@@ -22,9 +15,26 @@ func (network *nbsNetwork) StartUp(peerId string, options ...SetupOption) error 
 	addr, err := network.natManager.FindWhoAmI()
 	if err != nil {
 		logger.Warning("boot strap err:", err)
+		return err
 	}
 	addr.PeerId = peerId
 	network.addresses = addr
+
+	network.connManager = newConnManager()
+
+	if !network.addresses.CanBeService {
+		ka, err := network.natManager.NewKAChannel()
+		if err != nil {
+			logger.Warning("failed to create nat server ka channel.")
+			return err
+		}
+
+		if err := ka.InitNatChannel(); err != nil {
+			logger.Warning("create NAT keep alive tunnel failed", err)
+			return err
+		}
+		network.connManager.natKATun = ka
+	}
 
 	return nil
 }
@@ -56,21 +66,9 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 
 	conn := &NbsUdpConn{
 		c:      c,
-		connId: remoteAddr.String(),
+		connId: localAddr.String() + "-" + remoteAddr.String(),
 	}
-
-	if !network.addresses.CanBeService {
-
-		kc, err := network.natManager.NewKAChannel()
-		if err != nil {
-			logger.Warning("failed to create nat server ka channel.")
-			return nil, err
-		}
-
-		kc.InitNatChannel()
-
-		conn.kaChannel = kc
-	}
+	network.connManager.put(conn)
 
 	return conn, nil
 }

@@ -9,23 +9,24 @@ import (
 	"strconv"
 	"time"
 )
-const(
-	NatKeepAlive = 15
+
+const (
+	KeepAlive = 15
 )
 
-type KAChannel struct {
-	closed		chan bool
-	networkId	string
-	privateIP	string
-	privatePort	string
-	publicIp	string
-	publicPort	string
-	receiveHub *net.UDPConn
-	kaConn     *net.UDPConn
-	updateTime	time.Time
+type KATunnel struct {
+	closed      chan bool
+	networkId   string
+	privateIP   string
+	privatePort string
+	publicIp    string
+	publicPort  string
+	receiveHub  *net.UDPConn
+	kaConn      *net.UDPConn
+	updateTime  time.Time
 }
 
-func (ch *KAChannel) InitNatChannel() error{
+func (ch *KATunnel) InitNatChannel() error {
 
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_BootStrapReg,
@@ -47,7 +48,7 @@ func (ch *KAChannel) InitNatChannel() error{
 		return err
 	}
 
-	if err := ch.readRegResponse(); err != nil{
+	if err := ch.readRegResponse(); err != nil {
 		logger.Warning("failed to read channel initialize response.")
 		return err
 	}
@@ -55,21 +56,19 @@ func (ch *KAChannel) InitNatChannel() error{
 	return nil
 }
 
-
-
-func (nat *Manager) NewKAChannel() (*KAChannel, error) {
+func (nat *Manager) NewKAChannel() (*KATunnel, error) {
 
 	port := strconv.Itoa(utils.GetConfig().NatClientPort)
 	natServer := nat.dNatServer.GossipNatServer()
 
 	listener, err := shareport.ListenUDP("udp4", port)
-	if err != nil{
+	if err != nil {
 		logger.Warning("create share listening udp failed.")
 		return nil, err
 	}
 
-	client, err := shareport.DialUDP("udp4", "0.0.0.0:" + port, natServer)
-	if err != nil{
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, natServer)
+	if err != nil {
 		logger.Warning("create share port dial udp connection failed.")
 		return nil, err
 	}
@@ -77,20 +76,20 @@ func (nat *Manager) NewKAChannel() (*KAChannel, error) {
 	localAddr := client.LocalAddr().String()
 	priIP, priPort, err := net.SplitHostPort(localAddr)
 
-	channel := &KAChannel{
-		closed:		make(chan bool),
-		networkId:  	nat.networkId,
-		receiveHub: 	listener,
-		kaConn:     	client,
-		privateIP:	priIP,
-		privatePort:	priPort,
-		updateTime:	time.Now(),
+	channel := &KATunnel{
+		closed:      make(chan bool),
+		networkId:   nat.networkId,
+		receiveHub:  listener,
+		kaConn:      client,
+		privateIP:   priIP,
+		privatePort: priPort,
+		updateTime:  time.Now(),
 	}
 
-	return channel,nil
+	return channel, nil
 }
 
-func (ch *KAChannel) Close(){
+func (ch *KATunnel) Close() {
 
 	ch.receiveHub.Close()
 	ch.kaConn.Close()

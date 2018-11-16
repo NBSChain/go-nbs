@@ -1,15 +1,13 @@
 package network
 
 import (
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"net"
 	"time"
 )
 
 type NbsUdpConn struct {
-	connId    string
-	c         *net.UDPConn
-	kaChannel *nat.KAChannel
+	connId string
+	c      *net.UDPConn
 }
 
 func (conn *NbsUdpConn) SetDeadline(t time.Time) {
@@ -25,6 +23,5 @@ func (conn *NbsUdpConn) Read(b []byte) (int, error) {
 }
 
 func (conn *NbsUdpConn) Close() error {
-	conn.kaChannel.Close()
 	return conn.c.Close()
 }
