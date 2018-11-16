@@ -31,14 +31,15 @@ func (conn *NbsUdpConn) Write(d []byte) (int, error) {
 }
 
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
-	n, err := conn.c.Read(b)
+	buffer := make([]byte, NormalReadBuffer)
+	n, err := conn.c.Read(buffer)
 	if err != nil {
 		return 0, err
 	}
 
 	msg := &net_pb.NbsMessage{}
 
-	if err := proto.Unmarshal(b[:n], msg); err != nil {
+	if err := proto.Unmarshal(buffer[:n], msg); err != nil {
 		return 0, err
 	}
 
