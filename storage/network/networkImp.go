@@ -2,20 +2,19 @@ package network
 
 import (
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"net"
 	"time"
 )
 
 const (
-	ConnectionSeperator = "-"
+	ConnectionSeparator = "-"
 )
 
 func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.netWorkId = peerId
 
-	network.natManager = nat.NewNatManager(network.netWorkId)
+	//network.natManager = nat.NewNatManager(network.netWorkId)
 
 	addr, err := network.natManager.FindWhoAmI()
 	if err != nil {
@@ -82,7 +81,7 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		realConn: c,
 		cType:    ConnType_Normal,
 		parent:   network.connManager,
-		connId:   localAddr.String() + ConnectionSeperator + remoteAddr.String(),
+		connId:   localAddr.String() + ConnectionSeparator + remoteAddr.String(),
 	}
 
 	network.connManager.put(conn)
@@ -112,7 +111,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*NbsUdpConn
 func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*NbsUdpConn, error) {
 
 	var conn *NbsUdpConn
-	var connId = fromId + ConnectionSeperator + toId
+	var connId = fromId + ConnectionSeparator + toId
 
 	if toPubIp == "" { //TIPS::it means the target is behind a nat server.
 

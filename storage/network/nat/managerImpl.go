@@ -4,8 +4,10 @@ import (
 	"fmt"
 	das "github.com/NBSChain/go-nbs/storage/network/decentralizeNatSys"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -22,12 +24,15 @@ func NewNatManager(networkId string) *Manager {
 	natObj := &Manager{
 		networkId:  networkId,
 		canServe:   make(chan bool),
+		cache:      make(map[string]*clientItem),
 		dNatServer: das.NewDecentralizedNatServer(),
 	}
 
 	natObj.startNatService()
 
-	go natObj.runLoop()
+	go natObj.natServiceListening()
+
+	go natObj.cacheManager()
 
 	return natObj
 }
@@ -82,6 +87,39 @@ func (nat *Manager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 	}
 
 	return nil, fmt.Errorf("can't find available NAT server")
+}
+
+func (nat *Manager) NewKAChannel() (*KATunnel, error) {
+
+	port := strconv.Itoa(utils.GetConfig().NatClientPort)
+	natServer := nat.dNatServer.GossipNatServer()
+
+	listener, err := shareport.ListenUDP("udp4", port)
+	if err != nil {
+		logger.Warning("create share listening udp failed.")
+		return nil, err
+	}
+
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, natServer)
+	if err != nil {
+		logger.Warning("create share port dial udp connection failed.")
+		return nil, err
+	}
+
+	localAddr := client.LocalAddr().String()
+	priIP, priPort, err := net.SplitHostPort(localAddr)
+
+	channel := &KATunnel{
+		closed:      make(chan bool),
+		networkId:   nat.networkId,
+		receiveHub:  listener,
+		kaConn:      client,
+		privateIP:   priIP,
+		privatePort: priPort,
+		updateTime:  time.Now(),
+	}
+
+	return channel, nil
 }
 
 func ExternalIP() []string {

@@ -21,7 +21,6 @@ enum NatType{
 message BootNatRegReq {
     string  nodeId      = 1;
     string  privatePort = 3;
-    string  zone        = 4;
     string  privateIp   = 2;
 }
 
@@ -30,7 +29,6 @@ message BootNatRegRes {
     string  nodeId      = 2;
     string  publicIp    = 3;
     string  publicPort  = 4;
-    string  zone        = 5;
 }
 
 

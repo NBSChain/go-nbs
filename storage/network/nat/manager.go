@@ -8,6 +8,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"net"
 	"strconv"
+	"sync"
+	"time"
 )
 
 var logger = utils.GetLogInstance()
@@ -15,10 +17,22 @@ var logger = utils.GetLogInstance()
 const NetIoBufferSize = 1 << 11
 const BootStrapNatServerTimeOutInSec = 4
 
+type clientItem struct {
+	nodeId     string
+	pubIp      string
+	pubPort    string
+	priIp      string
+	priPort    string
+	canServer  bool
+	updateTIme time.Time
+}
+
 type Manager struct {
+	cacheLock     sync.Mutex
 	selfNatServer *net.UDPConn
 	networkId     string
 	canServe      chan bool
+	cache         map[string]*clientItem
 	dNatServer    *das.DecentralizedNatServer
 }
 
@@ -36,7 +50,7 @@ func (nat *Manager) startNatService() {
 	nat.selfNatServer = natServer
 }
 
-func (nat *Manager) runLoop() {
+func (nat *Manager) natServiceListening() {
 
 	logger.Info(">>>>>>Nat selfNatServer start to listen......")
 
@@ -48,16 +62,20 @@ func (nat *Manager) runLoop() {
 
 		switch request.MsgType {
 		case net_pb.NatMsgType_BootStrapReg:
-			if err := nat.bootNatResponse(request.BootRegReq, peerAddr); err != nil {
+			if err = nat.checkWhoIsHe(request.BootRegReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Ping:
-			if err := nat.pong(request.Ping, peerAddr); err != nil {
+			if err = nat.pong(request.Ping, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err := nat.invitePeers(request.ConnReq, peerAddr); err != nil {
-
+			if err = nat.invitePeers(request.ConnReq, peerAddr); err != nil {
+				logger.Error(err)
+			}
+		case net_pb.NatMsgType_KeepAlive:
+			if err = nat.updateKATime(request.KeepAlive, peerAddr); err != nil {
+				logger.Error(err)
 			}
 		}
 	}
@@ -84,13 +102,11 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 	return peerAddr, request, nil
 }
 
-func (nat *Manager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
 
 	response := &net_pb.BootNatRegRes{}
 	response.PublicIp = peerAddr.IP.String()
 	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
-	response.Zone = peerAddr.Zone
-
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 
 		response.NatType = net_pb.NatType_NoNatDevice
@@ -118,6 +134,55 @@ func (nat *Manager) bootNatResponse(request *net_pb.BootNatRegReq, peerAddr *net
 	if _, err := nat.selfNatServer.WriteToUDP(pbResData, peerAddr); err != nil {
 		logger.Warning("failed to send nat response", err)
 		return err
+	}
+
+	item := &clientItem{
+		nodeId:     request.NodeId,
+		pubIp:      response.PublicIp,
+		pubPort:    response.PublicPort,
+		priIp:      request.PrivateIp,
+		priPort:    request.PrivatePort,
+		canServer:  IsPublic(response.NatType),
+		updateTIme: time.Now(),
+	}
+
+	nat.cache[request.NodeId] = item
+
+	return nil
+}
+
+func (nat *Manager) cacheManager() {
+
+	for {
+		nat.cacheLock.Lock()
+
+		currentClock := time.Now()
+		for nodeId, item := range nat.cache {
+			if item.canServer {
+				continue
+			}
+
+			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
+				delete(nat.cache, nodeId)
+			}
+		}
+		nat.cacheLock.Unlock()
+
+		time.Sleep(time.Second * KeepAlive)
+	}
+}
+
+func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
+	return nil
+}
+
+func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr) error {
+	nodeId := req.NodeId
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	if item, ok := nat.cache[nodeId]; !ok {
+		item.updateTIme = time.Now()
 	}
 
 	return nil

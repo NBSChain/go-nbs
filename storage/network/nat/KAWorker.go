@@ -37,44 +37,6 @@ func (tunnel *KATunnel) readRegResponse() error {
 	return nil
 }
 
-func (tunnel *KATunnel) runLoop() {
-
-	for {
-		select {
-		case <-time.After(time.Second * KeepAlive):
-			tunnel.sendKeepAlive()
-		case <-tunnel.closed:
-			logger.Info("keep alive channel is closed.")
-			return
-		}
-	}
-}
-
-func (tunnel *KATunnel) sendKeepAlive() error {
-
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_KeepAlive,
-		KeepAlive: &net_pb.NatKeepAlive{
-			NodeId: tunnel.networkId,
-		},
-	}
-
-	requestData, err := proto.Marshal(request)
-	if err != nil {
-		logger.Warning("failed to marshal keep alive request:", err)
-		return err
-	}
-
-	logger.Debug("keep alive channel start")
-
-	if no, err := tunnel.kaConn.Write(requestData); err != nil || no == 0 {
-		logger.Warning("failed to send keep alive channel message:", err)
-		return err
-	}
-
-	return nil
-}
-
 func (tunnel *KATunnel) readKeepAlive() {
 
 	for {
