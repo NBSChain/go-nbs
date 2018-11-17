@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-func (ch *KATunnel) readRegResponse() error {
+func (tunnel *KATunnel) readRegResponse() error {
 
 	resChan := make(chan error)
 	defer close(resChan)
 
-	go ch.runLoop()
+	go tunnel.runLoop()
 
 	select {
 	case err := <-resChan:
@@ -20,7 +20,7 @@ func (ch *KATunnel) readRegResponse() error {
 	}
 }
 
-func (ch *KATunnel) runLoop(resChan chan error) {
+func (tunnel *KATunnel) runLoop(resChan chan error) {
 
 	for {
 		responseData := make([]byte, 2048)
@@ -40,8 +40,8 @@ func (ch *KATunnel) runLoop(resChan chan error) {
 		case net_pb.NatMsgType_BootStrapReg:
 
 			resValue := response.BootRegRes
-			ch.publicIp = resValue.PublicIp
-			ch.publicPort = resValue.PublicPort
+			tunnel.publicIp = resValue.PublicIp
+			tunnel.publicPort = resValue.PublicPort
 			resChan <- nil
 		}
 	}

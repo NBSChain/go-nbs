@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"net"
+	"time"
 )
 
 const (
@@ -117,11 +118,17 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 
 		natTunnel := network.connManager.natKATun
 
-		c, err := natTunnel.MakeANatConn(fromId, toId, toPort)
+		connChan, err := natTunnel.MakeANatConn(fromId, toId, connId, toPort)
 		if err != nil {
 			return nil, err
 		}
-
+		var c *net.UDPConn
+		select {
+		case c = <-connChan:
+			logger.Debug("nat connection success.")
+		case <-time.After(time.Second * 5):
+			return nil, fmt.Errorf("time out")
+		}
 		conn = &NbsUdpConn{
 			realConn: c,
 			cType:    ConnType_Nat,

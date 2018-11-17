@@ -26,29 +26,29 @@ type KATunnel struct {
 	updateTime  time.Time
 }
 
-func (ch *KATunnel) InitNatChannel() error {
+func (tunnel *KATunnel) InitNatChannel() error {
 
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_BootStrapReg,
 		BootRegReq: &net_pb.BootNatRegReq{
-			NodeId:      ch.networkId,
-			PrivateIp:   ch.privateIP,
-			PrivatePort: ch.privatePort,
+			NodeId:      tunnel.networkId,
+			PrivateIp:   tunnel.privateIP,
+			PrivatePort: tunnel.privatePort,
 		},
 	}
 
-	requestData, err := proto.Marshal(request)
+	reqData, err := proto.Marshal(request)
 	if err != nil {
 		logger.Warning("failed to marshal nat keep alive message", err)
 		return err
 	}
 
-	if no, err := ch.kaConn.Write(requestData); err != nil || no == 0 {
+	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
 		logger.Warning("nat channel keep alive message failed", err, no)
 		return err
 	}
 
-	if err := ch.readRegResponse(); err != nil {
+	if err := tunnel.readRegResponse(); err != nil {
 		logger.Warning("failed to read channel initialize response.")
 		return err
 	}
@@ -89,15 +89,37 @@ func (nat *Manager) NewKAChannel() (*KATunnel, error) {
 	return channel, nil
 }
 
-func (nat *KATunnel) MakeANatConn(fromId, toId string, port int) (*net.UDPConn, error) {
+func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) (chan *net.UDPConn, error) {
 
-	return nil, nil
+	payload := &net_pb.NatConReq{
+		FromPeerId: fromId,
+		ToPeerId:   toId,
+	}
+	request := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_Connect,
+		ConnReq: payload,
+	}
+
+	reqData, err := proto.Marshal(request)
+	if err != nil {
+		logger.Error("failed to marshal the nat connect request", err)
+		return nil, err
+	}
+
+	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
+		logger.Warning("nat channel keep alive message failed", err, no)
+		return nil, err
+	}
+
+	connChan := make(chan *net.UDPConn)
+
+	return connChan, nil
 }
 
-func (ch *KATunnel) Close() {
+func (tunnel *KATunnel) Close() {
 
-	ch.receiveHub.Close()
-	ch.kaConn.Close()
+	tunnel.receiveHub.Close()
+	tunnel.kaConn.Close()
 
-	ch.closed <- true
+	tunnel.closed <- true
 }
