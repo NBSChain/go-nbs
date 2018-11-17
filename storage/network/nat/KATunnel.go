@@ -56,6 +56,14 @@ func (tunnel *KATunnel) InitNatChannel() error {
 	return nil
 }
 
+func (tunnel *KATunnel) Close() {
+
+	tunnel.receiveHub.Close()
+	tunnel.kaConn.Close()
+
+	tunnel.closed <- true
+}
+
 func (nat *Manager) NewKAChannel() (*KATunnel, error) {
 
 	port := strconv.Itoa(utils.GetConfig().NatClientPort)
@@ -116,10 +124,6 @@ func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) (cha
 	return connChan, nil
 }
 
-func (tunnel *KATunnel) Close() {
-
-	tunnel.receiveHub.Close()
-	tunnel.kaConn.Close()
-
-	tunnel.closed <- true
+func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
+	return nil
 }

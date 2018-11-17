@@ -104,7 +104,8 @@ func (tunnel *KATunnel) processResponse(buffer []byte) error {
 	switch response.MsgType {
 	case net_pb.NatMsgType_KeepAlive:
 		tunnel.updateTime = time.Now()
-
+	case net_pb.NatMsgType_Connect:
+		tunnel.connectToPeers(response.ConnRes)
 	}
 
 	return nil
@@ -128,6 +129,11 @@ func (tunnel *KATunnel) listening() {
 
 }
 
+//TODO::
 func (tunnel *KATunnel) restoreNatChannel() {
 
+}
+
+//TIPS::get peer's addr info and make a connection.
+func (tunnel *KATunnel) connectToPeers(request *net_pb.NatConRes) {
 }

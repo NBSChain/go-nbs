@@ -55,6 +55,10 @@ func (nat *Manager) runLoop() {
 			if err := nat.pong(request.Ping, peerAddr); err != nil {
 				logger.Error(err)
 			}
+		case net_pb.NatMsgType_Connect:
+			if err := nat.invitePeers(request.ConnReq, peerAddr); err != nil {
+
+			}
 		}
 	}
 }
