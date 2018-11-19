@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"net"
 	"time"
 )
@@ -14,7 +15,7 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.netWorkId = peerId
 
-	//network.natManager = nat.NewNatManager(network.netWorkId)
+	network.natManager = nat.NewNatManager(network.netWorkId)
 
 	addr, err := network.natManager.FindWhoAmI()
 	if err != nil {

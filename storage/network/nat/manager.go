@@ -2,7 +2,6 @@ package nat
 
 import (
 	"fmt"
-	das "github.com/NBSChain/go-nbs/storage/network/decentralizeNatSys"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -17,13 +16,14 @@ var logger = utils.GetLogInstance()
 const NetIoBufferSize = 1 << 11
 const BootStrapNatServerTimeOutInSec = 4
 
-type clientItem struct {
+type ClientItem struct {
 	nodeId     string
 	pubIp      string
 	pubPort    string
 	priIp      string
 	priPort    string
 	canServer  bool
+	kaAddr     *net.UDPAddr
 	updateTIme time.Time
 }
 
@@ -32,8 +32,8 @@ type Manager struct {
 	selfNatServer *net.UDPConn
 	networkId     string
 	canServe      chan bool
-	cache         map[string]*clientItem
-	dNatServer    *das.DecentralizedNatServer
+	cache         map[string]*ClientItem
+	dNatServer    *DecentralizedNatServer
 }
 
 //TODO:: support ipv6 later.
@@ -136,7 +136,7 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		return err
 	}
 
-	item := &clientItem{
+	item := &ClientItem{
 		nodeId:     request.NodeId,
 		pubIp:      response.PublicIp,
 		pubPort:    response.PublicPort,
@@ -172,7 +172,53 @@ func (nat *Manager) cacheManager() {
 	}
 }
 
+//TODO::Find peers from nat gossip protocol
 func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	sessionId := req.FromPeerId + req.ToPeerId
+	fromItem, ok := nat.cache[req.FromPeerId]
+	if !ok {
+		return fmt.Errorf("the from peer id is not found")
+	}
+
+	toItem, ok := nat.cache[req.ToPeerId]
+	if !ok {
+		toItem = nat.dNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId)
+	} else {
+		if err := nat.sendConnInvite(fromItem, toItem.kaAddr, sessionId); err != nil {
+			logger.Error("connect invite failed:", err)
+		}
+	}
+
+	return nat.sendConnInvite(toItem, peerAddr, sessionId)
+}
+
+func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionId string) error {
+
+	connRes := &net_pb.NatConRes{
+		PeerId:      item.nodeId,
+		PublicIp:    item.pubIp,
+		PublicPort:  item.pubPort,
+		PrivateIp:   item.priIp,
+		PrivatePort: item.priPort,
+		SessionId:   sessionId,
+	}
+
+	response := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_Connect,
+		ConnRes: connRes,
+	}
+
+	toItemData, err := proto.Marshal(response)
+	if err != nil {
+		return err
+	}
+
+	if _, err := nat.selfNatServer.WriteToUDP(toItemData, item.kaAddr); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -183,6 +229,7 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 
 	if item, ok := nat.cache[nodeId]; !ok {
 		item.updateTIme = time.Now()
+		item.kaAddr = peerAddr
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package decentralizeNatSys
+package nat
 
 import (
 	"github.com/NBSChain/go-nbs/utils"
@@ -9,7 +9,7 @@ type DecentralizedNatServer struct {
 	hosts []string
 }
 
-func NewDecentralizedNatServer() *DecentralizedNatServer {
+func newDecentralizedNatServer() *DecentralizedNatServer {
 
 	officerServer := utils.GetConfig().NatServerIP
 	server := &DecentralizedNatServer{
@@ -28,4 +28,9 @@ func NewDecentralizedNatServer() *DecentralizedNatServer {
 //TODO:: use gossip protocol to manager all nat servers. we use official nat servers right now.
 func (s *DecentralizedNatServer) GossipNatServer() string {
 	return s.hosts[0] //TIPS:: simply use the first server.
+}
+
+//find client item from other nat server by peerId
+func (s *DecentralizedNatServer) SendConnInvite(item *ClientItem, peerId, sessionId string) *ClientItem {
+	return &ClientItem{}
 }

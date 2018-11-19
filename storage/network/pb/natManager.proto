@@ -43,6 +43,7 @@ message NatConRes {
     string publicPort   = 4;
     string privateIp    = 5;
     string privatePort  = 6;
+    string sessionId    = 7;
 }
 
 message NatKeepAlive {

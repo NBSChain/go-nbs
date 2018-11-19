@@ -4,9 +4,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
@@ -83,7 +83,7 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) readingKA() {
 
 	for {
-		responseData := make([]byte, network.NormalReadBuffer)
+		responseData := make([]byte, utils.NormalReadBuffer)
 		hasRead, err := peer.keepAliveConn.Read(responseData)
 		if err != nil {
 			fmt.Println("---keep alive read failed --->", err)

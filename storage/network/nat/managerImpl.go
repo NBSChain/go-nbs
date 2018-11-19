@@ -2,7 +2,6 @@ package nat
 
 import (
 	"fmt"
-	das "github.com/NBSChain/go-nbs/storage/network/decentralizeNatSys"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
@@ -24,8 +23,8 @@ func NewNatManager(networkId string) *Manager {
 	natObj := &Manager{
 		networkId:  networkId,
 		canServe:   make(chan bool),
-		cache:      make(map[string]*clientItem),
-		dNatServer: das.NewDecentralizedNatServer(),
+		cache:      make(map[string]*ClientItem),
+		dNatServer: newDecentralizedNatServer(),
 	}
 
 	natObj.startNatService()
