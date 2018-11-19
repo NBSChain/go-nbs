@@ -33,19 +33,14 @@ type ConnTask struct {
 }
 
 type KATunnel struct {
-	closed      chan bool
-	networkId   string
-	privateIP   string
-	privatePort string
-	publicIp    string
-	publicPort  string
-	receiveHub  *net.UDPConn
-	kaConn      *net.UDPConn
-	updateTime  time.Time
-	natTask     map[string]*ConnTask
+	closed     chan bool
+	receiveHub *net.UDPConn
+	kaConn     *net.UDPConn
+	updateTime time.Time
+	natTask    map[string]*ConnTask
 }
 
-func newKATunnel(natServer, networkId string) (*KATunnel, error) {
+func (nat *Manager) newKATunnel() (*KATunnel, error) {
 
 	port := strconv.Itoa(utils.GetConfig().NatClientPort)
 	listener, err := shareport.ListenUDP("udp4", port)
@@ -54,7 +49,7 @@ func newKATunnel(natServer, networkId string) (*KATunnel, error) {
 		return nil, err
 	}
 
-	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, natServer)
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, nat.dNatServer)
 	if err != nil {
 		logger.Warning("create share port dial udp connection failed.")
 		return nil, err
@@ -62,31 +57,34 @@ func newKATunnel(natServer, networkId string) (*KATunnel, error) {
 
 	localAddr := client.LocalAddr().String()
 	priIP, priPort, err := net.SplitHostPort(localAddr)
+	nat.SelfAddr.privatePort = priPort
+	nat.SelfAddr.privateIP = priIP
 
-	channel := &KATunnel{
-		closed:      make(chan bool),
-		networkId:   networkId,
-		receiveHub:  listener,
-		kaConn:      client,
-		privateIP:   priIP,
-		privatePort: priPort,
-		updateTime:  time.Now(),
-		natTask:     make(map[string]*ConnTask),
+	tunnel := &KATunnel{
+		closed:     make(chan bool),
+		receiveHub: listener,
+		kaConn:     client,
+		updateTime: time.Now(),
+		natTask:    make(map[string]*ConnTask),
 	}
-
-	return channel, nil
-}
-
-func (tunnel *KATunnel) InitNatTunnel() error {
 
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_BootStrapReg,
 		BootRegReq: &net_pb.BootNatRegReq{
-			NodeId:      tunnel.networkId,
-			PrivateIp:   tunnel.privateIP,
-			PrivatePort: tunnel.privatePort,
+			NodeId:      nat.networkId,
+			PrivateIp:   priIP,
+			PrivatePort: priPort,
 		},
 	}
+
+	if err := nat.registerPriHost(request); err != nil {
+		return nil, err
+	}
+
+	return tunnel, nil
+}
+
+func (nat *Manager) registerPriHost(request *net_pb.NatRequest) error {
 
 	reqData, err := proto.Marshal(request)
 	if err != nil {
@@ -94,12 +92,12 @@ func (tunnel *KATunnel) InitNatTunnel() error {
 		return err
 	}
 
-	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
+	if no, err := nat.NatKATun.kaConn.Write(reqData); err != nil || no == 0 {
 		logger.Warning("nat channel keep alive message failed", err, no)
 		return err
 	}
 
-	if err := tunnel.readRegResponse(); err != nil {
+	if err := nat.readRegResponse(); err != nil {
 		logger.Warning("failed to read channel initialize response.")
 		return err
 	}

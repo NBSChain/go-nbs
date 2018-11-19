@@ -28,7 +28,7 @@ func (nat *Manager) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 	return conn, nil
 }
 
-func (nat *Manager) sendNatRequest(conn *net.UDPConn) (string, error) {
+func (nat *Manager) sendNatRequest(conn *net.UDPConn) (string, string, error) {
 
 	localAddr := conn.LocalAddr().String()
 
@@ -47,15 +47,15 @@ func (nat *Manager) sendNatRequest(conn *net.UDPConn) (string, error) {
 	requestData, err := proto.Marshal(request)
 	if err != nil {
 		logger.Error("failed to marshal nat request", err)
-		return "", err
+		return "", "", err
 	}
 
 	if no, err := conn.Write(requestData); err != nil || no == 0 {
 		logger.Error("failed to send nat request to selfNatServer ", err, no)
-		return "", err
+		return "", "", err
 	}
 
-	return host, nil
+	return host, port, nil
 }
 
 func (nat *Manager) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatRegRes, error) {
@@ -118,13 +118,15 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		return err
 	}
 
-	if !IsPublic(response.NatType) {
-		item := &ClientItem{
-			nodeId:     request.NodeId,
-			pubIp:      response.PublicIp,
-			pubPort:    response.PublicPort,
-			priIp:      request.PrivateIp,
-			priPort:    request.PrivatePort,
+	if !CanServe(response.NatType) {
+
+		item := &hostBehindNat{
+			addr: &MulAddr{addrID: request.NodeId,
+				publicIp:    response.PublicIp,
+				publicPort:  response.PublicIp,
+				privateIP:   request.PrivateIp,
+				privatePort: request.PrivatePort,
+			},
 			updateTIme: time.Now(),
 		}
 		nat.cache[request.NodeId] = item

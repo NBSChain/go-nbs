@@ -118,7 +118,7 @@ func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) er
 	return nat.sendConnInvite(toItem, peerAddr, sessionId, req.ToPort, true)
 }
 
-func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionId string, toPort int32, isCaller bool) error {
+func (nat *Manager) sendConnInvite(item *hostBehindNat, addr *net.UDPAddr, sessionId string, toPort int32, isCaller bool) error {
 
 	connRes := &net_pb.NatConRes{
 		PeerId:      item.nodeId,

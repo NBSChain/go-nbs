@@ -14,12 +14,8 @@ var logger = utils.GetLogInstance()
 const NetIoBufferSize = 1 << 11
 const BootStrapNatServerTimeOutInSec = 4
 
-type ClientItem struct {
-	nodeId     string
-	pubIp      string
-	pubPort    string
-	priIp      string
-	priPort    string
+type hostBehindNat struct {
+	addr       *MulAddr
 	kaAddr     *net.UDPAddr
 	updateTIme time.Time
 }
@@ -29,9 +25,10 @@ type Manager struct {
 	selfNatServer *net.UDPConn
 	networkId     string
 	canServe      chan bool
+	SelfAddr      *MulAddr
 	NatKATun      *KATunnel
-	cache         map[string]*ClientItem
-	dNatServer    *DecentralizedNatServer
+	cache         map[string]*hostBehindNat
+	dNatServer    string
 }
 
 //TODO:: support ipv6 later.

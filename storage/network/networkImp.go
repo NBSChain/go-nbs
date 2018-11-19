@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"net"
@@ -18,17 +19,16 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.natManager = nat.NewNatManager(network.netWorkId)
 
-	addr, err := network.natManager.FindWhoAmI()
+	canServe, err := network.natManager.FindWhoAmI()
 	if err != nil {
 		return err
 	}
 
-	addr.PeerId = peerId
-	network.addresses = addr
-
-	if addr.CanBeService {
+	if canServe {
 		return nil
 	}
+
+	denat.GetDNSInstance().Setup(peerId)
 
 	if err := network.natManager.NewKAChannel(); err != nil {
 		return err
@@ -49,15 +49,15 @@ func (network *nbsNetwork) GetNatInfo() string {
 		"\tprivateIP:\t%s\n"+
 		"=========================================================================",
 		network.netWorkId,
-		network.addresses.CanBeService,
-		network.addresses.PublicIp,
-		network.addresses.PrivateIp)
+		network.natAddr.CanBeService,
+		network.natAddr.PublicIp,
+		network.natAddr.PrivateIp)
 
 	return status
 }
 
 func (network *nbsNetwork) GetAddress() *net_pb.NbsAddress {
-	return network.addresses
+	return network.natAddr
 }
 
 func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error) {

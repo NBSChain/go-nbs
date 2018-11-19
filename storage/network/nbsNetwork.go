@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -11,9 +10,7 @@ import (
 type nbsNetwork struct {
 	Context    context.Context
 	natManager *nat.Manager
-	//connManager *ConnManager
-	netWorkId string
-	addresses *net_pb.NbsAddress
+	netWorkId  string
 }
 
 var once sync.Once

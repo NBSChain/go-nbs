@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package net.pb;
+
+enum deSysMsgType{
+    Unknown         = 0;
+    ServiceReg      = 1;
+    FindPeerById    = 2;
+}
+
+message DeNatSysReq{
+    string natSerId = 1;
+}
+
+message DeNatSysRsp{
+    string natSerId = 1;
+}

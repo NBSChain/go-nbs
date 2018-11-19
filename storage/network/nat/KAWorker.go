@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-func (tunnel *KATunnel) readRegResponse() error {
+func (nat *Manager) readRegResponse() error {
 
 	responseData := make([]byte, NetIoBufferSize)
-	hasRead, err := tunnel.kaConn.Read(responseData)
+	hasRead, err := nat.NatKATun.kaConn.Read(responseData)
 	if err != nil {
 		logger.Warning("reading failed from nat server", err)
 		return err
@@ -28,12 +28,15 @@ func (tunnel *KATunnel) readRegResponse() error {
 
 	resValue := response.BootRegRes
 
-	tunnel.publicIp = resValue.PublicIp
-	tunnel.publicPort = resValue.PublicPort
+	nat.SelfAddr.publicIp = resValue.PublicIp
+	nat.SelfAddr.publicPort = resValue.PublicPort
 
-	go tunnel.runLoop()
-	go tunnel.listening()
-	go tunnel.readKeepAlive()
+	go nat.NatKATun.runLoop()
+
+	go nat.NatKATun.listening()
+
+	go nat.NatKATun.readKeepAlive()
+
 	return nil
 }
 
