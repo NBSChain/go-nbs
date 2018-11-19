@@ -96,7 +96,7 @@ func (nat *Manager) NewKAChannel() error {
 		return err
 	}
 
-	if err := ka.InitNatChannel(); err != nil {
+	if err := ka.InitNatTunnel(); err != nil {
 		logger.Warning("create NAT keep alive tunnel failed", err)
 		return err
 	}

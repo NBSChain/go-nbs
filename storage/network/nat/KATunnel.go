@@ -77,7 +77,7 @@ func newKATunnel(natServer, networkId string) (*KATunnel, error) {
 	return channel, nil
 }
 
-func (tunnel *KATunnel) InitNatChannel() error {
+func (tunnel *KATunnel) InitNatTunnel() error {
 
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_BootStrapReg,
@@ -114,44 +114,6 @@ func (tunnel *KATunnel) Close() {
 	tunnel.closed <- true
 }
 
-func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) *ConnTask {
-
-	sessionId := fromId + toId
-	task := &ConnTask{
-		sessionId: sessionId,
-	}
-
-	payload := &net_pb.NatConReq{
-		FromPeerId: fromId,
-		ToPeerId:   toId,
-		ToPort:     int32(port),
-		SessionId:  sessionId,
-	}
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnReq: payload,
-	}
-
-	reqData, err := proto.Marshal(request)
-	if err != nil {
-		logger.Error("failed to marshal the nat connect request", err)
-		task.Err = err
-		return task
-	}
-
-	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
-		logger.Warning("nat channel keep alive message failed", err, no)
-		task.Err = err
-		return task
-	}
-
-	task.ConnCh = make(chan *net.UDPConn)
-
-	tunnel.natTask[sessionId] = task
-
-	return task
-}
-
 func (tunnel *KATunnel) runLoop() {
 
 	for {
@@ -185,6 +147,43 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 	if no, err := tunnel.kaConn.Write(requestData); err != nil || no == 0 {
 		logger.Warning("failed to send keep alive channel message:", err)
 		return err
+	}
+
+	return nil
+}
+
+/************************************************************************
+*
+*			server side
+*
+*************************************************************************/
+func (nat *Manager) cacheManager() {
+
+	for {
+		nat.cacheLock.Lock()
+
+		currentClock := time.Now()
+		for nodeId, item := range nat.cache {
+
+			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
+				delete(nat.cache, nodeId)
+			}
+		}
+
+		nat.cacheLock.Unlock()
+
+		time.Sleep(time.Second * KeepAlive)
+	}
+}
+
+func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr) error {
+	nodeId := req.NodeId
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	if item, ok := nat.cache[nodeId]; !ok {
+		item.updateTIme = time.Now()
+		item.kaAddr = peerAddr
 	}
 
 	return nil

@@ -1,12 +1,10 @@
 package nat
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -117,139 +115,4 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 	logger.Debug("request:", request)
 
 	return peerAddr, request, nil
-}
-
-func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
-
-	response := &net_pb.BootNatRegRes{}
-	response.PublicIp = peerAddr.IP.String()
-	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
-	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
-
-		response.NatType = net_pb.NatType_NoNatDevice
-	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
-
-		response.NatType = net_pb.NatType_ToBeChecked
-		go nat.ping(peerAddr)
-
-	} else {
-
-		response.NatType = net_pb.NatType_BehindNat
-	}
-
-	pbRes := &net_pb.Response{
-		MsgType:    net_pb.NatMsgType_BootStrapReg,
-		BootRegRes: response,
-	}
-
-	pbResData, err := proto.Marshal(pbRes)
-	if err != nil {
-		logger.Warning("failed to marshal nat response data", err)
-		return err
-	}
-
-	if _, err := nat.selfNatServer.WriteToUDP(pbResData, peerAddr); err != nil {
-		logger.Warning("failed to send nat response", err)
-		return err
-	}
-
-	if !IsPublic(response.NatType) {
-
-		item := &ClientItem{
-			nodeId:     request.NodeId,
-			pubIp:      response.PublicIp,
-			pubPort:    response.PublicPort,
-			priIp:      request.PrivateIp,
-			priPort:    request.PrivatePort,
-			updateTIme: time.Now(),
-		}
-
-		nat.cache[request.NodeId] = item
-	}
-
-	return nil
-}
-
-func (nat *Manager) cacheManager() {
-
-	for {
-		nat.cacheLock.Lock()
-
-		currentClock := time.Now()
-		for nodeId, item := range nat.cache {
-
-			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
-				delete(nat.cache, nodeId)
-			}
-		}
-
-		nat.cacheLock.Unlock()
-
-		time.Sleep(time.Second * KeepAlive)
-	}
-}
-
-//TODO::Find peers from nat gossip protocol
-func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	sessionId := req.SessionId
-	fromItem, ok := nat.cache[req.FromPeerId]
-	if !ok {
-		return fmt.Errorf("the from peer id is not found")
-	}
-
-	toItem, ok := nat.cache[req.ToPeerId]
-	if !ok {
-		toItem = nat.dNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId, req.ToPort, false)
-	} else {
-		if err := nat.sendConnInvite(fromItem, toItem.kaAddr, sessionId, req.ToPort, false); err != nil {
-			logger.Error("connect invite failed:", err)
-		}
-	}
-
-	return nat.sendConnInvite(toItem, peerAddr, sessionId, req.ToPort, true)
-}
-
-func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionId string, toPort int32, isCaller bool) error {
-
-	connRes := &net_pb.NatConRes{
-		PeerId:      item.nodeId,
-		PublicIp:    item.pubIp,
-		PublicPort:  item.pubPort,
-		PrivateIp:   item.priIp,
-		PrivatePort: item.priPort,
-		SessionId:   sessionId,
-		TargetPort:  toPort,
-		IsCaller:    isCaller,
-	}
-
-	response := &net_pb.Response{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnRes: connRes,
-	}
-
-	toItemData, err := proto.Marshal(response)
-	if err != nil {
-		return err
-	}
-
-	if _, err := nat.selfNatServer.WriteToUDP(toItemData, item.kaAddr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr) error {
-	nodeId := req.NodeId
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	if item, ok := nat.cache[nodeId]; !ok {
-		item.updateTIme = time.Now()
-		item.kaAddr = peerAddr
-	}
-
-	return nil
 }

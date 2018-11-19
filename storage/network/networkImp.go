@@ -106,7 +106,6 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 	if toPubIp == "" { //TIPS::it means the target is behind a nat server.
 
 		natTunnel := network.natManager.NatKATun
-
 		connTask := natTunnel.MakeANatConn(fromId, toId, connId, toPort)
 
 		var c *net.UDPConn
