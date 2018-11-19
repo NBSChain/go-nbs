@@ -9,7 +9,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -119,45 +118,27 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
 		task.CType = ConnTypeNatInverse
 	}
 
-	if response.CanServe {
+	priConn, priErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
+		response.PrivateIp+":"+response.PrivatePort)
 
-		port, _ := strconv.Atoi(response.PublicPort)
-		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-			IP:   net.ParseIP(response.PublicIp),
-			Port: port,
-		})
-		if err != nil {
-			logger.Warning("failed to make a nat connection while peer can be a server.", err)
-			task.Err = err
-			task.ConnCh <- nil
-			return
-		}
-		task.ConnCh <- conn
-
+	if priErr != nil {
+		logger.Warning("failed to make a nat connection from private network while peer is behind nat")
 	} else {
-
-		priConn, priErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
-			response.PrivateIp+":"+response.PrivatePort)
-
-		if priErr != nil {
-			logger.Warning("failed to make a nat connection from private network while peer is behind nat")
-		} else {
-			task.ConnCh <- priConn
-			return
-		}
-
-		pubConn, pubErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
-			response.PublicIp+":"+response.PublicPort)
-		if pubErr != nil {
-			logger.Error("failed to make a nat connection from public network while peer is behind nat")
-			err := fmt.Errorf("failed to make a nat connection while peer is behind nat.%s-%s", pubErr, priErr)
-			task.Err = err
-			task.ConnCh <- nil
-			return
-		}
-
-		task.ConnCh <- pubConn
+		task.ConnCh <- priConn
+		return
 	}
+
+	pubConn, pubErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
+		response.PublicIp+":"+response.PublicPort)
+	if pubErr != nil {
+		logger.Error("failed to make a nat connection from public network while peer is behind nat")
+		err := fmt.Errorf("failed to make a nat connection while peer is behind nat.%s-%s", pubErr, priErr)
+		task.Err = err
+		task.ConnCh <- nil
+		return
+	}
+
+	task.ConnCh <- pubConn
 
 	delete(tunnel.natTask, task.sessionId)
 

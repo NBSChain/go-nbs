@@ -47,7 +47,6 @@ message NatConRes {
     string privateIp    = 5;
     string privatePort  = 6;
     string sessionId    = 7;
-    bool   canServe     = 8;
     int32  targetPort   = 9;
     bool   isCaller     = 10;
 }

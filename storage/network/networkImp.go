@@ -26,6 +26,10 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 	addr.PeerId = peerId
 	network.addresses = addr
 
+	if addr.CanBeService {
+		return nil
+	}
+
 	if err := network.natManager.NewKAChannel(); err != nil {
 		return err
 	}

@@ -22,7 +22,6 @@ type ClientItem struct {
 	pubPort    string
 	priIp      string
 	priPort    string
-	canServer  bool
 	kaAddr     *net.UDPAddr
 	updateTIme time.Time
 }
@@ -154,17 +153,19 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		return err
 	}
 
-	item := &ClientItem{
-		nodeId:     request.NodeId,
-		pubIp:      response.PublicIp,
-		pubPort:    response.PublicPort,
-		priIp:      request.PrivateIp,
-		priPort:    request.PrivatePort,
-		canServer:  IsPublic(response.NatType),
-		updateTIme: time.Now(),
-	}
+	if !IsPublic(response.NatType) {
 
-	nat.cache[request.NodeId] = item
+		item := &ClientItem{
+			nodeId:     request.NodeId,
+			pubIp:      response.PublicIp,
+			pubPort:    response.PublicPort,
+			priIp:      request.PrivateIp,
+			priPort:    request.PrivatePort,
+			updateTIme: time.Now(),
+		}
+
+		nat.cache[request.NodeId] = item
+	}
 
 	return nil
 }
@@ -176,9 +177,6 @@ func (nat *Manager) cacheManager() {
 
 		currentClock := time.Now()
 		for nodeId, item := range nat.cache {
-			if item.canServer {
-				continue
-			}
 
 			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
 				delete(nat.cache, nodeId)
@@ -223,7 +221,6 @@ func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionI
 		PrivateIp:   item.priIp,
 		PrivatePort: item.priPort,
 		SessionId:   sessionId,
-		CanServe:    item.canServer,
 		TargetPort:  toPort,
 		IsCaller:    isCaller,
 	}
