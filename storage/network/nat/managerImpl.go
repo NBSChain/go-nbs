@@ -116,6 +116,7 @@ func (nat *Manager) NewKAChannel() (*KATunnel, error) {
 		privateIP:   priIP,
 		privatePort: priPort,
 		updateTime:  time.Now(),
+		natTask:     make(map[string]*ConnTask),
 	}
 
 	return channel, nil

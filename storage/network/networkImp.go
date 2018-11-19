@@ -118,13 +118,14 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 
 		natTunnel := network.connManager.natKATun
 
-		connChan, err := natTunnel.MakeANatConn(fromId, toId, connId, toPort)
-		if err != nil {
-			return nil, err
-		}
+		connTask := natTunnel.MakeANatConn(fromId, toId, connId, toPort)
+
 		var c *net.UDPConn
 		select {
-		case c = <-connChan:
+		case c = <-connTask.ConnCh:
+			if c == nil {
+				return nil, connTask.Err
+			}
 			logger.Debug("nat connection success.")
 		case <-time.After(time.Second * 5):
 			return nil, fmt.Errorf("time out")

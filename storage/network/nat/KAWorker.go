@@ -3,9 +3,13 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"net"
+	"strconv"
 	"time"
 )
 
@@ -20,7 +24,7 @@ func (tunnel *KATunnel) readRegResponse() error {
 
 	response := &net_pb.Response{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Warning("unmarshal err:", err)
+		logger.Warning("unmarshal Err:", err)
 		return err
 	}
 
@@ -96,5 +100,50 @@ func (tunnel *KATunnel) restoreNatChannel() {
 }
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) connectToPeers(request *net_pb.NatConRes) {
+func (tunnel *KATunnel) connectToPeers(response *net_pb.NatConRes) {
+	sessionId := response.SessionId
+	task, ok := tunnel.natTask[sessionId]
+	if !ok {
+		logger.Error("can't find the nat connection task")
+		return
+	}
+
+	if response.CanServe {
+		port, _ := strconv.Atoi(response.PublicPort)
+		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+			IP:   net.ParseIP(response.PublicIp),
+			Port: port,
+		})
+		if err != nil {
+			logger.Warning("failed to make a nat connection while peer can be a server.", err)
+			task.Err = err
+			task.ConnCh <- nil
+			return
+		}
+		task.ConnCh <- conn
+	} else {
+		priConn, priErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
+			response.PrivateIp+":"+response.PrivatePort)
+
+		if priErr != nil {
+			logger.Warning("failed to make a nat connection from private network while peer is behind nat")
+		} else {
+			task.ConnCh <- priConn
+			return
+		}
+
+		pubConn, pubErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
+			response.PublicIp+":"+response.PublicPort)
+		if pubErr != nil {
+			logger.Error("failed to make a nat connection from public network while peer is behind nat")
+			err := fmt.Errorf("failed to make a nat connection while peer is behind nat.%s-%s", pubErr, priErr)
+			task.Err = err
+			task.ConnCh <- nil
+			return
+		}
+
+		task.ConnCh <- pubConn
+
+	}
+
 }

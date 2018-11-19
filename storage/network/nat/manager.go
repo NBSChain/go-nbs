@@ -58,6 +58,7 @@ func (nat *Manager) natServiceListening() {
 		peerAddr, request, err := nat.readNatRequest()
 		if err != nil {
 			logger.Error(err)
+			continue
 		}
 
 		switch request.MsgType {
@@ -78,7 +79,23 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		}
+
+		if err != nil {
+			nat.responseAnError(err, peerAddr)
+		}
 	}
+}
+
+func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
+	response := &net_pb.Response{
+		MsgType: net_pb.NatMsgType_error,
+		Error: &net_pb.ErrorNotify{
+			ErrMsg: err.Error(),
+		},
+	}
+
+	resData, _ := proto.Marshal(response)
+	nat.selfNatServer.WriteToUDP(resData, peerAddr)
 }
 
 func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
@@ -166,6 +183,7 @@ func (nat *Manager) cacheManager() {
 				delete(nat.cache, nodeId)
 			}
 		}
+
 		nat.cacheLock.Unlock()
 
 		time.Sleep(time.Second * KeepAlive)
@@ -177,7 +195,7 @@ func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) er
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
-	sessionId := req.FromPeerId + req.ToPeerId
+	sessionId := req.SessionId
 	fromItem, ok := nat.cache[req.FromPeerId]
 	if !ok {
 		return fmt.Errorf("the from peer id is not found")
@@ -204,6 +222,7 @@ func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionI
 		PrivateIp:   item.priIp,
 		PrivatePort: item.priPort,
 		SessionId:   sessionId,
+		CanServe:    item.canServer,
 	}
 
 	response := &net_pb.Response{

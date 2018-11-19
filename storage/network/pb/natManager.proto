@@ -8,6 +8,7 @@ enum NatMsgType {
     KeepAlive       = 2;
     Connect         = 3;
     Ping            = 4;
+    error           = 5;
 }
 
 enum NatType{
@@ -35,6 +36,7 @@ message BootNatRegRes {
 message NatConReq {
     string FromPeerId   = 1;
     string ToPeerId     = 2;
+    string sessionId    = 3;
 }
 
 message NatConRes {
@@ -44,6 +46,7 @@ message NatConRes {
     string privateIp    = 5;
     string privatePort  = 6;
     string sessionId    = 7;
+    bool   canServe     = 8;
 }
 
 message NatKeepAlive {
@@ -55,6 +58,10 @@ message NatPing {
     string pong  = 2;
     string nonce = 3;
     int32  TTL   = 4;
+}
+
+message ErrorNotify{
+    string errMsg = 1;
 }
 
 message NatRequest {
@@ -71,4 +78,5 @@ message response {
     NatConRes connRes           = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing pong                = 5;
+    ErrorNotify error           = 6;
 }

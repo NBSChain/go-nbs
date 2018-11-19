@@ -12,6 +12,12 @@ const (
 	KeepAliveTimeOut = 45
 )
 
+type ConnTask struct {
+	Err       error
+	sessionId string
+	ConnCh    chan *net.UDPConn
+}
+
 type KATunnel struct {
 	closed      chan bool
 	networkId   string
@@ -22,6 +28,7 @@ type KATunnel struct {
 	receiveHub  *net.UDPConn
 	kaConn      *net.UDPConn
 	updateTime  time.Time
+	natTask     map[string]*ConnTask
 }
 
 func (tunnel *KATunnel) InitNatChannel() error {
@@ -62,11 +69,17 @@ func (tunnel *KATunnel) Close() {
 	tunnel.closed <- true
 }
 
-func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) (chan *net.UDPConn, error) {
+func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) *ConnTask {
+
+	sessionId := fromId + toId
+	task := &ConnTask{
+		sessionId: sessionId,
+	}
 
 	payload := &net_pb.NatConReq{
 		FromPeerId: fromId,
 		ToPeerId:   toId,
+		SessionId:  sessionId,
 	}
 	request := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_Connect,
@@ -76,17 +89,21 @@ func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) (cha
 	reqData, err := proto.Marshal(request)
 	if err != nil {
 		logger.Error("failed to marshal the nat connect request", err)
-		return nil, err
+		task.Err = err
+		return task
 	}
 
 	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
 		logger.Warning("nat channel keep alive message failed", err, no)
-		return nil, err
+		task.Err = err
+		return task
 	}
 
-	connChan := make(chan *net.UDPConn)
+	task.ConnCh = make(chan *net.UDPConn)
 
-	return connChan, nil
+	tunnel.natTask[sessionId] = task
+
+	return task
 }
 
 func (tunnel *KATunnel) runLoop() {

@@ -67,7 +67,7 @@ func (nat *Manager) parseNatResponse(connection *net.UDPConn) (*net_pb.BootNatRe
 
 	response := &net_pb.Response{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("unmarshal err:", err)
+		logger.Error("unmarshal Err:", err)
 		return nil, err
 	}
 

@@ -47,7 +47,7 @@ pbs:
 	protoc -I=$(gossip) 		--go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
 
 clean:
-	rm -rf nbs
+	rm -rf $(INCLUDE)/bin/nbs
 
 test:
 	go test -v ./storage/application/rpcService/
