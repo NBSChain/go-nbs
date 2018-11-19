@@ -36,7 +36,8 @@ message BootNatRegRes {
 message NatConReq {
     string FromPeerId   = 1;
     string ToPeerId     = 2;
-    string sessionId    = 3;
+    int32  ToPort       = 3;
+    string sessionId    = 4;
 }
 
 message NatConRes {
@@ -47,6 +48,8 @@ message NatConRes {
     string privatePort  = 6;
     string sessionId    = 7;
     bool   canServe     = 8;
+    int32  targetPort   = 9;
+    bool   isCaller     = 10;
 }
 
 message NatKeepAlive {

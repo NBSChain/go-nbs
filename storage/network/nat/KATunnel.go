@@ -2,8 +2,11 @@ package nat
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -12,9 +15,20 @@ const (
 	KeepAliveTimeOut = 45
 )
 
+type ConnType int8
+
+const (
+	_ ConnType = iota
+	ConnTypeNormal
+	ConnTypeNat
+	ConnTypeNatInverse
+)
+
 type ConnTask struct {
 	Err       error
 	sessionId string
+	CType     ConnType
+	ProxyAddr *net.UDPAddr
 	ConnCh    chan *net.UDPConn
 }
 
@@ -29,6 +43,38 @@ type KATunnel struct {
 	kaConn      *net.UDPConn
 	updateTime  time.Time
 	natTask     map[string]*ConnTask
+}
+
+func newKATunnel(natServer, networkId string) (*KATunnel, error) {
+
+	port := strconv.Itoa(utils.GetConfig().NatClientPort)
+	listener, err := shareport.ListenUDP("udp4", port)
+	if err != nil {
+		logger.Warning("create share listening udp failed.")
+		return nil, err
+	}
+
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, natServer)
+	if err != nil {
+		logger.Warning("create share port dial udp connection failed.")
+		return nil, err
+	}
+
+	localAddr := client.LocalAddr().String()
+	priIP, priPort, err := net.SplitHostPort(localAddr)
+
+	channel := &KATunnel{
+		closed:      make(chan bool),
+		networkId:   networkId,
+		receiveHub:  listener,
+		kaConn:      client,
+		privateIP:   priIP,
+		privatePort: priPort,
+		updateTime:  time.Now(),
+		natTask:     make(map[string]*ConnTask),
+	}
+
+	return channel, nil
 }
 
 func (tunnel *KATunnel) InitNatChannel() error {
@@ -65,7 +111,6 @@ func (tunnel *KATunnel) Close() {
 
 	tunnel.receiveHub.Close()
 	tunnel.kaConn.Close()
-
 	tunnel.closed <- true
 }
 
@@ -79,6 +124,7 @@ func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) *Con
 	payload := &net_pb.NatConReq{
 		FromPeerId: fromId,
 		ToPeerId:   toId,
+		ToPort:     int32(port),
 		SessionId:  sessionId,
 	}
 	request := &net_pb.NatRequest{

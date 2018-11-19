@@ -9,11 +9,11 @@ import (
 )
 
 type nbsNetwork struct {
-	Context     context.Context
-	natManager  *nat.Manager
-	connManager *ConnManager
-	netWorkId   string
-	addresses   *net_pb.NbsAddress
+	Context    context.Context
+	natManager *nat.Manager
+	//connManager *ConnManager
+	netWorkId string
+	addresses *net_pb.NbsAddress
 }
 
 var once sync.Once

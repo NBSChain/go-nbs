@@ -31,6 +31,6 @@ func (s *DecentralizedNatServer) GossipNatServer() string {
 }
 
 //find client item from other nat server by peerId
-func (s *DecentralizedNatServer) SendConnInvite(item *ClientItem, peerId, sessionId string) *ClientItem {
+func (s *DecentralizedNatServer) SendConnInvite(item *ClientItem, peerId, sessionId string, toPort int32, isCaller bool) *ClientItem {
 	return &ClientItem{}
 }

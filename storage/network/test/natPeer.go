@@ -228,7 +228,7 @@ func (peer *NatPeer) connectToPeers(response *net_pb.NatConRes) {
 	}
 }
 
-func main() {
+func natTool() {
 
 	if len(os.Args) < 2 {
 		fmt.Println("input run mode -c or -s")

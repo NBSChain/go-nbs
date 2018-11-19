@@ -3,10 +3,8 @@ package nat
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -88,38 +86,24 @@ func (nat *Manager) FindWhoAmI() (address *net_pb.NbsAddress, err error) {
 	return nil, fmt.Errorf("can't find available NAT server")
 }
 
-func (nat *Manager) NewKAChannel() (*KATunnel, error) {
+func (nat *Manager) NewKAChannel() error {
 
-	port := strconv.Itoa(utils.GetConfig().NatClientPort)
 	natServer := nat.dNatServer.GossipNatServer()
 
-	listener, err := shareport.ListenUDP("udp4", port)
+	ka, err := newKATunnel(natServer, nat.networkId)
 	if err != nil {
-		logger.Warning("create share listening udp failed.")
-		return nil, err
+		logger.Warning("failed to create nat server ka channel.")
+		return err
 	}
 
-	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, natServer)
-	if err != nil {
-		logger.Warning("create share port dial udp connection failed.")
-		return nil, err
+	if err := ka.InitNatChannel(); err != nil {
+		logger.Warning("create NAT keep alive tunnel failed", err)
+		return err
 	}
 
-	localAddr := client.LocalAddr().String()
-	priIP, priPort, err := net.SplitHostPort(localAddr)
+	nat.NatKATun = ka
 
-	channel := &KATunnel{
-		closed:      make(chan bool),
-		networkId:   nat.networkId,
-		receiveHub:  listener,
-		kaConn:      client,
-		privateIP:   priIP,
-		privatePort: priPort,
-		updateTime:  time.Now(),
-		natTask:     make(map[string]*ConnTask),
-	}
-
-	return channel, nil
+	return nil
 }
 
 func ExternalIP() []string {

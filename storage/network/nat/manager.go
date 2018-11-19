@@ -32,6 +32,7 @@ type Manager struct {
 	selfNatServer *net.UDPConn
 	networkId     string
 	canServe      chan bool
+	NatKATun      *KATunnel
 	cache         map[string]*ClientItem
 	dNatServer    *DecentralizedNatServer
 }
@@ -203,17 +204,17 @@ func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) er
 
 	toItem, ok := nat.cache[req.ToPeerId]
 	if !ok {
-		toItem = nat.dNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId)
+		toItem = nat.dNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId, req.ToPort, false)
 	} else {
-		if err := nat.sendConnInvite(fromItem, toItem.kaAddr, sessionId); err != nil {
+		if err := nat.sendConnInvite(fromItem, toItem.kaAddr, sessionId, req.ToPort, false); err != nil {
 			logger.Error("connect invite failed:", err)
 		}
 	}
 
-	return nat.sendConnInvite(toItem, peerAddr, sessionId)
+	return nat.sendConnInvite(toItem, peerAddr, sessionId, req.ToPort, true)
 }
 
-func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionId string) error {
+func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionId string, toPort int32, isCaller bool) error {
 
 	connRes := &net_pb.NatConRes{
 		PeerId:      item.nodeId,
@@ -223,6 +224,8 @@ func (nat *Manager) sendConnInvite(item *ClientItem, addr *net.UDPAddr, sessionI
 		PrivatePort: item.priPort,
 		SessionId:   sessionId,
 		CanServe:    item.canServer,
+		TargetPort:  toPort,
+		IsCaller:    isCaller,
 	}
 
 	response := &net_pb.Response{

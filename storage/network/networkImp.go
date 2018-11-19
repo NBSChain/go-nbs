@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"net"
 	"time"
 )
@@ -19,26 +20,14 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 
 	addr, err := network.natManager.FindWhoAmI()
 	if err != nil {
-		logger.Warning("boot strap err:", err)
 		return err
 	}
+
 	addr.PeerId = peerId
 	network.addresses = addr
 
-	network.connManager = newConnManager()
-
-	if !network.addresses.CanBeService {
-		ka, err := network.natManager.NewKAChannel()
-		if err != nil {
-			logger.Warning("failed to create nat server ka channel.")
-			return err
-		}
-
-		if err := ka.InitNatChannel(); err != nil {
-			logger.Warning("create NAT keep alive tunnel failed", err)
-			return err
-		}
-		network.connManager.natKATun = ka
+	if err := network.natManager.NewKAChannel(); err != nil {
+		return err
 	}
 
 	return nil
@@ -63,12 +52,8 @@ func (network *nbsNetwork) GetNatInfo() string {
 	return status
 }
 
-func (network *nbsNetwork) GetPublicIp() string {
-	if network.addresses.CanBeService {
-		return network.addresses.PublicIp
-	}
-
-	return ""
+func (network *nbsNetwork) GetAddress() *net_pb.NbsAddress {
+	return network.addresses
 }
 
 func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error) {
@@ -80,12 +65,12 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 
 	conn := &NbsUdpConn{
 		realConn: c,
-		cType:    ConnType_Normal,
-		parent:   network.connManager,
-		connId:   localAddr.String() + ConnectionSeparator + remoteAddr.String(),
+		cType:    nat.ConnTypeNormal,
+		//parent:   network.connManager,
+		connId: localAddr.String() + ConnectionSeparator + remoteAddr.String(),
 	}
 
-	network.connManager.put(conn)
+	//network.connManager.put(conn)
 
 	return conn, nil
 }
@@ -99,12 +84,12 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*NbsUdpConn
 
 	conn := &NbsUdpConn{
 		realConn: c,
-		cType:    ConnType_Normal,
-		parent:   network.connManager,
-		connId:   lAddr.String(),
+		cType:    nat.ConnTypeNormal,
+		//parent:   network.connManager,
+		connId: lAddr.String(),
 	}
 
-	network.connManager.put(conn)
+	//network.connManager.put(conn)
 
 	return conn, nil
 }
@@ -116,7 +101,7 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 
 	if toPubIp == "" { //TIPS::it means the target is behind a nat server.
 
-		natTunnel := network.connManager.natKATun
+		natTunnel := network.natManager.NatKATun
 
 		connTask := natTunnel.MakeANatConn(fromId, toId, connId, toPort)
 
@@ -131,9 +116,10 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 			return nil, fmt.Errorf("time out")
 		}
 		conn = &NbsUdpConn{
-			realConn: c,
-			cType:    ConnType_Nat,
-			connId:   connId,
+			realConn:  c,
+			cType:     connTask.CType,
+			proxyAddr: connTask.ProxyAddr,
+			connId:    connId,
 		}
 
 	} else {
@@ -148,13 +134,10 @@ func (network *nbsNetwork) Connect(fromId, toId, toPubIp string, toPort int) (*N
 
 		conn = &NbsUdpConn{
 			realConn: c,
-			cType:    ConnType_Normal,
+			cType:    nat.ConnTypeNormal,
 			connId:   connId,
 		}
 	}
-
-	conn.parent = network.connManager
-	network.connManager.put(conn)
 
 	return conn, nil
 }

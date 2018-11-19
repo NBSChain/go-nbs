@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"net"
 )
 
@@ -9,7 +10,7 @@ type Network interface {
 
 	GetNatInfo() string
 
-	GetPublicIp() string
+	GetAddress() *net_pb.NbsAddress
 
 	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error)
 

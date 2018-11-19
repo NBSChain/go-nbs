@@ -60,12 +60,14 @@ func (node *MemManager) registerMySelf() error {
 
 func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
 
-	pubIp := network.GetInstance().GetPublicIp()
+	addr := network.GetInstance().GetAddress()
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId:   node.peerId,
-			PublicIp: pubIp,
+			NodeId:      addr.PeerId,
+			PublicIp:    addr.PublicIp,
+			PrivateIp:   addr.PrivateIp,
+			CanBeServer: addr.CanBeService,
 		},
 	}
 	msgData, err := proto.Marshal(msg)

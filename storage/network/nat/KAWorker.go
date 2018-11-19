@@ -52,14 +52,14 @@ func (tunnel *KATunnel) readKeepAlive() {
 			continue
 		}
 
-		if err := tunnel.processResponse(buffer[:n]); err != nil {
+		if err := tunnel.process(buffer[:n]); err != nil {
 			logger.Warning("process nat response message failed")
 			continue
 		}
 	}
 }
 
-func (tunnel *KATunnel) processResponse(buffer []byte) error {
+func (tunnel *KATunnel) process(buffer []byte) error {
 
 	response := &net_pb.Response{}
 	if err := proto.Unmarshal(buffer, response); err != nil {
@@ -70,8 +70,9 @@ func (tunnel *KATunnel) processResponse(buffer []byte) error {
 	switch response.MsgType {
 	case net_pb.NatMsgType_KeepAlive:
 		tunnel.updateTime = time.Now()
+
 	case net_pb.NatMsgType_Connect:
-		tunnel.connectToPeers(response.ConnRes)
+		tunnel.punchAHole(response.ConnRes)
 	}
 
 	return nil
@@ -81,13 +82,13 @@ func (tunnel *KATunnel) listening() {
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := tunnel.kaConn.Read(buffer)
+		n, err := tunnel.receiveHub.Read(buffer)
 		if err != nil {
-			logger.Warning("reading keep alive message failed:", err)
+			logger.Warning("receiving port:", err)
 			continue
 		}
 
-		if err := tunnel.processResponse(buffer[:n]); err != nil {
+		if err := tunnel.process(buffer[:n]); err != nil {
 			logger.Warning("process nat response message failed")
 			continue
 		}
@@ -100,7 +101,7 @@ func (tunnel *KATunnel) restoreNatChannel() {
 }
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) connectToPeers(response *net_pb.NatConRes) {
+func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
 	sessionId := response.SessionId
 	task, ok := tunnel.natTask[sessionId]
 	if !ok {
@@ -108,7 +109,18 @@ func (tunnel *KATunnel) connectToPeers(response *net_pb.NatConRes) {
 		return
 	}
 
+	task.ProxyAddr = &net.UDPAddr{
+		IP:   net.ParseIP(tunnel.privateIP),
+		Port: int(response.TargetPort),
+	}
+	if response.IsCaller {
+		task.CType = ConnTypeNat
+	} else {
+		task.CType = ConnTypeNatInverse
+	}
+
 	if response.CanServe {
+
 		port, _ := strconv.Atoi(response.PublicPort)
 		conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 			IP:   net.ParseIP(response.PublicIp),
@@ -121,7 +133,9 @@ func (tunnel *KATunnel) connectToPeers(response *net_pb.NatConRes) {
 			return
 		}
 		task.ConnCh <- conn
+
 	} else {
+
 		priConn, priErr := shareport.DialUDP("udp4", tunnel.privateIP+":"+tunnel.privatePort,
 			response.PrivateIp+":"+response.PrivatePort)
 
@@ -143,7 +157,8 @@ func (tunnel *KATunnel) connectToPeers(response *net_pb.NatConRes) {
 		}
 
 		task.ConnCh <- pubConn
-
 	}
+
+	delete(tunnel.natTask, task.sessionId)
 
 }
