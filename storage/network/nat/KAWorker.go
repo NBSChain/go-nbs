@@ -9,37 +9,11 @@ import (
 	"time"
 )
 
-func (nat *Manager) readRegResponse() error {
-
-	responseData := make([]byte, NetIoBufferSize)
-	hasRead, err := nat.NatKATun.kaConn.Read(responseData)
-	if err != nil {
-		logger.Warning("reading failed from nat server", err)
-		return err
-	}
-
-	response := &net_pb.Response{}
-	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Warning("unmarshal Err:", err)
-		return err
-	}
-
-	logger.Info("response:", response)
-
-	resValue := response.BootRegRes
-
-	nat.SelfAddr.publicIp = resValue.PublicIp
-	nat.SelfAddr.publicPort = resValue.PublicPort
-
-	go nat.NatKATun.runLoop()
-
-	go nat.NatKATun.listening()
-
-	go nat.NatKATun.readKeepAlive()
-
-	return nil
-}
-
+/************************************************************************
+*
+*			for linux unix darwin and so on
+*
+*************************************************************************/
 func (tunnel *KATunnel) readKeepAlive() {
 
 	for {
@@ -81,7 +55,7 @@ func (tunnel *KATunnel) listening() {
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := tunnel.receiveHub.Read(buffer)
+		n, err := tunnel.serverHub.Read(buffer)
 		if err != nil {
 			logger.Warning("receiving port:", err)
 			continue

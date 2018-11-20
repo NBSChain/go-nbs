@@ -1,24 +1,20 @@
 package nat
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
 	"time"
 )
 
-type MulAddr struct {
-	canServe    bool
-	addrID      string
-	privateIP   string
-	privatePort string
-	publicIp    string
-	publicPort  string
-}
-
 func NewNatManager(networkId string) *Manager {
+
+	denat.GetDNSInstance().Setup(networkId)
 
 	localPeers := ExternalIP()
 	if len(localPeers) == 0 {
@@ -27,13 +23,10 @@ func NewNatManager(networkId string) *Manager {
 
 	logger.Debug("all network interfaces:", localPeers)
 
-	decentralizedNatServer := denat.GetDNSInstance()
-
 	natObj := &Manager{
-		networkId:  networkId,
-		canServe:   make(chan bool),
-		cache:      make(map[string]*hostBehindNat),
-		dNatServer: decentralizedNatServer.RandomNatSer(),
+		networkId: networkId,
+		canServe:  make(chan bool),
+		cache:     make(map[string]*hostBehindNat),
 	}
 
 	natObj.startNatService()
@@ -45,95 +38,114 @@ func NewNatManager(networkId string) *Manager {
 	return natObj
 }
 
-func (nat *Manager) FindWhoAmI() (canServer bool, err error) {
+func (nat *Manager) SetUpNatChannel() error {
 
-	config := utils.GetConfig()
-
-	//TODO:: we will replace this nat server by gossip protocol based nat server chose logic.
-	for _, serverIP := range config.NatServerIP {
-
-		conn, err := nat.connectToNatServer(serverIP)
-		if err != nil {
-			logger.Error("can't know who am I", err)
-			conn.Close()
-			continue
-		}
-		conn.SetDeadline(time.Now().Add(time.Second * 3))
-
-		localHost, port, err := nat.sendNatRequest(conn)
-		if err != nil {
-			logger.Error("failed to read nat response:", err)
-			conn.Close()
-			continue
-		}
-
-		response, err := nat.parseNatResponse(conn)
-		if err != nil {
-			logger.Debug("get NAT server info success.")
-			conn.Close()
-			continue
-		}
-
-		addr := &MulAddr{
-			addrID:      nat.networkId,
-			publicIp:    response.PublicIp,
-			publicPort:  response.PublicPort,
-			privatePort: port,
-			privateIP:   localHost,
-			canServe:    CanServe(response.NatType),
-		}
-		nat.SelfAddr = addr
-
-		if response.NatType == net_pb.NatType_ToBeChecked {
-
-			select {
-			case c := <-nat.canServe:
-				addr.canServe = c
-
-			case <-time.After(time.Second * BootStrapNatServerTimeOutInSec / 2):
-				addr.canServe = false
-			}
-
-			close(nat.canServe)
-		}
-
-		conn.Close()
-
-		return addr.canServe, nil
-	}
-
-	return false, fmt.Errorf("can't find available NAT server")
-}
-
-func (nat *Manager) NewKAChannel() error {
-
-	ka, err := nat.newKATunnel()
+	port := strconv.Itoa(utils.GetConfig().NatChanSerPort)
+	listener, err := shareport.ListenUDP("udp4", "0.0.0.0:"+port)
 	if err != nil {
-		logger.Warning("failed to create nat server ka channel.")
+		logger.Warning("create share listening udp failed.")
 		return err
 	}
 
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_BootStrapReg,
-		BootRegReq: &net_pb.BootNatRegReq{
-			NodeId:      nat.networkId,
-			PrivateIp:   priIP,
-			PrivatePort: priPort,
-		},
-	}
-
-	if err := nat.registerPriHost(request); err != nil {
+	serverIP := denat.GetDNSInstance().GetValidServer()
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverIP)
+	if err != nil {
+		logger.Warning("create share port dial udp connection failed.")
 		return err
 	}
 
-	if err := ka.InitNatTunnel(); err != nil {
-		logger.Warning("create NAT keep alive tunnel failed", err)
-		return err
+	tunnel := &KATunnel{
+		networkId:  nat.networkId,
+		closed:     make(chan bool),
+		serverHub:  listener,
+		kaConn:     client,
+		sharedAddr: client.LocalAddr().String(),
+		updateTime: time.Now(),
+		natTask:    make(map[string]*nbsnet.ConnTask),
 	}
 
-	nat.NatKATun = ka
+	go tunnel.runLoop()
+
+	go tunnel.listening()
+
+	go tunnel.readKeepAlive()
+
+	nat.NatKATun = tunnel
 
 	return nil
+}
+
+func (nat *Manager) WaitNatConfirm() chan bool {
+	return nat.canServe
+}
+
+func (nat *Manager) MakeAReverseNatConn(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
+
+	connTask := &nbsnet.ConnTask{
+		SessionId: connId,
+		Err:       make(chan error),
+	}
+
+	if lAddr.PriPort == 0 {
+		lAddr.PriPort = utils.GetConfig().NatChanSerPort
+
+		connTask.CType = nbsnet.CTypeNatReverseDirect
+	} else {
+		proxyConn, err := net.ListenUDP("udp4", &net.UDPAddr{
+			Port: lAddr.PriPort,
+			IP:   net.ParseIP(lAddr.PriIp),
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		connTask.ProxyConn = proxyConn
+		connTask.CType = nbsnet.CTypeNatReverseWithProxy
+	}
+
+	if err := nat.NatKATun.invitePeer(connTask, lAddr, rAddr, connId); err != nil {
+		return nil, err
+	}
+
+	return connTask, nil
+}
+
+func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
+
+	task := &nbsnet.ConnTask{
+		sessionId: connId,
+	}
+
+	payload := &net_pb.NatConReq{
+		FromPeerId: fromId,
+		ToPeerId:   toId,
+		ToPort:     int32(port),
+		SessionId:  sessionId,
+	}
+	request := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_Connect,
+		ConnReq: payload,
+	}
+
+	reqData, err := proto.Marshal(request)
+	if err != nil {
+		logger.Error("failed to marshal the nat connect request", err)
+		task.Err = err
+		return task
+	}
+
+	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
+		logger.Warning("nat channel keep alive message failed", err, no)
+		task.Err = err
+		return task
+	}
+
+	task.ConnCh = make(chan *net.UDPConn)
+
+	tunnel.natTask[connId] = task
+
+	return task
 }
 
 func ExternalIP() []string {
@@ -179,27 +191,4 @@ func ExternalIP() []string {
 	}
 
 	return ips
-}
-
-func CanServe(natType net_pb.NatType) bool {
-
-	var canService bool
-	switch natType {
-	case net_pb.NatType_UnknownRES:
-		canService = false
-
-	case net_pb.NatType_NoNatDevice:
-		canService = true
-
-	case net_pb.NatType_BehindNat:
-		canService = false
-
-	case net_pb.NatType_CanBeNatServer:
-		canService = true
-
-	case net_pb.NatType_ToBeChecked:
-		canService = false
-	}
-
-	return canService
 }

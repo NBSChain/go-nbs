@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/memership"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
@@ -29,6 +30,14 @@ func GetGossipInstance() BasicProtocol {
 func newNbsGossip() *nbsGossip {
 
 	gossipObj := &nbsGossip{}
+
+	peerId := account.GetAccountInstance().GetPeerID()
+
+	if peerId == "" {
+		logger.Warning("no account right now, so the message gossip can't setup")
+	} else {
+		gossipObj.StartUp(peerId)
+	}
 
 	return gossipObj
 }

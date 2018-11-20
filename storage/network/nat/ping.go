@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const BootStrapNatServerTimeOutInSec = 4
+
 func (nat *Manager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
 
 	if ping.TTL <= 0 {
@@ -28,7 +30,7 @@ func (nat *Manager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
 		return err
 	}
 
-	if _, err := nat.selfNatServer.WriteToUDP(pongData, peerAddr); err != nil {
+	if _, err := nat.sysNatServer.WriteToUDP(pongData, peerAddr); err != nil {
 		logger.Warning("failed to send pong", err)
 		return err
 	}
@@ -67,7 +69,7 @@ func (nat *Manager) ping(peerAddr *net.UDPAddr) {
 
 func (nat *Manager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
 
-	responseData := make([]byte, NetIoBufferSize)
+	responseData := make([]byte, utils.NormalReadBuffer)
 	hasRead, _, err := conn.ReadFromUDP(responseData)
 	if err != nil {
 		logger.Warning("get pong failed", err)

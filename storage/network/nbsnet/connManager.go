@@ -1,4 +1,4 @@
-package network
+package nbsnet
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
@@ -11,7 +11,7 @@ type ConnManager struct {
 	queue    map[string]*NbsUdpConn
 }
 
-func newConnManager() *ConnManager {
+func NewConnManager() *ConnManager {
 
 	cm := &ConnManager{
 		queue: make(map[string]*NbsUdpConn),
@@ -26,11 +26,11 @@ func (manager *ConnManager) put(conn *NbsUdpConn) {
 	manager.Lock()
 	defer manager.Unlock()
 
-	if _, ok := manager.queue[conn.connId]; ok {
+	if _, ok := manager.queue[conn.ConnId]; ok {
 		return
 	}
 
-	manager.queue[conn.connId] = conn
+	manager.queue[conn.ConnId] = conn
 }
 
 func (manager *ConnManager) Close(connId string) {

@@ -2,49 +2,12 @@ package nat
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
 	"net"
 )
-
-func (tunnel *KATunnel) MakeANatConn(fromId, toId, connId string, port int) *ConnTask {
-
-	sessionId := fromId + toId
-	task := &ConnTask{
-		sessionId: sessionId,
-	}
-
-	payload := &net_pb.NatConReq{
-		FromPeerId: fromId,
-		ToPeerId:   toId,
-		ToPort:     int32(port),
-		SessionId:  sessionId,
-	}
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnReq: payload,
-	}
-
-	reqData, err := proto.Marshal(request)
-	if err != nil {
-		logger.Error("failed to marshal the nat connect request", err)
-		task.Err = err
-		return task
-	}
-
-	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
-		logger.Warning("nat channel keep alive message failed", err, no)
-		task.Err = err
-		return task
-	}
-
-	task.ConnCh = make(chan *net.UDPConn)
-
-	tunnel.natTask[sessionId] = task
-
-	return task
-}
 
 //TIPS::get peer's addr info and make a connection.
 func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
@@ -55,7 +18,7 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
 		return
 	}
 
-	task.ProxyAddr = &net.UDPAddr{
+	task.ProxyConn = &net.UDPAddr{
 		IP:   net.ParseIP(tunnel.privateIP),
 		Port: int(response.TargetPort),
 	}
@@ -96,9 +59,11 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
 *
 *************************************************************************/
 //TODO::Find peers from nat gossip protocol
-func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
+func (nat *Manager) notifyConnInvite(req *net_pb.NatConReq, peerAddr *net.UDPAddr) error {
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
+
+	req.
 
 	sessionId := req.SessionId
 	fromItem, ok := nat.cache[req.FromPeerId]
@@ -108,41 +73,12 @@ func (nat *Manager) invitePeers(req *net_pb.NatConReq, peerAddr *net.UDPAddr) er
 
 	toItem, ok := nat.cache[req.ToPeerId]
 	if !ok {
-		toItem = nat.dNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId, req.ToPort, false)
+		toItem = nat.sysNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId, req.ToPort, false)
 	} else {
-		if err := nat.sendConnInvite(fromItem, toItem.kaAddr, sessionId, req.ToPort, false); err != nil {
+		if err := nat.sendConnInvite(fromItem, toItem.pubAddr, sessionId, req.ToPort, false); err != nil {
 			logger.Error("connect invite failed:", err)
 		}
 	}
 
 	return nat.sendConnInvite(toItem, peerAddr, sessionId, req.ToPort, true)
-}
-
-func (nat *Manager) sendConnInvite(item *hostBehindNat, addr *net.UDPAddr, sessionId string, toPort int32, isCaller bool) error {
-
-	connRes := &net_pb.NatConRes{
-		PeerId:      item.nodeId,
-		PublicIp:    item.pubIp,
-		PublicPort:  item.pubPort,
-		PrivateIp:   item.priIp,
-		PrivatePort: item.priPort,
-		SessionId:   sessionId,
-		TargetPort:  toPort,
-		IsCaller:    isCaller,
-	}
-
-	response := &net_pb.Response{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnRes: connRes,
-	}
-
-	toItemData, err := proto.Marshal(response)
-	if err != nil {
-		return err
-	}
-
-	if _, err := nat.selfNatServer.WriteToUDP(toItemData, item.kaAddr); err != nil {
-		return err
-	}
-	return nil
 }

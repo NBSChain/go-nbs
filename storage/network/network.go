@@ -1,7 +1,7 @@
 package network
 
 import (
-	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"net"
 )
 
@@ -10,11 +10,11 @@ type Network interface {
 
 	GetNatInfo() string
 
-	GetAddress() *net_pb.NbsAddress
+	GetAddress() nbsnet.NbsUdpAddr
 
-	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*NbsUdpConn, error)
+	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)
 
-	ListenUDP(network string, lisAddr *net.UDPAddr) (*NbsUdpConn, error)
+	ListenUDP(network string, lisAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)
 
-	Connect(fromId, toId, toIP string, toPort int) (*NbsUdpConn, error)
+	Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error)
 }

@@ -18,7 +18,8 @@ type Configure struct {
 	SysTimeFormat     string
 	BootStrapPeers    []string
 	NatServerPort     int
-	NatClientPort     int
+	NatChanSerPort    int
+	NatReversePort    int
 	NatServerIP       []string
 	GossipBootStrapIP []string
 	GossipCtrlPort    int
@@ -28,7 +29,7 @@ const (
 	cmdServicePort   = "6080"
 	currentVersion   = "0.1.4"
 	natServerPort    = 11001
-	natClientPort    = 11002
+	natChanSerPort   = 11002
 	gossipCtrlPort   = 12001
 	NormalReadBuffer = 1 << 11
 )
@@ -87,7 +88,7 @@ func initConfig() *Configure {
 		SysTimeFormat:     "2006-01-02 15:04:05",
 		BootStrapPeers:    defaultBootstrapAddresses,
 		NatServerPort:     natServerPort,
-		NatClientPort:     natClientPort,
+		NatChanSerPort:    natChanSerPort,
 		NatServerIP:       natServerIP,
 		GossipBootStrapIP: gossipContracts,
 		GossipCtrlPort:    gossipCtrlPort,

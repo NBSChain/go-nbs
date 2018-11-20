@@ -1,34 +1,31 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
 
 var logger = utils.GetLogInstance()
 
-const NetIoBufferSize = 1 << 11
-const BootStrapNatServerTimeOutInSec = 4
-
 type hostBehindNat struct {
-	addr       *MulAddr
-	kaAddr     *net.UDPAddr
 	updateTIme time.Time
+	pubAddr    *net.UDPAddr
+	priAddr    string
 }
 
 type Manager struct {
-	cacheLock     sync.Mutex
-	selfNatServer *net.UDPConn
-	networkId     string
-	canServe      chan bool
-	SelfAddr      *MulAddr
-	NatKATun      *KATunnel
-	cache         map[string]*hostBehindNat
-	dNatServer    string
+	cacheLock    sync.Mutex
+	sysNatServer *net.UDPConn
+	networkId    string
+	canServe     chan bool
+	NatKATun     *KATunnel
+	cache        map[string]*hostBehindNat
 }
 
 //TODO:: support ipv6 later.
@@ -39,15 +36,15 @@ func (nat *Manager) startNatService() {
 	})
 
 	if err != nil {
-		logger.Panic("can't start nat selfNatServer.", err)
+		logger.Panic("can't start nat sysNatServer.", err)
 	}
 
-	nat.selfNatServer = natServer
+	nat.sysNatServer = natServer
 }
 
 func (nat *Manager) natServiceListening() {
 
-	logger.Info(">>>>>>Nat selfNatServer start to listen......")
+	logger.Info(">>>>>>Nat sysNatServer start to listen......")
 
 	for {
 		peerAddr, request, err := nat.readNatRequest()
@@ -66,7 +63,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.invitePeers(request.ConnReq, peerAddr); err != nil {
+			if err = nat.notifyConnInvite(request.ConnReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:
@@ -90,16 +87,16 @@ func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 	}
 
 	resData, _ := proto.Marshal(response)
-	nat.selfNatServer.WriteToUDP(resData, peerAddr)
+	nat.sysNatServer.WriteToUDP(resData, peerAddr)
 }
 
 func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 
-	data := make([]byte, NetIoBufferSize)
+	data := make([]byte, utils.NormalReadBuffer)
 
-	n, peerAddr, err := nat.selfNatServer.ReadFromUDP(data)
+	n, peerAddr, err := nat.sysNatServer.ReadFromUDP(data)
 	if err != nil {
-		logger.Warning("nat selfNatServer read udp data failed:", err)
+		logger.Warning("nat sysNatServer read udp data failed:", err)
 		return nil, nil, err
 	}
 
@@ -112,4 +109,88 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 	logger.Debug("request:", request)
 
 	return peerAddr, request, nil
+}
+
+func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+
+	response := &net_pb.BootNatRegRes{}
+	response.PublicIp = peerAddr.IP.String()
+	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
+	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
+
+		response.NatType = net_pb.NatType_NoNatDevice
+	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
+
+		response.NatType = net_pb.NatType_ToBeChecked
+		go nat.ping(peerAddr)
+
+	} else {
+
+		response.NatType = net_pb.NatType_BehindNat
+	}
+
+	pbRes := &net_pb.Response{
+		MsgType:    net_pb.NatMsgType_BootStrapReg,
+		BootRegRes: response,
+	}
+
+	pbResData, err := proto.Marshal(pbRes)
+	if err != nil {
+		logger.Warning("failed to marshal nat response data", err)
+		return err
+	}
+
+	if _, err := nat.sysNatServer.WriteToUDP(pbResData, peerAddr); err != nil {
+		logger.Warning("failed to send nat response", err)
+		return err
+	}
+
+	return nil
+}
+
+/************************************************************************
+*
+*			server side
+*
+*************************************************************************/
+func (nat *Manager) cacheManager() {
+
+	for {
+		nat.cacheLock.Lock()
+
+		currentClock := time.Now()
+		for nodeId, item := range nat.cache {
+
+			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
+				delete(nat.cache, nodeId)
+			}
+		}
+
+		nat.cacheLock.Unlock()
+
+		time.Sleep(KeepAliveTime)
+	}
+}
+
+func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr) error {
+
+	nodeId := req.NodeId
+
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	if item, ok := nat.cache[nodeId]; ok {
+		item.updateTIme = time.Now()
+		item.pubAddr = peerAddr
+		item.priAddr = req.LAddr
+	} else {
+		item := &hostBehindNat{
+			updateTIme: time.Now(),
+			pubAddr:    peerAddr,
+			priAddr:    req.LAddr,
+		}
+		nat.cache[nodeId] = item
+	}
+
+	return nil
 }

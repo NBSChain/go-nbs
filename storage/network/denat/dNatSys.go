@@ -9,7 +9,7 @@ import (
 
 type DecenterNatSys interface {
 	Setup(networkId string) error
-	RandomNatSer() string
+	GetValidServer() string
 	BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp
 }
 
@@ -55,7 +55,7 @@ func (s *ServerNode) Setup(networkId string) error {
 }
 
 //TODO:: use gossip protocol to manager all nat servers. we use official nat servers right now.
-func (s *ServerNode) RandomNatSer() string {
+func (s *ServerNode) GetValidServer() string {
 	return s.hosts[0] //TIPS:: simply use the first server.
 }
 

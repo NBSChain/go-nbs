@@ -38,6 +38,9 @@ message NatConReq {
     string ToPeerId     = 2;
     int32  ToPort       = 3;
     string sessionId    = 4;
+    string publicIp     = 5;
+    string privateIp    = 6;
+    int32  cType        = 7;
 }
 
 message NatConRes {
@@ -48,11 +51,12 @@ message NatConRes {
     string privatePort  = 6;
     string sessionId    = 7;
     int32  targetPort   = 9;
-    bool   isCaller     = 10;
+    int32  cType        = 10;
 }
 
 message NatKeepAlive {
     string nodeId = 1;
+    string lAddr  = 2;
 }
 
 message NatPing {
