@@ -76,17 +76,18 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 
 func (tunnel *KATunnel) invitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
 
-	connRes := &net_pb.NatConReq{
+	connReq := &net_pb.NatConReq{
 		FromPeerId: lAddr.NetworkId,
-		PublicIp:   lAddr.PriIp,
+		ToPeerId:   rAddr.NetworkId,
+		PublicIp:   lAddr.PubIp,
 		PrivateIp:  lAddr.PriIp,
 		SessionId:  connId,
 		CType:      int32(task.CType),
 	}
 
-	response := &net_pb.Response{
+	response := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_Connect,
-		ConnRes: connRes,
+		ConnReq: connReq,
 	}
 
 	toItemData, err := proto.Marshal(response)

@@ -13,7 +13,7 @@ import (
 
 var logger = utils.GetLogInstance()
 
-type hostBehindNat struct {
+type HostBehindNat struct {
 	updateTIme time.Time
 	pubAddr    *net.UDPAddr
 	priAddr    string
@@ -25,7 +25,7 @@ type Manager struct {
 	networkId    string
 	canServe     chan bool
 	NatKATun     *KATunnel
-	cache        map[string]*hostBehindNat
+	cache        map[string]*HostBehindNat
 }
 
 //TODO:: support ipv6 later.
@@ -184,7 +184,7 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 		item.pubAddr = peerAddr
 		item.priAddr = req.LAddr
 	} else {
-		item := &hostBehindNat{
+		item := &HostBehindNat{
 			updateTIme: time.Now(),
 			pubAddr:    peerAddr,
 			priAddr:    req.LAddr,

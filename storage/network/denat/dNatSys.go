@@ -11,6 +11,7 @@ type DecenterNatSys interface {
 	Setup(networkId string) error
 	GetValidServer() string
 	BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp
+	ProxyConnInvite(*net_pb.NatConReq) error
 }
 
 //decentralized nat server = dns

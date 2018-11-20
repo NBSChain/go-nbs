@@ -26,7 +26,7 @@ func NewNatManager(networkId string) *Manager {
 	natObj := &Manager{
 		networkId: networkId,
 		canServe:  make(chan bool),
-		cache:     make(map[string]*hostBehindNat),
+		cache:     make(map[string]*HostBehindNat),
 	}
 
 	natObj.startNatService()
@@ -90,6 +90,7 @@ func (nat *Manager) MakeAReverseNatConn(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 		lAddr.PriPort = utils.GetConfig().NatChanSerPort
 
 		connTask.CType = nbsnet.CTypeNatReverseDirect
+
 	} else {
 		proxyConn, err := net.ListenUDP("udp4", &net.UDPAddr{
 			Port: lAddr.PriPort,

@@ -2,6 +2,7 @@ package nat
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -11,6 +12,13 @@ import (
 
 //TIPS::get peer's addr info and make a connection.
 func (tunnel *KATunnel) punchAHole(response *net_pb.NatConRes) {
+
+	connType := nbsnet.ConnType(response.CType)
+	if connType == nbsnet.CTypeNatReverseDirect ||
+		connType == nbsnet.CTypeNatReverseWithProxy {
+
+	}
+
 	sessionId := response.SessionId
 	task, ok := tunnel.natTask[sessionId]
 	if !ok {
@@ -63,22 +71,36 @@ func (nat *Manager) notifyConnInvite(req *net_pb.NatConReq, peerAddr *net.UDPAdd
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
-	req.
+	connType := nbsnet.ConnType(req.CType)
 
-	sessionId := req.SessionId
-	fromItem, ok := nat.cache[req.FromPeerId]
-	if !ok {
-		return fmt.Errorf("the from peer id is not found")
-	}
+	if connType == nbsnet.CTypeNatReverseDirect ||
+		connType == nbsnet.CTypeNatReverseWithProxy {
 
-	toItem, ok := nat.cache[req.ToPeerId]
-	if !ok {
-		toItem = nat.sysNatServer.SendConnInvite(fromItem, req.ToPeerId, sessionId, req.ToPort, false)
-	} else {
-		if err := nat.sendConnInvite(fromItem, toItem.pubAddr, sessionId, req.ToPort, false); err != nil {
-			logger.Error("connect invite failed:", err)
+		toItem, ok := nat.cache[req.ToPeerId]
+
+		if !ok {
+			if err := denat.GetDNSInstance().ProxyConnInvite(req); err != nil {
+				return err
+			}
+		} else {
+			response := &net_pb.Response{
+				MsgType: net_pb.NatMsgType_Connect,
+				ConnRes: &net_pb.NatConRes{
+					PeerId:     req.FromPeerId,
+					PublicIp:   req.PublicIp,
+					SessionId:  req.SessionId,
+					CType:      req.CType,
+					TargetPort: req.ToPort,
+				},
+			}
+			responseData, err := proto.Marshal(response)
+			if err != nil {
+				return err
+			}
+
+			nat.sysNatServer.WriteToUDP(responseData, toItem.pubAddr)
 		}
 	}
 
-	return nat.sendConnInvite(toItem, peerAddr, sessionId, req.ToPort, true)
+	return nil
 }
