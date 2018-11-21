@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 )
@@ -54,6 +55,8 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConInvite) error {
 		}
 
 		tunnel.connManager[sessionId] = holeConn
+		go tunnel.holeConnRead(holeConn)
+		go tunnel.holeConnWrite(holeConn)
 	}
 
 	return nil
@@ -65,34 +68,63 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConInvite) error {
 *
 *************************************************************************/
 //TODO::Find peers from nat gossip protocol
-func (nat *Manager) notifyConnInvite(req *net_pb.NatConInvite, peerAddr *net.UDPAddr) error {
+func (nat *Manager) notifyConnInvite(request *net_pb.NatRequest, peerAddr *net.UDPAddr) error {
+
+	req := request.ConnReq
+	rawData, _ := proto.Marshal(request)
+
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
-	connType := nbsnet.ConnType(req.CType)
-
-	if connType == nbsnet.CTypeNatReverseDirect ||
-		connType == nbsnet.CTypeNatReverseWithProxy {
-
-		toItem, ok := nat.cache[req.FromAddr.NetworkId]
-
-		if !ok {
-			if err := denat.GetDNSInstance().ProxyConnInvite(req); err != nil {
-				return err
-			}
-		} else {
-			response := &net_pb.Response{
-				MsgType: net_pb.NatMsgType_Connect,
-				ConnRes: req,
-			}
-			responseData, err := proto.Marshal(response)
-			if err != nil {
-				return err
-			}
-
-			nat.sysNatServer.WriteToUDP(responseData, toItem.pubAddr)
+	toItem, ok := nat.cache[req.ToAddr.NetworkId]
+	if !ok {
+		if err := denat.GetDNSInstance().ProxyConnInvite(req); err != nil {
+			return err
+		}
+	} else {
+		if _, err := nat.sysNatServer.WriteToUDP(rawData, toItem.pubAddr); err != nil {
+			return err
 		}
 	}
 
+	if _, err := nat.sysNatServer.WriteTo(rawData, peerAddr); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (tunnel *KATunnel) holeConnRead(conn *nbsnet.HoleConn) {
+
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, err := conn.RemoteDataConn.Read(buffer)
+		if err != nil {
+			tunnel.closeHole(conn)
+			logger.Info("read failed hole connection closed", conn.SessionId, err)
+			return
+		}
+
+		conn.LocalForwardConn.Write(buffer[:n])
+	}
+}
+
+func (tunnel *KATunnel) holeConnWrite(conn *nbsnet.HoleConn) {
+
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, err := conn.LocalForwardConn.Read(buffer)
+		if err != nil {
+			tunnel.closeHole(conn)
+			logger.Info("write failed hole connection closed:", conn.SessionId, err)
+			return
+		}
+
+		conn.RemoteDataConn.Write(buffer[:n])
+	}
+}
+
+func (tunnel *KATunnel) closeHole(conn *nbsnet.HoleConn) {
+	conn.Close()
+	delete(tunnel.connManager, conn.SessionId)
 }

@@ -63,7 +63,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.notifyConnInvite(request.ConnReq, peerAddr); err != nil {
+			if err = nat.notifyConnInvite(request, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:
@@ -167,7 +167,6 @@ func (nat *Manager) cacheManager() {
 		}
 
 		nat.cacheLock.Unlock()
-
 		time.Sleep(KeepAliveTime)
 	}
 }

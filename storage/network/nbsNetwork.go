@@ -158,27 +158,10 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.Nbs
 	}
 
 	var connId = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
-	var connTask *nbsnet.ConnTask
-	var err error
-	if lAddr.CanServe {
-		connTask, err = network.natManager.MakeAReverseNatConn(lAddr, rAddr, connId)
-	} else {
-		connTask, err = network.natManager.PunchANatHole(lAddr, rAddr, connId)
-	}
+
+	task, err := network.natManager.PunchANatHole(lAddr, rAddr, connId)
 	if err != nil {
 		return nil, err
-	}
-
-	var task *nbsnet.ConnTask
-	select {
-	case err = <-connTask.Err:
-		if err != nil {
-			return nil, err
-		}
-		logger.Debug("nat connection success.")
-
-	case <-time.After(time.Second * 5):
-		return nil, fmt.Errorf("time out")
 	}
 
 	conn := &nbsnet.NbsUdpConn{

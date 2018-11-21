@@ -20,7 +20,6 @@ type ConnTask struct {
 	Err       chan error
 	SessionId string
 	CType     ConnType
-	ProxyConn *net.UDPConn
 	ConnCh    *net.UDPConn
 }
 
@@ -91,4 +90,9 @@ type HoleConn struct {
 	SessionId        string
 	LocalForwardConn *net.UDPConn
 	RemoteDataConn   *net.UDPConn
+}
+
+func (hc *HoleConn) Close() {
+	hc.RemoteDataConn.Close()
+	hc.LocalForwardConn.Close()
 }

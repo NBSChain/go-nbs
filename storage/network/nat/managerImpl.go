@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -78,42 +79,33 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 	return nat.canServe
 }
 
-func (nat *Manager) MakeAReverseNatConn(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
+func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
 
-	connTask := &nbsnet.ConnTask{
+	task := &nbsnet.ConnTask{
 		SessionId: connId,
 		Err:       make(chan error),
 	}
 
-	if lAddr.PriPort == 0 {
-		lAddr.PriPort = utils.GetConfig().NatChanSerPort
-
-		connTask.CType = nbsnet.CTypeNatReverseDirect
-
+	if lAddr.CanServe {
+		task.CType = nbsnet.CTypeNatReverseWithProxy
 	} else {
-		proxyConn, err := net.ListenUDP("udp4", &net.UDPAddr{
-			Port: lAddr.PriPort,
-			IP:   net.ParseIP(lAddr.PriIp),
-		})
-
-		if err != nil {
-			return nil, err
-		}
-
-		connTask.ProxyConn = proxyConn
-		connTask.CType = nbsnet.CTypeNatReverseWithProxy
+		task.CType = nbsnet.CTypeNatReverseDirect
 	}
 
-	if err := nat.NatKATun.invitePeer(connTask, lAddr, rAddr, connId); err != nil {
+	if err := nat.NatKATun.invitePeer(task, lAddr, rAddr, connId); err != nil {
 		return nil, err
 	}
 
-	return connTask, nil
-}
+	select {
+	case err := <-task.Err:
+		if err != nil {
+			return nil, err
+		}
+		logger.Debug("nat connection success.")
 
-func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
-
-	task := &nbsnet.ConnTask{}
+	case <-time.After(time.Second * 5):
+		return nil, fmt.Errorf("time out")
+	}
 
 	return task, nil
 }
@@ -151,7 +143,7 @@ func ExternalIP() []string {
 				continue
 			}
 
-			//TODO:: Support ip v6 lter.
+			//TODO:: Support ip v6 later.
 			if ip = ip.To4(); ip == nil {
 				continue
 			}
