@@ -45,7 +45,7 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 		tunnel.updateTime = time.Now()
 
 	case net_pb.NatMsgType_Connect:
-		if err := tunnel.punchAHole(response.ConnRes); err != nil {
+		if err := tunnel.natHoleStep3(response.ConnRes); err != nil {
 			return err
 		}
 	}

@@ -75,7 +75,7 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 	return nil
 }
 
-func (tunnel *KATunnel) invitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
+func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
 
 	connReq := &net_pb.NatConInvite{
 
@@ -112,10 +112,5 @@ func (tunnel *KATunnel) invitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.N
 	if _, err := tunnel.kaConn.Write(toItemData); err != nil {
 		return err
 	}
-	go tunnel.holeConnListen(task)
 	return nil
-}
-
-func (tunnel *KATunnel) holeConnListen(task *nbsnet.ConnTask) {
-
 }

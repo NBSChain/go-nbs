@@ -92,7 +92,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 		task.CType = nbsnet.CTypeNatReverseDirect
 	}
 
-	if err := nat.NatKATun.invitePeer(task, lAddr, rAddr, connId); err != nil {
+	if err := nat.NatKATun.natHoleStep1(task, lAddr, rAddr, connId); err != nil {
 		return nil, err
 	}
 

@@ -10,54 +10,51 @@ import (
 )
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) punchAHole(response *net_pb.NatConInvite) error {
+func (tunnel *KATunnel) natHoleStep3(response *net_pb.NatConInvite) error {
 
-	connType := nbsnet.ConnType(response.CType)
+	//connType := nbsnet.ConnType(response.CType)
 	sessionId := response.SessionId
-	if connType == nbsnet.CTypeNatReverseDirect ||
-		connType == nbsnet.CTypeNatReverseWithProxy {
 
-		holeConn := &nbsnet.HoleConn{}
-		lAddr := response.FromAddr
-		rAddr := response.ToAddr
-		lfc, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-			IP:   net.ParseIP(rAddr.PriIp),
-			Port: int(rAddr.PriPort),
-		})
-		if err != nil {
-			return err
-		}
-		holeConn.LocalForwardConn = lfc
-
-		rdc, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-			IP:   net.ParseIP(lAddr.PubIp),
-			Port: int(lAddr.PubPort),
-		})
-		if err != nil {
-			return err
-		}
-		holeConn.RemoteDataConn = rdc
-		holeConn.SessionId = sessionId
-
-		req := &net_pb.NatRequest{
-			MsgType: net_pb.NatMsgType_holeAck,
-			HoleAck: &net_pb.HoleAck{
-				SessionId: sessionId,
-			},
-		}
-		reqData, err := proto.Marshal(req)
-		if err != nil {
-			return err
-		}
-
-		if _, err := rdc.Write(reqData); err != nil {
-			return err
-		}
-
-		tunnel.connManager[sessionId] = holeConn
-		go tunnel.holeConnRead(holeConn)
-		go tunnel.holeConnWrite(holeConn)
+	holeConn := &nbsnet.HoleConn{}
+	lAddr := response.FromAddr
+	rAddr := response.ToAddr
+	lfc, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP(rAddr.PriIp),
+		Port: int(rAddr.PriPort),
+	})
+	if err != nil {
+		return err
 	}
+	holeConn.LocalForwardConn = lfc
+
+	rdc, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP(lAddr.PubIp),
+		Port: int(lAddr.PubPort),
+	})
+	if err != nil {
+		return err
+	}
+	holeConn.RemoteDataConn = rdc
+	holeConn.SessionId = sessionId
+
+	req := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_holeAck,
+		HoleAck: &net_pb.HoleAck{
+			SessionId: sessionId,
+		},
+	}
+	reqData, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	if _, err := rdc.Write(reqData); err != nil {
+		return err
+	}
+
+	tunnel.connManager[sessionId] = holeConn
+	go tunnel.holeConnRead(holeConn)
+	go tunnel.holeConnWrite(holeConn)
 
 	return nil
 }
@@ -68,11 +65,10 @@ func (tunnel *KATunnel) punchAHole(response *net_pb.NatConInvite) error {
 *
 *************************************************************************/
 //TODO::Find peers from nat gossip protocol
-func (nat *Manager) notifyConnInvite(request *net_pb.NatRequest, peerAddr *net.UDPAddr) error {
+func (nat *Manager) natHoleStep2(request *net_pb.NatRequest, peerAddr *net.UDPAddr) error {
 
 	req := request.ConnReq
 	rawData, _ := proto.Marshal(request)
-
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
@@ -85,10 +81,6 @@ func (nat *Manager) notifyConnInvite(request *net_pb.NatRequest, peerAddr *net.U
 		if _, err := nat.sysNatServer.WriteToUDP(rawData, toItem.pubAddr); err != nil {
 			return err
 		}
-	}
-
-	if _, err := nat.sysNatServer.WriteTo(rawData, peerAddr); err != nil {
-		return err
 	}
 
 	return nil

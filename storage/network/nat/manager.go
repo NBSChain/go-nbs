@@ -63,7 +63,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.notifyConnInvite(request, peerAddr); err != nil {
+			if err = nat.natHoleStep2(request, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:
@@ -79,6 +79,7 @@ func (nat *Manager) natServiceListening() {
 }
 
 func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
+
 	response := &net_pb.Response{
 		MsgType: net_pb.NatMsgType_error,
 		Error: &net_pb.ErrorNotify{
