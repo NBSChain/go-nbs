@@ -11,7 +11,7 @@ type DecenterNatSys interface {
 	Setup(networkId string) error
 	GetValidServer() string
 	BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp
-	ProxyConnInvite(*net_pb.NatConReq) error
+	ProxyConnInvite(invite *net_pb.NatConInvite) error
 }
 
 //decentralized nat server = dns
@@ -62,5 +62,9 @@ func (s *ServerNode) GetValidServer() string {
 
 //find client item from other nat server by peerId
 func (s *ServerNode) BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp {
+	return nil
+}
+
+func (s *ServerNode) ProxyConnInvite(invite *net_pb.NatConInvite) error {
 	return nil
 }

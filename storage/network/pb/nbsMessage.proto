@@ -1,9 +1,3 @@
 syntax = "proto3";
 
 package net.pb;
-import "nbsAddress.proto";
-
-message NbsMessage{
-    bytes data          = 1;
-    NbsAddress nbsAddr  = 2;
-}

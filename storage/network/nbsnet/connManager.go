@@ -1,14 +1,12 @@
 package nbsnet
 
 import (
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"sync"
 )
 
 type ConnManager struct {
 	sync.Mutex
-	natKATun *nat.KATunnel
-	queue    map[string]*NbsUdpConn
+	queue map[string]*NbsUdpConn
 }
 
 func NewConnManager() *ConnManager {

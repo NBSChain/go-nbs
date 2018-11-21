@@ -8,7 +8,8 @@ enum NatMsgType {
     KeepAlive       = 2;
     Connect         = 3;
     Ping            = 4;
-    error           = 5;
+    holeAck         = 5;
+    error           = 20;
 }
 
 enum NatType{
@@ -32,26 +33,20 @@ message BootNatRegRes {
     string  publicPort  = 4;
 }
 
-
-message NatConReq {
-    string FromPeerId   = 1;
-    string ToPeerId     = 2;
-    int32  ToPort       = 3;
-    string sessionId    = 4;
-    string publicIp     = 5;
-    string privateIp    = 6;
-    int32  cType        = 7;
+message NatConInvite {
+    NbsAddr fromAddr    = 1;
+    NbsAddr toAddr      = 2;
+    string sessionId    = 3;
+    int32  cType        = 4;
 }
 
-message NatConRes {
-    string peerId       = 2;
-    string publicIp     = 3;
-    string publicPort   = 4;
-    string privateIp    = 5;
-    string privatePort  = 6;
-    string sessionId    = 7;
-    int32  targetPort   = 9;
-    int32  cType        = 10;
+message NbsAddr{
+    string networkId    = 1;
+    bool canServer      = 2;
+    string pubIp        = 3;
+    int32  pubPort      = 4;
+    string priIp        = 5;
+    int32 priPort       = 6;
 }
 
 message NatKeepAlive {
@@ -66,6 +61,10 @@ message NatPing {
     int32  TTL   = 4;
 }
 
+message HoleAck{
+    string sessionId = 1;
+}
+
 message ErrorNotify{
     string errMsg = 1;
 }
@@ -73,15 +72,16 @@ message ErrorNotify{
 message NatRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
-    NatConReq connReq           = 3;
+    NatConInvite connReq        = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing ping                = 5;
+    HoleAck holeAck             = 6;
 }
 
 message response {
     NatMsgType msgType          = 1;
     BootNatRegRes BootRegRes    = 2;
-    NatConRes connRes           = 3;
+    NatConInvite connRes        = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing pong                = 5;
     ErrorNotify error           = 6;

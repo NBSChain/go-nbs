@@ -14,13 +14,14 @@ const (
 )
 
 type KATunnel struct {
-	networkId  string
-	closed     chan bool
-	serverHub  *net.UDPConn
-	kaConn     *net.UDPConn
-	sharedAddr string
-	updateTime time.Time
-	natTask    map[string]*nbsnet.ConnTask
+	networkId   string
+	closed      chan bool
+	serverHub   *net.UDPConn
+	kaConn      *net.UDPConn
+	sharedAddr  string
+	updateTime  time.Time
+	natTask     map[string]*nbsnet.ConnTask
+	connManager map[string]*nbsnet.HoleConn
 }
 
 /************************************************************************
@@ -76,13 +77,26 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 
 func (tunnel *KATunnel) invitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
 
-	connReq := &net_pb.NatConReq{
-		FromPeerId: lAddr.NetworkId,
-		ToPeerId:   rAddr.NetworkId,
-		PublicIp:   lAddr.PubIp,
-		PrivateIp:  lAddr.PriIp,
-		SessionId:  connId,
-		CType:      int32(task.CType),
+	connReq := &net_pb.NatConInvite{
+
+		FromAddr: &net_pb.NbsAddr{
+			NetworkId: lAddr.NetworkId,
+			CanServer: lAddr.CanServe,
+			PubIp:     lAddr.PubIp,
+			PubPort:   int32(lAddr.PubPort),
+			PriIp:     lAddr.PriIp,
+			PriPort:   int32(lAddr.PriPort),
+		},
+		ToAddr: &net_pb.NbsAddr{
+			NetworkId: rAddr.NetworkId,
+			CanServer: rAddr.CanServe,
+			PubIp:     rAddr.PubIp,
+			PubPort:   int32(rAddr.PubPort),
+			PriIp:     rAddr.PriIp,
+			PriPort:   int32(rAddr.PriPort),
+		},
+		SessionId: connId,
+		CType:     int32(task.CType),
 	}
 
 	response := &net_pb.NatRequest{

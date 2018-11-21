@@ -2,6 +2,7 @@ package memership
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -25,7 +26,7 @@ type innerTask struct {
 
 type MemManager struct {
 	peerId      string
-	serviceConn *network.NbsUdpConn
+	serviceConn *nbsnet.NbsUdpConn
 	inPut       map[string]peerNodeItem
 	outPut      map[string]peerNodeItem
 	taskSignal  chan innerTask

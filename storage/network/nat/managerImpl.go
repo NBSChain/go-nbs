@@ -3,10 +3,8 @@ package nat
 import (
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
 	"time"
@@ -55,13 +53,14 @@ func (nat *Manager) SetUpNatChannel() error {
 	}
 
 	tunnel := &KATunnel{
-		networkId:  nat.networkId,
-		closed:     make(chan bool),
-		serverHub:  listener,
-		kaConn:     client,
-		sharedAddr: client.LocalAddr().String(),
-		updateTime: time.Now(),
-		natTask:    make(map[string]*nbsnet.ConnTask),
+		networkId:   nat.networkId,
+		closed:      make(chan bool),
+		serverHub:   listener,
+		kaConn:      client,
+		sharedAddr:  client.LocalAddr().String(),
+		updateTime:  time.Now(),
+		natTask:     make(map[string]*nbsnet.ConnTask),
+		connManager: make(map[string]*nbsnet.HoleConn),
 	}
 
 	go tunnel.runLoop()
@@ -114,39 +113,9 @@ func (nat *Manager) MakeAReverseNatConn(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 
 func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
 
-	task := &nbsnet.ConnTask{
-		sessionId: connId,
-	}
+	task := &nbsnet.ConnTask{}
 
-	payload := &net_pb.NatConReq{
-		FromPeerId: fromId,
-		ToPeerId:   toId,
-		ToPort:     int32(port),
-		SessionId:  sessionId,
-	}
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnReq: payload,
-	}
-
-	reqData, err := proto.Marshal(request)
-	if err != nil {
-		logger.Error("failed to marshal the nat connect request", err)
-		task.Err = err
-		return task
-	}
-
-	if no, err := tunnel.kaConn.Write(reqData); err != nil || no == 0 {
-		logger.Warning("nat channel keep alive message failed", err, no)
-		task.Err = err
-		return task
-	}
-
-	task.ConnCh = make(chan *net.UDPConn)
-
-	tunnel.natTask[connId] = task
-
-	return task
+	return task, nil
 }
 
 func ExternalIP() []string {

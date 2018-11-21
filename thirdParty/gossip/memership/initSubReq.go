@@ -3,6 +3,7 @@ package memership
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -58,16 +59,16 @@ func (node *MemManager) registerMySelf() error {
 	return nil
 }
 
-func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
+func (node *MemManager) sendInitSubRequest(conn *nbsnet.NbsUdpConn) error {
 
 	addr := network.GetInstance().GetAddress()
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId:      addr.PeerId,
-			PublicIp:    addr.PublicIp,
-			PrivateIp:   addr.PrivateIp,
-			CanBeServer: addr.CanBeService,
+			NodeId:      addr.NetworkId,
+			PublicIp:    addr.PubIp,
+			PrivateIp:   addr.PriIp,
+			CanBeServer: addr.CanServe,
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -82,7 +83,7 @@ func (node *MemManager) sendInitSubRequest(conn *network.NbsUdpConn) error {
 	return nil
 }
 
-func (node *MemManager) readInitSubResponse(conn *network.NbsUdpConn) error {
+func (node *MemManager) readInitSubResponse(conn *nbsnet.NbsUdpConn) error {
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)

@@ -3,7 +3,6 @@ package memership
 import (
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -22,8 +21,8 @@ func (node *MemManager) proxyTheInitSub(request *pb.InitSub) {
 			ContactRes:  payLoad,
 		}
 
-		port := utils.GetConfig().GossipCtrlPort
-		conn, err := network.GetInstance().Connect(node.peerId, request.NodeId, request.PublicIp, port)
+		//port := utils.GetConfig().GossipCtrlPort
+		conn, err := network.GetInstance().Connect(nil, nil)
 		if err != nil {
 			logger.Error("the contact failed to notify the subscriber:", err)
 			return

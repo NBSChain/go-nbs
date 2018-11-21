@@ -80,12 +80,15 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 	case CTypeNat:
 		return conn.RealConn.Read(b)
 	case CTypeNatReverseDirect:
-		n, err := conn.RealConn.Read(b)
-		if err != nil {
-			return 0, err
-		}
-		return conn.RealConn.WriteToUDP(b[:n], conn)
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
+
+	return 0, nil
+}
+
+type HoleConn struct {
+	SessionId        string
+	LocalForwardConn *net.UDPConn
+	RemoteDataConn   *net.UDPConn
 }
