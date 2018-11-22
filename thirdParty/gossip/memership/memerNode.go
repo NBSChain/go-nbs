@@ -113,7 +113,7 @@ func (node *MemManager) taskWorker(task innerTask) {
 
 	switch task.tType {
 	case ProxyInitSubRequest:
-		node.proxyTheInitSub(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
+		node.intSubStep4(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
 	}
 }
 

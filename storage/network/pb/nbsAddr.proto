@@ -9,4 +9,6 @@ message NbsAddr {
     int32  pubPort      = 4;
     string priIp        = 5;
     int32 priPort       = 6;
+    string natIP        = 7;
+    int32  natPort      = 8;
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-func (node *MemManager) proxyTheInitSub(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) intSubStep4(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
 
 	nextNodeId := node.randomContact()
 

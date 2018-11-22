@@ -7,6 +7,8 @@ import (
 type NbsUdpAddr struct {
 	NetworkId string
 	CanServe  bool
+	NatIp     string
+	NatPort   int
 	PubIp     string
 	PubPort   int
 	PriIp     string

@@ -122,12 +122,13 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 	conn := &nbsnet.NbsUdpConn{
 		RealConn: c,
 		CType:    nbsnet.CTypeNormal,
-		ConnId:   localAddr.String() + ConnectionSeparator + remoteAddr.String(),
+		ConnId:   c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String(),
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
-			PriIp:     host,
-			PriPort:   port,
+			//NatPubIp:  network.natAddr.PubIp,
+			PriIp:   host,
+			PriPort: port,
 		},
 	}
 
@@ -149,8 +150,9 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
-			PriIp:     host,
-			PriPort:   port,
+			//NatPubIp:  network.natAddr.PubIp,
+			PriIp:   host,
+			PriPort: port,
 		},
 	}
 

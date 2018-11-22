@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	InitSubscribeTimeOut = time.Second * 3
+)
+
 /*****************************************************************
 *
 *	member client functions about init subscribe request.
@@ -35,7 +39,7 @@ func (node *MemManager) registerMySelf() error {
 			goto CloseConn
 		}
 
-		conn.SetDeadline(time.Now().Add(time.Second * 3))
+		conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut))
 
 		if err := node.intSubStep1(conn); err != nil {
 			logger.Error("send init sub request failed:", err)
