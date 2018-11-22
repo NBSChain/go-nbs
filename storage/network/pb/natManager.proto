@@ -8,7 +8,7 @@ enum NatMsgType {
     KeepAlive       = 2;
     Connect         = 3;
     Ping            = 4;
-    holeAck         = 5;
+    DigDig          = 5;
     error           = 20;
 }
 
@@ -37,10 +37,9 @@ message NatConInvite {
     NbsAddr fromAddr    = 1;
     NbsAddr toAddr      = 2;
     string sessionId    = 3;
-    int32  cType        = 4;
 }
 
-message NbsAddr{
+message NbsAddr {
     string networkId    = 1;
     bool canServer      = 2;
     string pubIp        = 3;
@@ -61,28 +60,29 @@ message NatPing {
     int32  TTL   = 4;
 }
 
-message HoleAck{
+message HoleDig {
     string sessionId = 1;
 }
 
-message ErrorNotify{
+message ErrorNotify {
     string errMsg = 1;
 }
 
-message NatRequest {
+message natRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
     NatConInvite connReq        = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing ping                = 5;
-    HoleAck holeAck             = 6;
+    HoleDig holeMsg             = 6;
 }
 
-message response {
+message natResponse {
     NatMsgType msgType          = 1;
     BootNatRegRes BootRegRes    = 2;
     NatConInvite connRes        = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing pong                = 5;
-    ErrorNotify error           = 6;
+    HoleDig holeMsg             = 6;
+    ErrorNotify error           = 50;
 }

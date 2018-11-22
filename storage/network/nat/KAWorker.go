@@ -34,7 +34,7 @@ func (tunnel *KATunnel) readKeepAlive() {
 
 func (tunnel *KATunnel) process(buffer []byte) error {
 
-	response := &net_pb.Response{}
+	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(buffer, response); err != nil {
 		logger.Warning("keep alive response Unmarshal failed:", err)
 		return err
@@ -45,9 +45,7 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 		tunnel.updateTime = time.Now()
 
 	case net_pb.NatMsgType_Connect:
-		if err := tunnel.natHoleStep3(response.ConnRes); err != nil {
-			return err
-		}
+		go tunnel.natHoleStep4(response.ConnRes)
 	}
 
 	return nil
@@ -67,6 +65,19 @@ func (tunnel *KATunnel) listening() {
 			logger.Warning("process nat response message failed")
 			continue
 		}
+	}
+}
+
+func (tunnel *KATunnel) connManage() {
+
+	for {
+		for sessionId, item := range tunnel.proxyCache {
+			if item.isClosed {
+				delete(tunnel.proxyCache, sessionId)
+			}
+		}
+
+		time.Sleep(KeepAliveTime)
 	}
 }
 

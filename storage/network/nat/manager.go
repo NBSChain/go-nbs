@@ -63,7 +63,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.natHoleStep2(request, peerAddr); err != nil {
+			if err = nat.natHoleStep3(request, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:
@@ -80,7 +80,7 @@ func (nat *Manager) natServiceListening() {
 
 func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 
-	response := &net_pb.Response{
+	response := &net_pb.NatResponse{
 		MsgType: net_pb.NatMsgType_error,
 		Error: &net_pb.ErrorNotify{
 			ErrMsg: err.Error(),
@@ -130,7 +130,7 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		response.NatType = net_pb.NatType_BehindNat
 	}
 
-	pbRes := &net_pb.Response{
+	pbRes := &net_pb.NatResponse{
 		MsgType:    net_pb.NatMsgType_BootStrapReg,
 		BootRegRes: response,
 	}

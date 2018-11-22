@@ -1,7 +1,6 @@
 package nat
 
 import (
-	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -9,19 +8,26 @@ import (
 )
 
 const (
-	KeepAliveTime    = time.Second * 15
-	KeepAliveTimeOut = 45
+	KeepAliveTime       = time.Second * 15
+	KeepAliveTimeOut    = 45
+	HolePunchingTimeOut = 5
 )
 
+type proxyConnItem struct {
+	sessionId  string
+	isClosed   bool
+	conn       *net.UDPConn
+	targetAddr *net.UDPAddr
+}
+
 type KATunnel struct {
-	networkId   string
-	closed      chan bool
-	serverHub   *net.UDPConn
-	kaConn      *net.UDPConn
-	sharedAddr  string
-	updateTime  time.Time
-	natTask     map[string]*nbsnet.ConnTask
-	connManager map[string]*nbsnet.HoleConn
+	networkId  string
+	closed     chan bool
+	serverHub  *net.UDPConn
+	kaConn     *net.UDPConn
+	sharedAddr string
+	updateTime time.Time
+	proxyCache map[string]*proxyConnItem
 }
 
 /************************************************************************
@@ -72,45 +78,5 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 		return err
 	}
 
-	return nil
-}
-
-func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
-
-	connReq := &net_pb.NatConInvite{
-
-		FromAddr: &net_pb.NbsAddr{
-			NetworkId: lAddr.NetworkId,
-			CanServer: lAddr.CanServe,
-			PubIp:     lAddr.PubIp,
-			PubPort:   int32(lAddr.PubPort),
-			PriIp:     lAddr.PriIp,
-			PriPort:   int32(lAddr.PriPort),
-		},
-		ToAddr: &net_pb.NbsAddr{
-			NetworkId: rAddr.NetworkId,
-			CanServer: rAddr.CanServe,
-			PubIp:     rAddr.PubIp,
-			PubPort:   int32(rAddr.PubPort),
-			PriIp:     rAddr.PriIp,
-			PriPort:   int32(rAddr.PriPort),
-		},
-		SessionId: connId,
-		CType:     int32(task.CType),
-	}
-
-	response := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnReq: connReq,
-	}
-
-	toItemData, err := proto.Marshal(response)
-	if err != nil {
-		return err
-	}
-
-	if _, err := tunnel.kaConn.Write(toItemData); err != nil {
-		return err
-	}
 	return nil
 }

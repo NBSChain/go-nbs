@@ -12,15 +12,12 @@ const (
 	_ ConnType = iota
 	CTypeNormal
 	CTypeNat
-	CTypeNatReverseDirect
-	CTypeNatReverseWithProxy
 )
 
 type ConnTask struct {
 	Err       chan error
 	SessionId string
-	CType     ConnType
-	ConnCh    *net.UDPConn
+	Conn      *net.UDPConn
 }
 
 type NbsUdpConn struct {
@@ -64,8 +61,6 @@ func (conn *NbsUdpConn) Send(b []byte) (int, error) {
 		return conn.RealConn.Write(b)
 	case CTypeNat:
 		return conn.RealConn.Write(b)
-	case CTypeNatReverseDirect:
-		return conn.RealConn.Write(b)
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
@@ -78,21 +73,9 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 		return conn.RealConn.Read(b)
 	case CTypeNat:
 		return conn.RealConn.Read(b)
-	case CTypeNatReverseDirect:
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
 
 	return 0, nil
-}
-
-type HoleConn struct {
-	SessionId        string
-	LocalForwardConn *net.UDPConn
-	RemoteDataConn   *net.UDPConn
-}
-
-func (hc *HoleConn) Close() {
-	hc.RemoteDataConn.Close()
-	hc.LocalForwardConn.Close()
 }

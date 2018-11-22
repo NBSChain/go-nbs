@@ -165,8 +165,8 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.Nbs
 	}
 
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: task.ConnCh,
-		CType:    task.CType,
+		RealConn: task.Conn,
+		CType:    nbsnet.CTypeNat,
 		ConnId:   connId,
 	}
 
@@ -262,7 +262,7 @@ func (network *nbsNetwork) connectToNatServer(serverIP string) (*net.UDPConn, er
 		Port: config.NatServerPort,
 	}
 
-	conn, err := net.DialUDP("udp", nil, natServerAddr)
+	conn, err := net.DialUDP("udp4", nil, natServerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +311,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 		return nil, err
 	}
 
-	response := &net_pb.Response{}
+	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("unmarshal Err:", err)
 		return nil, err

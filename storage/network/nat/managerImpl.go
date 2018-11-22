@@ -54,14 +54,13 @@ func (nat *Manager) SetUpNatChannel() error {
 	}
 
 	tunnel := &KATunnel{
-		networkId:   nat.networkId,
-		closed:      make(chan bool),
-		serverHub:   listener,
-		kaConn:      client,
-		sharedAddr:  client.LocalAddr().String(),
-		updateTime:  time.Now(),
-		natTask:     make(map[string]*nbsnet.ConnTask),
-		connManager: make(map[string]*nbsnet.HoleConn),
+		networkId:  nat.networkId,
+		closed:     make(chan bool),
+		serverHub:  listener,
+		kaConn:     client,
+		sharedAddr: client.LocalAddr().String(),
+		updateTime: time.Now(),
+		proxyCache: make(map[string]*proxyConnItem),
 	}
 
 	go tunnel.runLoop()
@@ -69,6 +68,8 @@ func (nat *Manager) SetUpNatChannel() error {
 	go tunnel.listening()
 
 	go tunnel.readKeepAlive()
+
+	go tunnel.connManage()
 
 	nat.NatKATun = tunnel
 
@@ -85,25 +86,23 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 		SessionId: connId,
 		Err:       make(chan error),
 	}
-
-	if lAddr.CanServe {
-		task.CType = nbsnet.CTypeNatReverseWithProxy
-	} else {
-		task.CType = nbsnet.CTypeNatReverseDirect
-	}
+	defer close(task.Err)
 
 	if err := nat.NatKATun.natHoleStep1(task, lAddr, rAddr, connId); err != nil {
 		return nil, err
 	}
 
+	go nat.NatKATun.natHoleStep2(task, rAddr)
+
 	select {
-	case err := <-task.Err:
-		if err != nil {
+	case err, ok := <-task.Err:
+		if err != nil && ok {
+
 			return nil, err
 		}
 		logger.Debug("nat connection success.")
 
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * HolePunchingTimeOut):
 		return nil, fmt.Errorf("time out")
 	}
 
