@@ -42,8 +42,10 @@ message NatConInvite {
 }
 
 message NatKeepAlive {
-    string nodeId = 1;
-    string lAddr  = 2;
+    string nodeId  = 1;
+    string lAddr   = 2;
+    string PubIP   = 3;
+    int32 PubPort = 4;
 }
 
 message NatPing {

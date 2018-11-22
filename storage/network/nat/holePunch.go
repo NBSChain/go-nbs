@@ -21,18 +21,18 @@ func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet
 		FromAddr: &net_pb.NbsAddr{
 			NetworkId: lAddr.NetworkId,
 			CanServer: lAddr.CanServe,
-			PubIp:     lAddr.PubIp,
-			PubPort:   int32(lAddr.PubPort),
 			PriIp:     lAddr.PriIp,
-			PriPort:   int32(lAddr.PriPort),
+			PriPort:   lAddr.PriPort,
+			NatIP:     lAddr.NatIp,
+			NatPort:   lAddr.NatPort,
 		},
 		ToAddr: &net_pb.NbsAddr{
 			NetworkId: rAddr.NetworkId,
 			CanServer: rAddr.CanServe,
-			PubIp:     rAddr.PubIp,
-			PubPort:   int32(rAddr.PubPort),
 			PriIp:     rAddr.PriIp,
-			PriPort:   int32(rAddr.PriPort),
+			PriPort:   rAddr.PriPort,
+			NatIP:     rAddr.NatIp,
+			NatPort:   rAddr.NatPort,
 		},
 		SessionId: connId,
 	}
@@ -57,32 +57,31 @@ func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet
 //caller make a direct connection to peer's public address
 func (tunnel *KATunnel) natHoleStep2(task *nbsnet.ConnTask, rAddr *nbsnet.NbsUdpAddr) {
 
-	port := strconv.Itoa(rAddr.PubPort)
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, rAddr.PubIp+":"+port)
-
+	port := strconv.Itoa(int(rAddr.NatPort))
+	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, rAddr.NatIp+":"+port)
 	if err != nil {
-		task.Conn = nil
-		task.Err <- err
+		task.PubConn = nil
+		task.PubErr <- err
 		return
 	}
 
 	if err := tunnel.sendDigData(task.SessionId, conn); err != nil {
 
-		task.Conn = nil
-		task.Err <- err
+		task.PubConn = nil
+		task.PubErr <- err
 		conn.Close()
 		return
 	}
 
-	task.Conn = conn
-	task.Err <- nil
+	task.PubConn = conn
+	task.PubErr <- nil
 }
 
 //TIPS::get peer's addr info and make a connection.
 func (tunnel *KATunnel) natHoleStep4(response *net_pb.NatConInvite) error {
 
-	port := strconv.Itoa(int(response.FromAddr.PubPort))
-	remoteAddr := response.FromAddr.PubIp + ":" + port
+	port := strconv.Itoa(int(response.FromAddr.NatPort))
+	remoteAddr := response.FromAddr.NatIP + ":" + port
 	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
 	if err != nil {
 		logger.Error("failed to setup hole connection")

@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -21,6 +22,7 @@ type proxyConnItem struct {
 }
 
 type KATunnel struct {
+	natAddr    *nbsnet.NbsUdpAddr
 	networkId  string
 	closed     chan bool
 	serverHub  *net.UDPConn

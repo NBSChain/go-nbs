@@ -18,9 +18,11 @@ const (
 )
 
 type ConnTask struct {
-	Err       chan error
 	SessionId string
-	Conn      *net.UDPConn
+	PubErr    chan error
+	PriErr    chan error
+	PubConn   *net.UDPConn
+	PriConn   *net.UDPConn
 }
 
 type NbsUdpConn struct {
@@ -75,7 +77,7 @@ func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *NbsUdpAddr) (int, error) { //
 	data := conn.packAddr(b)
 	peerAddr := &net.UDPAddr{
 		IP:   net.ParseIP(addr.PubIp),
-		Port: addr.PubPort,
+		Port: int(addr.PubPort),
 	}
 	//TODO:: judge the data length value returned by raw udp socket.
 	return conn.RealConn.WriteToUDP(data, peerAddr)
@@ -85,11 +87,11 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 	return conn.LocAddr
 }
 
-func SplitHostPort(addr string) (string, int, error) {
+func SplitHostPort(addr string) (string, int32, error) {
 	host, port, err := net.SplitHostPort(addr)
 	intPort, _ := strconv.Atoi(port)
 
-	return host, intPort, err
+	return host, int32(intPort), err
 }
 
 /************************************************************************
@@ -136,7 +138,9 @@ func (conn *NbsUdpConn) packAddr(d []byte) []byte {
 			NetworkId: lAddr.NetworkId,
 			CanServer: lAddr.CanServe,
 			PriIp:     lAddr.PriIp,
-			PriPort:   int32(lAddr.PriPort),
+			PriPort:   lAddr.PriPort,
+			NatIP:     lAddr.NatIp,
+			NatPort:   lAddr.NatPort,
 		},
 	}
 	data, _ := proto.Marshal(msg)
@@ -160,7 +164,9 @@ func (conn *NbsUdpConn) unpackAddr(d []byte, pAddr net.Addr) ([]byte, *NbsUdpAdd
 		PubIp:     host,
 		PubPort:   port,
 		PriIp:     addr.PriIp,
-		PriPort:   int(addr.PriPort),
+		PriPort:   addr.PriPort,
+		NatIp:     addr.NatIP,
+		NatPort:   addr.NatPort,
 	}
 
 	return msg.RawData, peerAddr

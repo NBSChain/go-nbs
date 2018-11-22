@@ -37,7 +37,7 @@ func NewNatManager(networkId string) *Manager {
 	return natObj
 }
 
-func (nat *Manager) SetUpNatChannel() error {
+func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 
 	port := strconv.Itoa(utils.GetConfig().NatChanSerPort)
 	listener, err := shareport.ListenUDP("udp4", "0.0.0.0:"+port)
@@ -84,9 +84,10 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 
 	task := &nbsnet.ConnTask{
 		SessionId: connId,
-		Err:       make(chan error),
+		PubErr:    make(chan error),
+		PriErr:    make(chan error),
 	}
-	defer close(task.Err)
+	defer close(task.PubErr)
 
 	if err := nat.NatKATun.natHoleStep1(task, lAddr, rAddr, connId); err != nil {
 		return nil, err
@@ -95,7 +96,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 	go nat.NatKATun.natHoleStep2(task, rAddr)
 
 	select {
-	case err, ok := <-task.Err:
+	case err, ok := <-task.PubErr:
 		if err != nil && ok {
 
 			return nil, err

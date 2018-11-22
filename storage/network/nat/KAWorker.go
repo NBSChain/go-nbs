@@ -43,6 +43,8 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 	switch response.MsgType {
 	case net_pb.NatMsgType_KeepAlive:
 		tunnel.updateTime = time.Now()
+		tunnel.natAddr.NatIp = response.KeepAlive.PubIP
+		tunnel.natAddr.NatPort = response.KeepAlive.PubPort
 
 	case net_pb.NatMsgType_Connect:
 		go tunnel.natHoleStep4(response.ConnRes)

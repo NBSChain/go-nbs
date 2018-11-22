@@ -8,11 +8,11 @@ type NbsUdpAddr struct {
 	NetworkId string
 	CanServe  bool
 	NatIp     string
-	NatPort   int
+	NatPort   int32
 	PubIp     string
-	PubPort   int
+	PubPort   int32
 	PriIp     string
-	PriPort   int
+	PriPort   int32
 }
 
 func CanServe(natType net_pb.NatType) bool {

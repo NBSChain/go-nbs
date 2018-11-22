@@ -81,7 +81,7 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 		return nil
 	}
 
-	if err := network.natManager.SetUpNatChannel(); err != nil {
+	if err := network.natManager.SetUpNatChannel(network.natAddr); err != nil {
 		return err
 	}
 
@@ -126,9 +126,10 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
-			//NatPubIp:  network.natAddr.PubIp,
-			PriIp:   host,
-			PriPort: port,
+			NatIp:     network.natAddr.PubIp,
+			NatPort:   network.natAddr.NatPort,
+			PriIp:     host,
+			PriPort:   port,
 		},
 	}
 
@@ -150,9 +151,10 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
-			//NatPubIp:  network.natAddr.PubIp,
-			PriIp:   host,
-			PriPort: port,
+			NatIp:     network.natAddr.PubIp,
+			NatPort:   network.natAddr.NatPort,
+			PriIp:     host,
+			PriPort:   port,
 		},
 	}
 
@@ -177,7 +179,7 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.Nbs
 	}
 
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: task.Conn,
+		RealConn: task.PubConn,
 		CType:    nbsnet.CTypeNat,
 		ConnId:   connId,
 	}
@@ -195,12 +197,12 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbs
 	var connId = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
 
 	remoteUdpAddr := &net.UDPAddr{
-		Port: rAddr.PriPort,
+		Port: int(rAddr.PriPort),
 		IP:   net.ParseIP(rAddr.PriIp),
 	}
 
 	updLocalAddr := &net.UDPAddr{
-		Port: lAddr.PriPort,
+		Port: int(lAddr.PriPort),
 		IP:   net.ParseIP(lAddr.PriIp),
 	}
 
@@ -325,7 +327,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 
 	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("unmarshal Err:", err)
+		logger.Error("unmarshal PubErr:", err)
 		return nil, err
 	}
 
