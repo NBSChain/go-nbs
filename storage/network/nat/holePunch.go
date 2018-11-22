@@ -138,6 +138,7 @@ func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
 
 		return nil
 	}
+
 	return fmt.Errorf("time out")
 }
 

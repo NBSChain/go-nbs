@@ -1,3 +1,11 @@
 syntax = "proto3";
 
 package net.pb;
+
+
+import "nbsAddr.proto";
+
+message NbsNetMsg{
+    bytes  rawData    = 1;
+    NbsAddr fromAddr  = 2;
+}

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package net.pb;
 
+import "nbsAddr.proto";
+
 enum NatMsgType {
     UnknownReq      = 0;
     BootStrapReg    = 1;
@@ -37,15 +39,6 @@ message NatConInvite {
     NbsAddr fromAddr    = 1;
     NbsAddr toAddr      = 2;
     string sessionId    = 3;
-}
-
-message NbsAddr {
-    string networkId    = 1;
-    bool canServer      = 2;
-    string pubIp        = 3;
-    int32  pubPort      = 4;
-    string priIp        = 5;
-    int32 priPort       = 6;
 }
 
 message NatKeepAlive {

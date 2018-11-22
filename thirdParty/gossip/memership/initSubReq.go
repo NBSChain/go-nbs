@@ -37,12 +37,12 @@ func (node *MemManager) registerMySelf() error {
 
 		conn.SetDeadline(time.Now().Add(time.Second * 3))
 
-		if err := node.sendInitSubRequest(conn); err != nil {
+		if err := node.intSubStep1(conn); err != nil {
 			logger.Error("send init sub request failed:", err)
 			goto CloseConn
 		}
 
-		if err := node.readInitSubResponse(conn); err == nil {
+		if err := node.intSubStep3(conn); err == nil {
 			logger.Debug("find contract server success.")
 			success = true
 			break
@@ -59,16 +59,12 @@ func (node *MemManager) registerMySelf() error {
 	return nil
 }
 
-func (node *MemManager) sendInitSubRequest(conn *nbsnet.NbsUdpConn) error {
+func (node *MemManager) intSubStep1(conn *nbsnet.NbsUdpConn) error {
 
-	addr := network.GetInstance().GetAddress()
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId:      addr.NetworkId,
-			PublicIp:    addr.PubIp,
-			PrivateIp:   addr.PriIp,
-			CanBeServer: addr.CanServe,
+			NodeId: node.peerId,
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -83,7 +79,7 @@ func (node *MemManager) sendInitSubRequest(conn *nbsnet.NbsUdpConn) error {
 	return nil
 }
 
-func (node *MemManager) readInitSubResponse(conn *nbsnet.NbsUdpConn) error {
+func (node *MemManager) intSubStep3(conn *nbsnet.NbsUdpConn) error {
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)
@@ -108,24 +104,17 @@ func (node *MemManager) readInitSubResponse(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) initSubReqHandle(request *pb.InitSub, applierAddr *net.UDPAddr) {
-
-	payLoad := &pb.InitSubACK{
-		ContactId: node.peerId,
-		ApplierId: request.NodeId,
-	}
+func (node *MemManager) intSubStep2(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
 
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,
-		InitACK:     payLoad,
+		InitACK: &pb.InitSubACK{
+			ContactId: node.peerId,
+			ApplierId: request.NodeId,
+		},
 	}
 
-	msgData, err := proto.Marshal(message)
-	if err != nil {
-		logger.Warning("marshal init sub ack msg failed:", err)
-		return
-	}
-
+	msgData, _ := proto.Marshal(message)
 	if _, err := node.serviceConn.WriteToUDP(msgData, applierAddr); err != nil {
 		logger.Warning("failed to send init ack msg:", err)
 		return

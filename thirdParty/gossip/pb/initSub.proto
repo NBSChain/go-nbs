@@ -8,9 +8,6 @@ package pb;
 
 message InitSub{
     string nodeId       = 1;
-    string publicIp     = 2;
-    string privateIp    = 3;
-    bool canBeServer    = 4;
 }
 
 message InitSubACK{
@@ -21,7 +18,6 @@ message InitSubACK{
 message ReqContact{
      string applierId    = 1;
      int32 ttl           = 2;
-     string publicIp     = 3;
 }
 
 message ReqContactACK{

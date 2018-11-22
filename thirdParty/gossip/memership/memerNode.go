@@ -92,11 +92,6 @@ func (node *MemManager) receivingCmd() {
 			continue
 		}
 
-		if n >= utils.NormalReadBuffer {
-			//TODO:: check what we can to support this situation.
-			logger.Error("we didn't implement the package combination.")
-		}
-
 		logger.Debug("receive contract apply:", peerAddr)
 
 		message := &pb.Gossip{}
@@ -107,7 +102,7 @@ func (node *MemManager) receivingCmd() {
 
 		switch message.MessageType {
 		case pb.MsgType_init:
-			node.initSubReqHandle(message.InitMsg, peerAddr)
+			node.intSubStep2(message.InitMsg, peerAddr)
 		default:
 			continue
 		}

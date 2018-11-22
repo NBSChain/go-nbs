@@ -118,14 +118,18 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		return nil, err
 	}
 
+	host, port, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn: c,
 		CType:    nbsnet.CTypeNormal,
-		//parent:   network.connManager,
-		ConnId: localAddr.String() + ConnectionSeparator + remoteAddr.String(),
+		ConnId:   localAddr.String() + ConnectionSeparator + remoteAddr.String(),
+		LocAddr: &nbsnet.NbsUdpAddr{
+			NetworkId: network.networkId,
+			CanServe:  network.natAddr.CanServe,
+			PriIp:     host,
+			PriPort:   port,
+		},
 	}
-
-	//network.connManager.put(conn)
 
 	return conn, nil
 }
@@ -137,11 +141,17 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		return nil, err
 	}
 
+	host, port, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn: c,
 		CType:    nbsnet.CTypeNormal,
-		//parent:   network.connManager,
-		ConnId: lAddr.String(),
+		ConnId:   lAddr.String(),
+		LocAddr: &nbsnet.NbsUdpAddr{
+			NetworkId: network.networkId,
+			CanServe:  network.natAddr.CanServe,
+			PriIp:     host,
+			PriPort:   port,
+		},
 	}
 
 	return conn, nil
