@@ -20,8 +20,8 @@ type peerNodeItem struct {
 }
 
 type innerTask struct {
-	taskType TaskType
-	taskData interface{}
+	tType TaskType
+	param []interface{}
 }
 
 type MemManager struct {
@@ -111,9 +111,9 @@ func (node *MemManager) receivingCmd() {
 
 func (node *MemManager) taskWorker(task innerTask) {
 
-	switch task.taskType {
+	switch task.tType {
 	case ProxyInitSubRequest:
-		node.proxyTheInitSub(task.taskData.(*pb.InitSub))
+		node.proxyTheInitSub(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
 	}
 }
 

@@ -2,27 +2,27 @@ package memership
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/gogo/protobuf/proto"
 )
 
-func (node *MemManager) proxyTheInitSub(request *pb.InitSub) {
+func (node *MemManager) proxyTheInitSub(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
 
 	nextNodeId := node.randomContact()
 
 	if node.peerId == nextNodeId {
-		payLoad := &pb.ReqContactACK{
-			ApplierId:  request.NodeId,
-			SupplierId: nextNodeId,
-		}
 
 		msg := &pb.Gossip{
 			MessageType: pb.MsgType_reqContractAck,
-			ContactRes:  payLoad,
+			ContactRes: &pb.ReqContactACK{
+				ApplierId:  request.NodeId,
+				SupplierId: nextNodeId,
+			},
 		}
 
 		//port := utils.GetConfig().GossipCtrlPort
-		conn, err := network.GetInstance().Connect(nil, nil)
+		conn, err := network.GetInstance().Connect(nil, applierAddr)
 		if err != nil {
 			logger.Error("the contact failed to notify the subscriber:", err)
 			return

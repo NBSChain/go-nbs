@@ -120,8 +120,11 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, applierAddr *nbsnet.Nbs
 		return
 	}
 
-	node.taskSignal <- innerTask{
-		taskType: ProxyInitSubRequest,
-		taskData: request,
+	task := innerTask{
+		tType: ProxyInitSubRequest,
 	}
+	task.param[0] = request
+	task.param[1] = applierAddr
+
+	node.taskSignal <- task
 }

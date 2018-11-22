@@ -128,7 +128,6 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 *			private functions
 *
 *************************************************************************/
-
 func (conn *NbsUdpConn) packAddr(d []byte) []byte {
 	lAddr := conn.LocAddr
 	msg := &net_pb.NbsNetMsg{
