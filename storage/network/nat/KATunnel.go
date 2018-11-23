@@ -14,13 +14,6 @@ const (
 	HolePunchingTimeOut = 6
 )
 
-type proxyConnItem struct {
-	sessionId  string
-	isClosed   bool
-	conn       *net.UDPConn
-	targetAddr *net.UDPAddr
-}
-
 type KATunnel struct {
 	natAddr    *nbsnet.NbsUdpAddr
 	networkId  string
@@ -29,7 +22,6 @@ type KATunnel struct {
 	kaConn     *net.UDPConn
 	sharedAddr string
 	updateTime time.Time
-	proxyCache map[string]*proxyConnItem
 }
 
 /************************************************************************

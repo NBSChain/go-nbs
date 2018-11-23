@@ -70,20 +70,10 @@ func (tunnel *KATunnel) listening() {
 	}
 }
 
+//TODO::
 func (tunnel *KATunnel) connManage() {
-
-	for {
-		for sessionId, item := range tunnel.proxyCache {
-			if item.isClosed {
-				delete(tunnel.proxyCache, sessionId)
-			}
-		}
-
-		time.Sleep(KeepAliveTime)
-	}
 }
 
 //TODO::
 func (tunnel *KATunnel) restoreNatChannel() {
-
 }

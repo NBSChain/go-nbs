@@ -60,7 +60,6 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		kaConn:     client,
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
-		proxyCache: make(map[string]*proxyConnItem),
 	}
 
 	go tunnel.runLoop()

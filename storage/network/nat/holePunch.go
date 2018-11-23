@@ -59,50 +59,53 @@ func (tunnel *KATunnel) natHoleStep2Call(sessionId string, rAddr *nbsnet.NbsUdpA
 	port := strconv.Itoa(int(rAddr.NatPort))
 	remoteAddr := net.JoinHostPort(rAddr.NatIp, port)
 
-	conn, err := tunnel.sendDigData(sessionId, remoteAddr)
+	conn, err := tunnel.digIn(sessionId, remoteAddr)
 	if err == nil {
 		return conn, nil
 	}
 
 	conn.Close()
 	remoteAddr = net.JoinHostPort(rAddr.PriIp, port)
-	return tunnel.sendDigData(sessionId, remoteAddr)
+	return tunnel.digIn(sessionId, remoteAddr)
 }
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) error {
+func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) {
 
 	sessionId := response.SessionId
 
-	port := strconv.Itoa(int(response.FromAddr.NatPort))
-	remoteAddr := net.JoinHostPort(response.FromAddr.NatIP, port)
+	pubAddr := &net.UDPAddr{
+		IP:   net.ParseIP(response.FromAddr.NatIP),
+		Port: int(response.FromAddr.NatPort),
+	}
+	priAddr := &net.UDPAddr{
+		IP:   net.ParseIP(response.FromAddr.PriIp),
+		Port: int(response.FromAddr.NatPort),
+	}
 
-	conn, err := tunnel.sendDigData(sessionId, remoteAddr)
-	if err != nil {
-		remoteAddr := net.JoinHostPort(response.FromAddr.PriIp, port)
-		conn, err = tunnel.sendDigData(sessionId, remoteAddr)
-		if err != nil {
-			return err
+	holeMsg := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_DigOut,
+		HoleMsg: &net_pb.HoleDig{
+			SessionId: sessionId,
+		},
+	}
+
+	holeData, _ := proto.Marshal(holeMsg)
+
+	for i := 0; i < HolePunchingTimeOut/2; i++ {
+
+		_, errPub := tunnel.serverHub.WriteToUDP(holeData, pubAddr)
+		_, errPri := tunnel.serverHub.WriteToUDP(holeData, priAddr)
+
+		if errPri != nil && errPub != nil {
+			logger.Error("failed to dig out :", errPub, errPri)
+			break
 		}
+		time.Sleep(time.Second)
 	}
-
-	proxyAddr := &net.UDPAddr{
-		IP:   net.ParseIP(response.ToAddr.PriIp),
-		Port: int(response.ToAddr.PriPort),
-	}
-
-	item := &proxyConnItem{
-		conn:       conn,
-		sessionId:  sessionId,
-		targetAddr: proxyAddr,
-	}
-
-	tunnel.proxyCache[sessionId] = item
-
-	return nil
 }
 
-func (tunnel *KATunnel) sendDigData(sessionId string, remoteAddr string) (*net.UDPConn, error) {
+func (tunnel *KATunnel) digIn(sessionId string, remoteAddr string) (*net.UDPConn, error) {
 
 	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
 	if err != nil {
@@ -111,7 +114,7 @@ func (tunnel *KATunnel) sendDigData(sessionId string, remoteAddr string) (*net.U
 	}
 
 	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigDig,
+		MsgType: net_pb.NatMsgType_DigIn,
 		HoleMsg: &net_pb.HoleDig{
 			SessionId: sessionId,
 		},
@@ -164,22 +167,4 @@ func (nat *Manager) natHoleStep3ForwardInvite(request *net_pb.NatRequest, peerAd
 	}
 
 	return nil
-}
-
-/************************************************************************
-*
-*			proxy
-*
-*************************************************************************/
-func (proxy *proxyConnItem) send(b []byte) (int, error) {
-	return proxy.conn.Write(b)
-}
-
-func (proxy *proxyConnItem) receive(b []byte) (int, error) {
-	return proxy.conn.Read(b)
-}
-
-func (proxy *proxyConnItem) close() {
-	proxy.conn.Close()
-	proxy.isClosed = true
 }

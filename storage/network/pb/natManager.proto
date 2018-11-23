@@ -10,7 +10,8 @@ enum NatMsgType {
     KeepAlive       = 2;
     Connect         = 3;
     Ping            = 4;
-    DigDig          = 5;
+    DigIn           = 5;
+    DigOut          = 6;
     error           = 20;
 }
 
