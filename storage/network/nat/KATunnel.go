@@ -11,7 +11,7 @@ import (
 const (
 	KeepAliveTime       = time.Second * 15
 	KeepAliveTimeOut    = 45
-	HolePunchingTimeOut = 5
+	HolePunchingTimeOut = 6
 )
 
 type proxyConnItem struct {

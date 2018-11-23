@@ -1,7 +1,6 @@
 package nat
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -81,34 +80,18 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 	return nat.canServe
 }
 
-func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*nbsnet.ConnTask, error) {
+func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*net.UDPConn, error) {
 
-	task := &nbsnet.ConnTask{
-		SessionId: connId,
-		PubErr:    make(chan error),
-		PriErr:    make(chan error),
-	}
-	defer close(task.PubErr)
-
-	if err := nat.NatKATun.natHoleStep1InvitePeer(task, lAddr, rAddr, connId); err != nil {
+	if err := nat.NatKATun.natHoleStep1InvitePeer(lAddr, rAddr, connId); err != nil {
 		return nil, err
 	}
 
-	go nat.NatKATun.natHoleStep2CallTarget(task, rAddr)
-
-	select {
-	case err, ok := <-task.PubErr:
-		if err != nil && ok {
-
-			return nil, err
-		}
-		logger.Debug("nat connection success.")
-
-	case <-time.After(time.Second * HolePunchingTimeOut):
-		return nil, fmt.Errorf("time out")
+	conn, err := nat.NatKATun.natHoleStep2Call(connId, rAddr)
+	if err == nil {
+		return conn, nil
 	}
 
-	return task, nil
+	return conn, err
 }
 
 func ExternalIP() []string {

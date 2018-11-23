@@ -178,13 +178,13 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.Nbs
 
 	var connId = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
 
-	task, err := network.natManager.PunchANatHole(lAddr, rAddr, connId)
+	c, err := network.natManager.PunchANatHole(lAddr, rAddr, connId)
 	if err != nil {
 		return nil, err
 	}
 
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: task.PubConn,
+		RealConn: c,
 		CType:    nbsnet.CTypeNat,
 		ConnId:   connId,
 	}
@@ -332,7 +332,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 
 	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("unmarshal PubErr:", err)
+		logger.Error("unmarshal Err:", err)
 		return nil, err
 	}
 

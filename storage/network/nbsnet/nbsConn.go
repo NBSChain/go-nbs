@@ -17,14 +17,6 @@ const (
 	CTypeNat
 )
 
-type ConnTask struct {
-	SessionId string
-	PubErr    chan error
-	PriErr    chan error
-	PubConn   *net.UDPConn
-	PriConn   *net.UDPConn
-}
-
 type NbsUdpConn struct {
 	ConnId   string
 	CType    ConnType

@@ -14,7 +14,7 @@ import (
 )
 
 //conn inviter call first
-func (tunnel *KATunnel) natHoleStep1InvitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
+func (tunnel *KATunnel) natHoleStep1InvitePeer(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
 
 	connReq := &net_pb.NatConInvite{
 
@@ -55,55 +55,35 @@ func (tunnel *KATunnel) natHoleStep1InvitePeer(task *nbsnet.ConnTask, lAddr, rAd
 }
 
 //caller make a direct connection to peer's public address
-func (tunnel *KATunnel) natHoleStep2CallTarget(task *nbsnet.ConnTask, rAddr *nbsnet.NbsUdpAddr) {
+func (tunnel *KATunnel) natHoleStep2Call(sessionId string, rAddr *nbsnet.NbsUdpAddr) (*net.UDPConn, error) {
 	port := strconv.Itoa(int(rAddr.NatPort))
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, net.JoinHostPort(rAddr.NatIp, port))
+	remoteAddr := net.JoinHostPort(rAddr.NatIp, port)
 
-	if err != nil {
-		task.PubConn = nil
-		task.PubErr <- err
-
-		go tunnel.natHole5Hairpin(task, rAddr.PriIp, port)
-
-		return
+	conn, err := tunnel.sendDigData(sessionId, remoteAddr)
+	if err == nil {
+		return conn, nil
 	}
 
-	if err := tunnel.sendDigData(task.SessionId, conn); err != nil {
-
-		task.PubConn = nil
-		task.PubErr <- err
-		conn.Close()
-		return
-	}
-
-	task.PubConn = conn
-	task.PubErr <- nil
-	task.PriErr <- nil
-	task.PriConn = nil
+	conn.Close()
+	remoteAddr = net.JoinHostPort(rAddr.PriIp, port)
+	return tunnel.sendDigData(sessionId, remoteAddr)
 }
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) natHoleStep4AnswerInvite(response *net_pb.NatConInvite) error {
+func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) error {
+
 	sessionId := response.SessionId
 
 	port := strconv.Itoa(int(response.FromAddr.NatPort))
 	remoteAddr := net.JoinHostPort(response.FromAddr.NatIP, port)
 
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
+	conn, err := tunnel.sendDigData(sessionId, remoteAddr)
 	if err != nil {
-		logger.Info("failed to setup hole connection by public nat ip")
 		remoteAddr := net.JoinHostPort(response.FromAddr.PriIp, port)
-		conn, err = shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
+		conn, err = tunnel.sendDigData(sessionId, remoteAddr)
 		if err != nil {
-			logger.Warning("failed to setup hole connection")
 			return err
 		}
-	}
-
-	if err := tunnel.sendDigData(sessionId, conn); err != nil {
-		logger.Error("failed to try to setup nat tunnel")
-		conn.Close()
-		return err
 	}
 
 	proxyAddr := &net.UDPAddr{
@@ -122,32 +102,13 @@ func (tunnel *KATunnel) natHoleStep4AnswerInvite(response *net_pb.NatConInvite) 
 	return nil
 }
 
-func (tunnel *KATunnel) natHole5Hairpin(task *nbsnet.ConnTask, priIp, port string) {
+func (tunnel *KATunnel) sendDigData(sessionId string, remoteAddr string) (*net.UDPConn, error) {
 
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr,
-		net.JoinHostPort(priIp, port))
-
+	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
 	if err != nil {
-		task.PriConn = nil
-		task.PriErr <- err
-		return
+		logger.Info("failed to setup hole connection by public nat ip")
+		return nil, err
 	}
-
-	if err := tunnel.sendDigData(task.SessionId, conn); err != nil {
-
-		task.PriConn = nil
-		task.PriErr <- err
-		conn.Close()
-		return
-	}
-
-	task.PriConn = conn
-	task.PriErr <- nil
-	task.PubConn = nil
-	task.PubErr <- nil
-}
-
-func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
 
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigDig,
@@ -159,7 +120,7 @@ func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
 	data, _ := proto.Marshal(holeMsg)
 	buffer := make([]byte, utils.NormalReadBuffer)
 
-	for i := 0; i < HolePunchingTimeOut; i++ {
+	for i := 0; i < HolePunchingTimeOut/2; i++ {
 
 		if _, err := conn.Write(data); err != nil {
 			logger.Debug("dig hole failed:", err)
@@ -171,10 +132,10 @@ func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
 			continue
 		}
 
-		return nil
+		return conn, nil
 	}
 
-	return fmt.Errorf("time out")
+	return nil, fmt.Errorf("time out")
 }
 
 /************************************************************************
