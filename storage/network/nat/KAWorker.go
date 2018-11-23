@@ -47,7 +47,7 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 		tunnel.natAddr.NatPort = response.KeepAlive.PubPort
 
 	case net_pb.NatMsgType_Connect:
-		go tunnel.natHoleStep4(response.ConnRes)
+		go tunnel.natHoleStep4AnswerInvite(response.ConnRes)
 	}
 
 	return nil

@@ -63,7 +63,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.natHoleStep3(request, peerAddr); err != nil {
+			if err = nat.natHoleStep3ForwardInvite(request, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:

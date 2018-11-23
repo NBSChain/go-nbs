@@ -25,7 +25,7 @@ var (
 	once     sync.Once
 )
 
-func GetDNSInstance() DecenterNatSys {
+func GetDeNatSerIns() DecenterNatSys {
 	once.Do(func() {
 
 		instance = newDeNatSer()

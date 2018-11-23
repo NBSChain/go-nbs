@@ -14,7 +14,7 @@ import (
 )
 
 //conn inviter call first
-func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
+func (tunnel *KATunnel) natHoleStep1InvitePeer(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
 
 	connReq := &net_pb.NatConInvite{
 
@@ -55,13 +55,16 @@ func (tunnel *KATunnel) natHoleStep1(task *nbsnet.ConnTask, lAddr, rAddr *nbsnet
 }
 
 //caller make a direct connection to peer's public address
-func (tunnel *KATunnel) natHoleStep2(task *nbsnet.ConnTask, rAddr *nbsnet.NbsUdpAddr) {
-
+func (tunnel *KATunnel) natHoleStep2CallTarget(task *nbsnet.ConnTask, rAddr *nbsnet.NbsUdpAddr) {
 	port := strconv.Itoa(int(rAddr.NatPort))
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, rAddr.NatIp+":"+port)
+	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, net.JoinHostPort(rAddr.NatIp, port))
+
 	if err != nil {
 		task.PubConn = nil
 		task.PubErr <- err
+
+		go tunnel.natHole5Hairpin(task, rAddr.PriIp, port)
+
 		return
 	}
 
@@ -75,19 +78,27 @@ func (tunnel *KATunnel) natHoleStep2(task *nbsnet.ConnTask, rAddr *nbsnet.NbsUdp
 
 	task.PubConn = conn
 	task.PubErr <- nil
+	task.PriErr <- nil
+	task.PriConn = nil
 }
 
 //TIPS::get peer's addr info and make a connection.
-func (tunnel *KATunnel) natHoleStep4(response *net_pb.NatConInvite) error {
+func (tunnel *KATunnel) natHoleStep4AnswerInvite(response *net_pb.NatConInvite) error {
+	sessionId := response.SessionId
 
 	port := strconv.Itoa(int(response.FromAddr.NatPort))
-	remoteAddr := response.FromAddr.NatIP + ":" + port
+	remoteAddr := net.JoinHostPort(response.FromAddr.NatIP, port)
+
 	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
 	if err != nil {
-		logger.Error("failed to setup hole connection")
-		return err
+		logger.Info("failed to setup hole connection by public nat ip")
+		remoteAddr := net.JoinHostPort(response.FromAddr.PriIp, port)
+		conn, err = shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
+		if err != nil {
+			logger.Warning("failed to setup hole connection")
+			return err
+		}
 	}
-	sessionId := response.SessionId
 
 	if err := tunnel.sendDigData(sessionId, conn); err != nil {
 		logger.Error("failed to try to setup nat tunnel")
@@ -109,6 +120,31 @@ func (tunnel *KATunnel) natHoleStep4(response *net_pb.NatConInvite) error {
 	tunnel.proxyCache[sessionId] = item
 
 	return nil
+}
+
+func (tunnel *KATunnel) natHole5Hairpin(task *nbsnet.ConnTask, priIp, port string) {
+
+	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr,
+		net.JoinHostPort(priIp, port))
+
+	if err != nil {
+		task.PriConn = nil
+		task.PriErr <- err
+		return
+	}
+
+	if err := tunnel.sendDigData(task.SessionId, conn); err != nil {
+
+		task.PriConn = nil
+		task.PriErr <- err
+		conn.Close()
+		return
+	}
+
+	task.PriConn = conn
+	task.PriErr <- nil
+	task.PubConn = nil
+	task.PubErr <- nil
 }
 
 func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
@@ -147,7 +183,7 @@ func (tunnel *KATunnel) sendDigData(sessionId string, conn *net.UDPConn) error {
 *
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
-func (nat *Manager) natHoleStep3(request *net_pb.NatRequest, peerAddr *net.UDPAddr) error {
+func (nat *Manager) natHoleStep3ForwardInvite(request *net_pb.NatRequest, peerAddr *net.UDPAddr) error {
 
 	req := request.ConnReq
 	rawData, _ := proto.Marshal(request)
@@ -157,7 +193,7 @@ func (nat *Manager) natHoleStep3(request *net_pb.NatRequest, peerAddr *net.UDPAd
 
 	toItem, ok := nat.cache[req.ToAddr.NetworkId]
 	if !ok {
-		if err := denat.GetDNSInstance().ProxyConnInvite(req); err != nil {
+		if err := denat.GetDeNatSerIns().ProxyConnInvite(req); err != nil {
 			return err
 		}
 	} else {

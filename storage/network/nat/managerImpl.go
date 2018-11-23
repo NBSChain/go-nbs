@@ -13,7 +13,7 @@ import (
 
 func NewNatManager(networkId string) *Manager {
 
-	denat.GetDNSInstance().Setup(networkId)
+	denat.GetDeNatSerIns().Setup(networkId)
 
 	localPeers := ExternalIP()
 	if len(localPeers) == 0 {
@@ -46,7 +46,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		return err
 	}
 
-	serverIP := denat.GetDNSInstance().GetValidServer()
+	serverIP := denat.GetDeNatSerIns().GetValidServer()
 	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverIP)
 	if err != nil {
 		logger.Warning("create share port dial udp connection failed.")
@@ -55,6 +55,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 
 	tunnel := &KATunnel{
 		networkId:  nat.networkId,
+		natAddr:    netNatAddr,
 		closed:     make(chan bool),
 		serverHub:  listener,
 		kaConn:     client,
@@ -89,11 +90,11 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 	}
 	defer close(task.PubErr)
 
-	if err := nat.NatKATun.natHoleStep1(task, lAddr, rAddr, connId); err != nil {
+	if err := nat.NatKATun.natHoleStep1InvitePeer(task, lAddr, rAddr, connId); err != nil {
 		return nil, err
 	}
 
-	go nat.NatKATun.natHoleStep2(task, rAddr)
+	go nat.NatKATun.natHoleStep2CallTarget(task, rAddr)
 
 	select {
 	case err, ok := <-task.PubErr:
