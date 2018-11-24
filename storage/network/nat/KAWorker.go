@@ -48,6 +48,10 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 
 	case net_pb.NatMsgType_Connect:
 		go tunnel.natHoleStep4Answer(response.ConnRes)
+	case net_pb.NatMsgType_DigOut, net_pb.NatMsgType_DigIn:
+		if err := tunnel.DigSuccess(response.HoleMsg); err != nil {
+			logger.Error(err)
+		}
 	}
 
 	return nil

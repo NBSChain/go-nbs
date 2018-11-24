@@ -60,6 +60,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		kaConn:     client,
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
+		digTask:    make(map[string]chan bool),
 	}
 
 	go tunnel.runLoop()

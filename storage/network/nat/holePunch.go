@@ -6,7 +6,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
@@ -56,23 +55,49 @@ func (tunnel *KATunnel) natHoleStep1InvitePeer(lAddr, rAddr *nbsnet.NbsUdpAddr, 
 
 //caller make a direct connection to peer's public address
 func (tunnel *KATunnel) natHoleStep2Call(sessionId string, rAddr *nbsnet.NbsUdpAddr) (*net.UDPConn, error) {
-	port := strconv.Itoa(int(rAddr.NatPort))
-	remoteAddr := net.JoinHostPort(rAddr.NatIp, port)
 
-	conn, err := tunnel.digIn(sessionId, remoteAddr)
-	if err == nil {
-		return conn, nil
+	digSig := make(chan bool)
+	tunnel.digTask[sessionId] = digSig
+
+	holeMsg := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_DigIn,
+		HoleMsg: &net_pb.HoleDig{
+			SessionId: sessionId,
+		},
 	}
 
-	conn.Close()
-	remoteAddr = net.JoinHostPort(rAddr.PriIp, port)
-	return tunnel.digIn(sessionId, remoteAddr)
+	data, _ := proto.Marshal(holeMsg)
+
+	var pubConn, priConn *net.UDPConn
+	port := strconv.Itoa(int(rAddr.NatPort))
+
+	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
+	go tunnel.digIn(pubAddr, pubConn, digSig, data)
+
+	priAddr := net.JoinHostPort(rAddr.PriIp, port)
+	go tunnel.digIn(priAddr, priConn, digSig, data)
+
+	select {
+	case success, ok := <-digSig:
+		if ok && success {
+
+		}
+		if pubConn != nil {
+			return pubConn, nil
+		}
+		if priConn != nil {
+			return priConn, nil
+		}
+		return nil, fmt.Errorf("time out")
+	}
 }
 
 //TIPS::get peer's addr info and make a connection.
 func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) {
 
 	sessionId := response.SessionId
+	digSig := make(chan bool)
+	tunnel.digTask[sessionId] = digSig
 
 	pubAddr := &net.UDPAddr{
 		IP:   net.ParseIP(response.FromAddr.NatIP),
@@ -101,44 +126,40 @@ func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) {
 			logger.Error("failed to dig out :", errPub, errPri)
 			break
 		}
-		time.Sleep(time.Second)
+
+		select {
+		case success := <-digSig:
+			if success {
+				break
+			}
+		default:
+			time.Sleep(time.Second)
+		}
 	}
+
+	delete(tunnel.digTask, sessionId)
 }
 
-func (tunnel *KATunnel) digIn(sessionId string, remoteAddr string) (*net.UDPConn, error) {
+func (tunnel *KATunnel) digIn(remoteAddr string, conn *net.UDPConn, digSig chan bool, data []byte) {
 
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
+	c, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
 	if err != nil {
 		logger.Info("failed to setup hole connection by public nat ip")
-		return nil, err
+		conn = c
+		return
 	}
-
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigIn,
-		HoleMsg: &net_pb.HoleDig{
-			SessionId: sessionId,
-		},
-	}
-
-	data, _ := proto.Marshal(holeMsg)
-	buffer := make([]byte, utils.NormalReadBuffer)
 
 	for i := 0; i < HolePunchingTimeOut/2; i++ {
 
 		if _, err := conn.Write(data); err != nil {
 			logger.Debug("dig hole failed:", err)
 		}
-		conn.SetReadDeadline(time.Now().Add(time.Second))
 
-		if _, err := conn.Read(buffer); err != nil {
-			logger.Debug("read hole msg:", err)
-			continue
-		}
-
-		return conn, nil
+		return
 	}
 
-	return nil, fmt.Errorf("time out")
+	logger.Error("time out")
+	conn = nil
 }
 
 /************************************************************************
@@ -164,6 +185,19 @@ func (nat *Manager) natHoleStep3ForwardInvite(request *net_pb.NatRequest, peerAd
 		if _, err := nat.sysNatServer.WriteToUDP(rawData, toItem.pubAddr); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (tunnel *KATunnel) DigSuccess(holeMsg *net_pb.HoleDig) error {
+
+	sessionId := holeMsg.SessionId
+
+	if digSig, ok := tunnel.digTask[sessionId]; ok {
+		delete(tunnel.digTask, sessionId)
+		digSig <- true
+		close(digSig)
 	}
 
 	return nil

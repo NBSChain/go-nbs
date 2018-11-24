@@ -22,6 +22,7 @@ type KATunnel struct {
 	kaConn     *net.UDPConn
 	sharedAddr string
 	updateTime time.Time
+	digTask    map[string]chan bool
 }
 
 /************************************************************************
