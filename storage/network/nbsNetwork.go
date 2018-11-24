@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -120,9 +121,9 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 
 	host, port, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: c,
-		CType:    nbsnet.CTypeNormal,
-		ConnId:   c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String(),
+		RealConn:  c,
+		CType:     nbsnet.CTypeNormal,
+		SessionID: c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String(),
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
@@ -138,16 +139,26 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 
 func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error) {
 
-	c, err := net.ListenUDP(nt, lAddr)
-	if err != nil {
-		return nil, err
+	var realConn *net.UDPConn
+	if network.natAddr.CanServe {
+		c, err := net.ListenUDP(nt, lAddr)
+		if err != nil {
+			return nil, err
+		}
+		realConn = c
+	} else {
+		c, err := shareport.ListenUDP(nt, lAddr.String())
+		if err != nil {
+			return nil, err
+		}
+		realConn = c
 	}
 
-	host, port, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
+	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: c,
-		CType:    nbsnet.CTypeNormal,
-		ConnId:   lAddr.String(),
+		RealConn:  realConn,
+		CType:     nbsnet.CTypeNormal,
+		SessionID: lAddr.String(),
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
@@ -161,32 +172,37 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 	return conn, nil
 }
 
-func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
-
-	if rAddr.CanServe {
-		return network.makeDirectConn(lAddr, rAddr)
-	}
+func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*nbsnet.NbsUdpConn, error) {
 
 	if lAddr == nil {
 		lAddr = network.natAddr
 	}
-	if lAddr.CanServe {
-		lAddr.NatPort = int32(utils.GetConfig().NatServerPort)
-		lAddr.NatIp = lAddr.PubIp
-		lAddr.PriPort = lAddr.NatPort
+
+	if rAddr.CanServe {
+		return network.makeDirectConn(lAddr, rAddr, toPort)
 	}
 
-	var connId = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
+	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
 
-	c, err := network.natManager.PunchANatHole(lAddr, rAddr, connId)
-	if err != nil {
-		return nil, err
+	var realConn *net.UDPConn
+	if lAddr.CanServe {
+		c, err := network.natManager.InvitePeerBehindNat(lAddr, rAddr, sessionID, toPort)
+		if err != nil {
+			return nil, err
+		}
+		realConn = c
+	} else {
+		c, err := network.natManager.PunchANatHole(lAddr, rAddr, sessionID, toPort)
+		if err != nil {
+			return nil, err
+		}
+		realConn = c
 	}
 
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: c,
-		CType:    nbsnet.CTypeNat,
-		ConnId:   connId,
+		RealConn:  realConn,
+		CType:     nbsnet.CTypeNat,
+		SessionID: sessionID,
 	}
 
 	return conn, nil
@@ -198,32 +214,32 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.Nbs
 *
 *************************************************************************/
 
-func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
-	var connId = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
-
-	remoteUdpAddr := &net.UDPAddr{
-		Port: int(rAddr.PriPort),
-		IP:   net.ParseIP(rAddr.PriIp),
-	}
-
-	updLocalAddr := &net.UDPAddr{
-		Port: int(lAddr.PriPort),
-		IP:   net.ParseIP(lAddr.PriIp),
-	}
+func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*nbsnet.NbsUdpConn, error) {
 
 	if rAddr == nil {
 		return nil, fmt.Errorf("remote address can't be nil")
 	}
 
-	c, err := net.DialUDP("udp4", updLocalAddr, remoteUdpAddr)
+	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
+
+	rUdpAddr := &net.UDPAddr{
+		Port: toPort,
+		IP:   net.ParseIP(rAddr.PubIp),
+	}
+
+	lUdpAddr := &net.UDPAddr{
+		IP: net.ParseIP(lAddr.PriIp),
+	}
+
+	c, err := net.DialUDP("udp4", lUdpAddr, rUdpAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	conn := &nbsnet.NbsUdpConn{
-		RealConn: c,
-		CType:    nbsnet.CTypeNormal,
-		ConnId:   connId,
+		RealConn:  c,
+		CType:     nbsnet.CTypeNormal,
+		SessionID: sessionID,
 	}
 	return conn, nil
 }

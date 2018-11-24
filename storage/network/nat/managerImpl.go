@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -61,6 +62,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
 		digTask:    make(map[string]chan bool),
+		inviteTask: make(map[string]chan *task),
 	}
 
 	go tunnel.runLoop()
@@ -80,18 +82,42 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 	return nat.canServe
 }
 
-func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) (*net.UDPConn, error) {
+func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
 
-	if err := nat.NatKATun.natHoleStep1InvitePeer(lAddr, rAddr, connId); err != nil {
+	connChan, err := nat.NatKATun.StartDigHole(lAddr, rAddr, connId, toPort)
+	if err != nil {
 		return nil, err
 	}
 
-	conn, err := nat.NatKATun.natHoleStep2Call(connId, rAddr)
-	if err == nil {
-		return conn, nil
+	select {
+	case conn := <-connChan:
+		if conn.err != nil {
+			return nil, conn.err
+		} else {
+			return conn.udpConn, nil
+		}
+	case <-time.After(HolePunchingTimeOut * time.Second):
+		return nil, fmt.Errorf("time out")
+	}
+}
+
+func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
+
+	connChan, err := nat.NatKATun.SendInvite(connId, lAddr.PubIp, toPort)
+	if err != nil {
+		return nil, err
 	}
 
-	return conn, err
+	select {
+	case conn := <-connChan:
+		if conn.err != nil {
+			return nil, conn.err
+		} else {
+			return conn.udpConn, nil
+		}
+	case <-time.After(HolePunchingTimeOut * time.Second):
+		return nil, fmt.Errorf("time out")
+	}
 }
 
 func ExternalIP() []string {

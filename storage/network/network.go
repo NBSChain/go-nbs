@@ -16,5 +16,5 @@ type Network interface {
 
 	ListenUDP(network string, lisAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)
 
-	Connect(lAddr, rAddr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error)
+	Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*nbsnet.NbsUdpConn, error)
 }

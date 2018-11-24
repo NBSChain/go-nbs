@@ -19,7 +19,6 @@ type Configure struct {
 	BootStrapPeers    []string
 	NatServerPort     int
 	NatChanSerPort    int
-	NatReversePort    int
 	NatServerIP       []string
 	GossipBootStrapIP []string
 	GossipCtrlPort    int

@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -21,8 +22,8 @@ func (node *MemManager) intSubStep4(request *pb.InitSub, applierAddr *nbsnet.Nbs
 			},
 		}
 
-		//port := utils.GetConfig().GossipCtrlPort
-		conn, err := network.GetInstance().Connect(nil, applierAddr)
+		port := utils.GetConfig().GossipCtrlPort
+		conn, err := network.GetInstance().Connect(nil, applierAddr, port)
 		if err != nil {
 			logger.Error("the contact failed to notify the subscriber:", err)
 			return

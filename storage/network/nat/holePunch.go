@@ -1,3 +1,5 @@
+//+build !windows
+
 package nat
 
 import (
@@ -6,14 +8,15 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
 	"time"
 )
 
-//conn inviter call first
-func (tunnel *KATunnel) natHoleStep1InvitePeer(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string) error {
+//udpConn inviter call first
+func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (chan *task, error) {
 
 	connReq := &net_pb.NatConInvite{
 
@@ -43,21 +46,18 @@ func (tunnel *KATunnel) natHoleStep1InvitePeer(lAddr, rAddr *nbsnet.NbsUdpAddr, 
 
 	toItemData, err := proto.Marshal(response)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := tunnel.kaConn.Write(toItemData); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
 
 //caller make a direct connection to peer's public address
-func (tunnel *KATunnel) natHoleStep2Call(sessionId string, rAddr *nbsnet.NbsUdpAddr) (*net.UDPConn, error) {
-
-	digSig := make(chan bool)
-	tunnel.digTask[sessionId] = digSig
+func (tunnel *KATunnel) natHoleStep2Dig(sessionId string, rAddr *nbsnet.NbsUdpAddr) (*net.UDPConn, error) {
 
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigIn,
@@ -65,30 +65,52 @@ func (tunnel *KATunnel) natHoleStep2Call(sessionId string, rAddr *nbsnet.NbsUdpA
 			SessionId: sessionId,
 		},
 	}
-
 	data, _ := proto.Marshal(holeMsg)
 
-	var pubConn, priConn *net.UDPConn
-	port := strconv.Itoa(int(rAddr.NatPort))
+	connChan := make(chan *net.UDPConn)
 
+	port := strconv.Itoa(int(rAddr.NatPort))
 	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
-	go tunnel.digIn(pubAddr, pubConn, digSig, data)
+	pubConn, pubErr := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
 
 	priAddr := net.JoinHostPort(rAddr.PriIp, port)
-	go tunnel.digIn(priAddr, priConn, digSig, data)
+	priConn, priErr := shareport.DialUDP("udp4", tunnel.sharedAddr, priAddr)
 
-	select {
-	case success, ok := <-digSig:
-		if ok && success {
-
-		}
-		if pubConn != nil {
-			return pubConn, nil
-		}
-		if priConn != nil {
-			return priConn, nil
-		}
+	if pubErr != nil && priErr != nil {
 		return nil, fmt.Errorf("time out")
+	}
+	if pubConn != nil {
+		return pubConn, nil
+	}
+
+	if priConn != nil {
+		return priConn, nil
+	}
+
+	return nil, fmt.Errorf("time out")
+}
+
+func (tunnel *KATunnel) digIn(conn *net.UDPConn, digSig chan bool, data []byte) {
+
+	for i := 0; i < HolePunchingTimeOut/2; i++ {
+
+		if _, err := conn.Write(data); err != nil {
+			logger.Info("dig in failed.")
+		}
+
+		buffer := make([]byte, utils.NormalReadBuffer)
+
+		conn.Read(buffer)
+
+		select {
+		case success := <-digSig:
+			if success {
+				return
+			}
+
+		default:
+			time.Sleep(time.Second)
+		}
 	}
 }
 
@@ -140,26 +162,76 @@ func (tunnel *KATunnel) natHoleStep4Answer(response *net_pb.NatConInvite) {
 	delete(tunnel.digTask, sessionId)
 }
 
-func (tunnel *KATunnel) digIn(remoteAddr string, conn *net.UDPConn, digSig chan bool, data []byte) {
+//TIPS:: step1
+func (tunnel *KATunnel) SendInvite(sessionId, pubIp string, toPort int) (chan *task, error) {
+	req := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_ReverseDig,
+		Invite: &net_pb.ReverseInvite{
+			SessionId: sessionId,
+			PubIp:     pubIp,
+			ToPort:    int32(toPort),
+		},
+	}
 
-	c, err := shareport.DialUDP("udp4", tunnel.sharedAddr, remoteAddr)
+	reqData, _ := proto.Marshal(req)
+	if _, err := tunnel.kaConn.Write(reqData); err != nil {
+		return nil, err
+	}
+
+	connChan := make(chan *task)
+	tunnel.inviteTask[sessionId] = connChan
+	return connChan, nil
+}
+
+//TIPS:: step2
+func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
+	port := strconv.Itoa(int(invite.ToPort))
+	natPort := strconv.Itoa(utils.GetConfig().NatChanSerPort)
+
+	rAddr := net.JoinHostPort(invite.PubIp, natPort)
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, rAddr)
 	if err != nil {
-		logger.Info("failed to setup hole connection by public nat ip")
-		conn = c
+		return
+	}
+	defer conn.Close()
+
+	reqAck := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_ReverseDigACK,
+		InviteAck: &net_pb.ReverseInviteAck{
+			SessionId: invite.SessionId,
+		},
+	}
+
+	data, _ := proto.Marshal(reqAck)
+	for i := 0; i < MaxDuplicateConfirm; i++ {
+		conn.Write(data)
+		time.Sleep(CommTTLTime)
+	}
+}
+
+//TIPS:: step3
+func (tunnel *KATunnel) setupReverseChan(invite *net_pb.ReverseInvite, addr *net.UDPAddr) {
+	sessionId := invite.SessionId
+	ch, ok := tunnel.inviteTask[sessionId]
+	if !ok {
 		return
 	}
 
-	for i := 0; i < HolePunchingTimeOut/2; i++ {
-
-		if _, err := conn.Write(data); err != nil {
-			logger.Debug("dig hole failed:", err)
+	conn, err := net.DialUDP("udp4", nil, addr)
+	if err != nil {
+		ch <- &task{
+			udpConn: nil,
+			err:     err,
 		}
-
 		return
 	}
 
-	logger.Error("time out")
-	conn = nil
+	ch <- &task{
+		udpConn: conn,
+		err:     nil,
+	}
+
+	delete(tunnel.inviteTask, sessionId)
 }
 
 /************************************************************************

@@ -18,11 +18,11 @@ const (
 )
 
 type NbsUdpConn struct {
-	ConnId   string
-	CType    ConnType
-	RealConn *net.UDPConn
-	IsClosed bool
-	LocAddr  *NbsUdpAddr
+	SessionID string
+	CType     ConnType
+	RealConn  *net.UDPConn
+	IsClosed  bool
+	LocAddr   *NbsUdpAddr
 }
 
 /************************************************************************

@@ -12,6 +12,8 @@ enum NatMsgType {
     Ping            = 4;
     DigIn           = 5;
     DigOut          = 6;
+    ReverseDig      = 7;
+    ReverseDigACK   = 8;
     error           = 20;
 }
 
@@ -64,6 +66,16 @@ message ErrorNotify {
     string errMsg = 1;
 }
 
+message ReverseInvite{
+    string sessionId = 1;
+    string pubIp = 2;
+    int32 toPort = 3;
+}
+
+message ReverseInviteAck{
+    string sessionId = 1;
+}
+
 message natRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
@@ -71,6 +83,8 @@ message natRequest {
     NatKeepAlive keepAlive      = 4;
     NatPing ping                = 5;
     HoleDig holeMsg             = 6;
+    ReverseInvite invite        = 7;
+    ReverseInviteAck inviteAck  = 8;
 }
 
 message natResponse {
