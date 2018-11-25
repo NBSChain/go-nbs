@@ -12,13 +12,17 @@ const (
 	KeepAliveTime       = time.Second * 15
 	KeepAliveTimeOut    = 45
 	HolePunchingTimeOut = 4
-	MaxDuplicateConfirm = 3
-	CommTTLTime         = 300 * time.Millisecond
 )
 
-type task struct {
-	udpConn *net.UDPConn
-	err     error
+type ProxyTask struct {
+	sessionID string
+	toAddr    *net.UDPAddr
+	digResult chan error
+}
+
+type ConnTask struct {
+	UdpConn *net.UDPConn
+	Err     chan error
 }
 
 type KATunnel struct {
@@ -29,8 +33,8 @@ type KATunnel struct {
 	kaConn     *net.UDPConn
 	sharedAddr string
 	updateTime time.Time
-	digTask    map[string]chan bool
-	inviteTask map[string]chan *task
+	workLoad   map[string]*ProxyTask
+	inviteTask map[string]*ConnTask
 }
 
 /************************************************************************

@@ -17,7 +17,7 @@ enum NatMsgType {
     error           = 20;
 }
 
-enum NatType{
+enum NatType {
     UnknownRES      = 0;
     NoNatDevice     = 1;
     BehindNat       = 2;
@@ -38,10 +38,11 @@ message BootNatRegRes {
     string  publicPort  = 4;
 }
 
-message NatConInvite {
+message NatConnect {
     NbsAddr fromAddr    = 1;
     NbsAddr toAddr      = 2;
     string sessionId    = 3;
+    int32 toPort        = 4;
 }
 
 message NatKeepAlive {
@@ -66,20 +67,22 @@ message ErrorNotify {
     string errMsg = 1;
 }
 
-message ReverseInvite{
+message ReverseInvite {
     string sessionId = 1;
-    string pubIp = 2;
-    int32 toPort = 3;
+    string pubIp     = 2;
+    int32 toPort     = 3;
+    string peerId    = 4;
+    string fromPort   = 5;
 }
 
-message ReverseInviteAck{
+message ReverseInviteAck {
     string sessionId = 1;
 }
 
 message natRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
-    NatConInvite connReq        = 3;
+    NatConnect connReq = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing ping                = 5;
     HoleDig holeMsg             = 6;
@@ -90,9 +93,10 @@ message natRequest {
 message natResponse {
     NatMsgType msgType          = 1;
     BootNatRegRes BootRegRes    = 2;
-    NatConInvite connRes        = 3;
+    NatConnect connRes = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing pong                = 5;
     HoleDig holeMsg             = 6;
+    ReverseInvite invite        = 7;
     ErrorNotify error           = 50;
 }

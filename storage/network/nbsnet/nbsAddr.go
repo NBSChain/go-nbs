@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 )
 
+//TODO:: refactoring this address setting.
 type NbsUdpAddr struct {
 	NetworkId   string
 	CanServe    bool

@@ -36,6 +36,10 @@ func (tunnel *KATunnel) readKeepAlive() {
 			tunnel.updateTime = time.Now()
 			tunnel.natAddr.NatIp = response.KeepAlive.PubIP
 			tunnel.natAddr.NatPort = response.KeepAlive.PubPort
+		case net_pb.NatMsgType_ReverseDig:
+			tunnel.answerInvite(response.Invite)
+		case net_pb.NatMsgType_Connect:
+			tunnel.digOut(response.ConnRes)
 		}
 	}
 }
@@ -46,17 +50,8 @@ func (tunnel *KATunnel) process(buffer []byte, peerAddr *net.UDPAddr) error {
 	proto.Unmarshal(buffer, request)
 
 	switch request.MsgType {
-
-	case net_pb.NatMsgType_Connect:
-		go tunnel.natHoleStep4Answer(request.ConnReq)
 	case net_pb.NatMsgType_DigOut, net_pb.NatMsgType_DigIn:
-		if err := tunnel.DigSuccess(request.HoleMsg); err != nil {
-			logger.Error(err)
-		}
-	case net_pb.NatMsgType_ReverseDig:
-		tunnel.answerInvite(request.Invite)
-	case net_pb.NatMsgType_ReverseDigACK:
-		tunnel.setupReverseChan(request.Invite, peerAddr)
+		tunnel.digSuccess(request.HoleMsg)
 	}
 
 	return nil

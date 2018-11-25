@@ -63,11 +63,15 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_Connect:
-			if err = nat.natHoleStep3ForwardInvite(request, peerAddr); err != nil {
+			if err = nat.forwardDigRequest(request.ConnReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case net_pb.NatMsgType_KeepAlive:
 			if err = nat.updateKATime(request.KeepAlive, peerAddr); err != nil {
+				logger.Error(err)
+			}
+		case net_pb.NatMsgType_ReverseDig:
+			if err = nat.forwardInvite(request.Invite, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		}
@@ -190,6 +194,29 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 			priAddr:    req.LAddr,
 		}
 		nat.cache[nodeId] = item
+	}
+
+	return nil
+}
+
+func (nat *Manager) forwardInvite(invite *net_pb.ReverseInvite, peerAddr *net.UDPAddr) error {
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	item, ok := nat.cache[invite.PeerId]
+	if !ok {
+		return fmt.Errorf("no such node behind nat device")
+	}
+
+	res := &net_pb.NatResponse{
+		MsgType: net_pb.NatMsgType_ReverseDig,
+		Invite:  invite,
+	}
+
+	rawData, _ := proto.Marshal(res)
+
+	if _, err := nat.sysNatServer.WriteTo(rawData, item.pubAddr); err != nil {
+		return err
 	}
 
 	return nil

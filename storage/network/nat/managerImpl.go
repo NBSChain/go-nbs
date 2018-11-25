@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
 	"time"
@@ -61,8 +63,8 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		kaConn:     client,
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
-		digTask:    make(map[string]chan bool),
-		inviteTask: make(map[string]chan *task),
+		workLoad:   make(map[string]*ProxyTask),
+		inviteTask: make(map[string]*ConnTask),
 	}
 
 	go tunnel.runLoop()
@@ -89,35 +91,107 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 		return nil, err
 	}
 
+	go nat.directDialInPriNet(lAddr, rAddr, connChan, toPort)
+
+	return nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
+}
+
+func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int) {
+	conn, err := net.DialUDP("udp4", &net.UDPAddr{
+		IP:   net.ParseIP(lAddr.PriIp),
+		Port: int(lAddr.PriPort),
+	}, &net.UDPAddr{
+		IP:   net.ParseIP(rAddr.PriIp),
+		Port: toPort,
+	})
+
+	if err != nil {
+		logger.Debug("can't dial by private network.")
+		return
+	}
+	task.UdpConn = conn
+	task.Err <- err
+}
+
+func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
+
+	remoteNatServer := denat.GetDeNatSerIns().FindSerByPeerId(rAddr.NetworkId)
+
+	conn, err := shareport.DialUDP("udp4", "", remoteNatServer)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	localHost := conn.LocalAddr().String()
+	_, fromPort, _ := net.SplitHostPort(localHost)
+
+	req := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_ReverseDig,
+		Invite: &net_pb.ReverseInvite{
+			SessionId: connId,
+			PubIp:     lAddr.PubIp,
+			ToPort:    int32(toPort),
+			PeerId:    rAddr.NetworkId,
+			FromPort:  fromPort,
+		},
+	}
+	reqData, _ := proto.Marshal(req)
+	if _, err := conn.Write(reqData); err != nil {
+		return nil, err
+	}
+
+	connChan := &ConnTask{
+		Err: make(chan error),
+	}
+
+	go nat.waitInviteAnswer(localHost, connId, connChan)
+
 	select {
-	case conn := <-connChan:
-		if conn.err != nil {
-			return nil, conn.err
+	case err := <-connChan.Err:
+		if err != nil {
+			return nil, err
 		} else {
-			return conn.udpConn, nil
+			return connChan.UdpConn, nil
 		}
 	case <-time.After(HolePunchingTimeOut * time.Second):
 		return nil, fmt.Errorf("time out")
 	}
 }
 
-func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
+func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 
-	connChan, err := nat.NatKATun.SendInvite(connId, lAddr.PubIp, toPort)
+	lisConn, err := shareport.ListenUDP("udp4", host)
 	if err != nil {
-		return nil, err
+		task.Err <- err
+		return
+	}
+	defer lisConn.Close()
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
+	if err != nil {
+		task.Err <- err
+		return
 	}
 
-	select {
-	case conn := <-connChan:
-		if conn.err != nil {
-			return nil, conn.err
-		} else {
-			return conn.udpConn, nil
-		}
-	case <-time.After(HolePunchingTimeOut * time.Second):
-		return nil, fmt.Errorf("time out")
+	res := &net_pb.NatRequest{}
+
+	proto.Unmarshal(buffer[:n], res)
+	if res.MsgType != net_pb.NatMsgType_ReverseDigACK ||
+		res.InviteAck.SessionId != sessionID {
+		task.UdpConn = nil
+		task.Err <- fmt.Errorf("didn't get the answer")
+		return
 	}
+
+	conn, err := shareport.DialUDP("udp4", host, peerAddr.String())
+	if err != nil {
+		task.Err <- err
+		return
+	}
+	task.UdpConn = conn
+	task.Err <- err
 }
 
 func ExternalIP() []string {
