@@ -121,13 +121,13 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *net_pb.BootNatRegReq) e
 	return nil
 }
 
-func (s *NatServer) makeAMatch(peerAddr net.Addr, request *net_pb.NatConReq) error {
+func (s *NatServer) makeAMatch(peerAddr net.Addr, request *net_pb.NatConnect) error {
 
-	responseTo := &net_pb.Response{
+	responseTo := &net_pb.NatResponse{
 		MsgType: net_pb.NatMsgType_Connect,
 	}
 
-	cacheItem := s.natCache[request.ToPeerId]
+	cacheItem := s.natCache[request.ToAddr.NetworkId]
 	cacheItemFrom := s.natCache[request.FromPeerId]
 	if cacheItem == nil || cacheItemFrom == nil {
 		return fmt.Errorf("some peer is not in the cache")

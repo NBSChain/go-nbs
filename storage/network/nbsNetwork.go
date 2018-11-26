@@ -255,8 +255,8 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 
 func (network *nbsNetwork) findWhoAmI() error {
 
-	serverIP := denat.GetDeNatSerIns().GetValidServer()
-	conn, err := network.connectToNatServer(serverIP)
+	serverHost := denat.GetDeNatSerIns().GetValidServer()
+	conn, err := network.connectToNatServer(serverHost)
 	if err != nil {
 		logger.Error("can't know who am I:->", err)
 		return err
@@ -278,9 +278,10 @@ func (network *nbsNetwork) findWhoAmI() error {
 	}
 
 	addr := &nbsnet.NbsUdpAddr{
-		PubIp:    response.PublicIp,
-		PriIp:    localHost,
-		CanServe: nbsnet.CanServe(response.NatType),
+		PubIp:     response.PublicIp,
+		PriIp:     localHost,
+		CanServe:  nbsnet.CanServe(response.NatType),
+		NatServer: serverHost,
 	}
 
 	if response.NatType == net_pb.NatType_ToBeChecked {

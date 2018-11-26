@@ -111,7 +111,7 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 		return nil, nil, err
 	}
 
-	logger.Debug("request:", request)
+	logger.Debug("request:", request, peerAddr)
 
 	return peerAddr, request, nil
 }
@@ -149,6 +149,17 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		logger.Warning("failed to send nat response", err)
 		return err
 	}
+
+	port := strconv.Itoa(utils.GetConfig().NatChanSerPort)
+	item := &HostBehindNat{
+		updateTIme: time.Now(),
+		pubAddr:    peerAddr,
+		priAddr:    net.JoinHostPort(request.PrivateIp, port),
+	}
+
+	nat.cacheLock.Lock()
+	nat.cache[request.NodeId] = item
+	nat.cacheLock.Unlock()
 
 	return nil
 }

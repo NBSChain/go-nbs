@@ -70,7 +70,7 @@ func (nat *Manager) ping(peerAddr *net.UDPAddr) {
 func (nat *Manager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
 
 	responseData := make([]byte, utils.NormalReadBuffer)
-	hasRead, _, err := conn.ReadFromUDP(responseData)
+	hasRead, err := conn.Read(responseData)
 	if err != nil {
 		logger.Warning("get pong failed", err)
 		return nil, err

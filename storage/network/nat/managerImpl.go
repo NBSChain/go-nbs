@@ -41,7 +41,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		return err
 	}
 
-	serverHost := denat.GetDeNatSerIns().GetValidServer()
+	serverHost := netNatAddr.NatServer
 	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverHost)
 	if err != nil {
 		logger.Warning("create share port dial udp connection failed.")

@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -90,7 +91,7 @@ func (peer *NatPeer) readingKA() {
 			continue
 		}
 
-		response := &net_pb.Response{}
+		response := &net_pb.NatResponse{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("keep alive response data", err)
 			continue
@@ -117,7 +118,7 @@ func (peer *NatPeer) readHoleMessage() {
 			continue
 		}
 
-		response := &net_pb.Response{}
+		response := &net_pb.NatResponse{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("keep alive response data", err)
 			continue
@@ -137,7 +138,7 @@ func (peer *NatPeer) readingHub() {
 			continue
 		}
 
-		response := &net_pb.Response{}
+		response := &net_pb.NatResponse{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("---reading hub-->failed response data", err)
 			continue
@@ -159,9 +160,8 @@ func (peer *NatPeer) punchAHole(targetId string) {
 
 	peer.isApplier = true
 
-	inviteRequest := &net_pb.NatConReq{
-		FromPeerId: peer.peerID,
-		ToPeerId:   targetId,
+	inviteRequest := &net_pb.NatConnect{
+		SessionId: peer.peerID + "-" + targetId,
 	}
 
 	request := &net_pb.NatRequest{
@@ -181,9 +181,9 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	}
 }
 
-func (peer *NatPeer) connectToPeers(response *net_pb.NatConRes) {
+func (peer *NatPeer) connectToPeers(response *net_pb.NatConnect) {
 
-	holeMsg := &net_pb.Response{
+	holeMsg := &net_pb.NatResponse{
 		MsgType: net_pb.NatMsgType_Ping,
 		Pong: &net_pb.NatPing{
 			Ping: peer.peerID,
@@ -206,7 +206,7 @@ func (peer *NatPeer) connectToPeers(response *net_pb.NatConRes) {
 		peer.holePunchConn.Close()
 	}
 
-	p, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.PublicIp+":"+response.PublicPort)
+	p, err := shareport.DialUDP("udp4", "0.0.0.0:7001", response.FromAddr.NatIP+":"+strconv.Itoa(int(response.FromAddr.NatPort)))
 	if err != nil {
 		fmt.Println("******dial hole peer failed***", err)
 		return
