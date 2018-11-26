@@ -48,12 +48,13 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		return err
 	}
 
-	serverIP := denat.GetDeNatSerIns().GetValidServer()
-	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverIP)
+	serverHost := denat.GetDeNatSerIns().GetValidServer()
+	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverHost)
 	if err != nil {
 		logger.Warning("create share port dial udp connection failed.")
 		return err
 	}
+	netNatAddr.NatServer = serverHost
 
 	tunnel := &KATunnel{
 		networkId:  nat.networkId,

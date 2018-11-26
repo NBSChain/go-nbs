@@ -6,15 +6,15 @@ import (
 
 //TODO:: refactoring this address setting.
 type NbsUdpAddr struct {
-	NetworkId   string
-	CanServe    bool
-	NatServerIp string
-	NatIp       string
-	NatPort     int32
-	PubIp       string
-	PubPort     int32
-	PriIp       string
-	PriPort     int32
+	NetworkId string
+	CanServe  bool
+	NatServer string
+	NatIp     string
+	NatPort   int32
+	PubIp     string
+	PubPort   int32
+	PriIp     string
+	PriPort   int32
 }
 
 func CanServe(natType net_pb.NatType) bool {

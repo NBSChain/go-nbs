@@ -65,10 +65,16 @@ func (node *MemManager) registerMySelf() error {
 
 func (node *MemManager) intSubStep1(conn *nbsnet.NbsUdpConn) error {
 
+	lAddr := conn.LocAddr
+
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId: node.peerId,
+			NodeId:    node.peerId,
+			CanServer: lAddr.CanServe,
+			NatIP:     lAddr.NatIp,
+			NatPort:   lAddr.NatPort,
+			PriIP:     lAddr.PriIp,
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -108,7 +114,7 @@ func (node *MemManager) intSubStep3(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) intSubStep2(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) intSubStep2(request *pb.InitSub, peerAddr *net.UDPAddr) {
 
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,
@@ -119,7 +125,7 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, applierAddr *nbsnet.Nbs
 	}
 
 	msgData, _ := proto.Marshal(message)
-	if _, err := node.serviceConn.WriteToUDP(msgData, applierAddr); err != nil {
+	if _, err := node.serviceConn.WriteToUDP(msgData, peerAddr); err != nil {
 		logger.Warning("failed to send init ack msg:", err)
 		return
 	}
@@ -127,8 +133,17 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, applierAddr *nbsnet.Nbs
 	task := innerTask{
 		tType: ProxyInitSubRequest,
 	}
+
+	rAddr := &nbsnet.NbsUdpAddr{
+		NetworkId: request.NodeId,
+		CanServe:  request.CanServer,
+		NatServer: request.NatServer,
+		NatIp:     request.NatIP,
+		NatPort:   request.NatPort,
+		PriIp:     request.PriIP,
+	}
 	task.param[0] = request
-	task.param[1] = applierAddr
+	task.param[1] = rAddr
 
 	node.taskSignal <- task
 }

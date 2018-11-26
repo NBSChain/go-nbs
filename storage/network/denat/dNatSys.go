@@ -29,7 +29,6 @@ var (
 
 func GetDeNatSerIns() DecenterNatSys {
 	once.Do(func() {
-
 		instance = newDeNatSer()
 	})
 
@@ -45,9 +44,9 @@ func newDeNatSer() *ServerNode {
 
 	port := strconv.Itoa(utils.GetConfig().NatServerPort)
 
-	for _, host := range officerServer {
+	for i, host := range officerServer {
 
-		server.hosts = append(server.hosts, net.JoinHostPort(host, port))
+		server.hosts[i] = net.JoinHostPort(host, port)
 	}
 
 	return server

@@ -34,45 +34,25 @@ func (conn *NbsUdpConn) SetDeadline(t time.Time) {
 	conn.RealConn.SetDeadline(t)
 }
 
-func (conn *NbsUdpConn) Write(d []byte) (int, error) { //mark::::
-
-	data := conn.packAddr(d)
-	//TODO:: judge the data length value returned by raw udp socket.
-	return conn.RealConn.Write(data)
+func (conn *NbsUdpConn) Write(d []byte) (int, error) {
+	return conn.RealConn.Write(d)
 }
 
-func (conn *NbsUdpConn) Read(b []byte) (int, error) { //mark::::
-	n, err := conn.RealConn.Read(b)
-
-	data, _ := conn.unpackAddr(b[:n], nil)
-	b = make([]byte, len(data))
-	copy(b, data)
-	return n, err
+func (conn *NbsUdpConn) Read(b []byte) (int, error) {
+	return conn.RealConn.Read(b)
 }
 
 func (conn *NbsUdpConn) Close() error {
 	conn.IsClosed = true
-	//conn.parent.Close(conn.connId)
 	return conn.RealConn.Close()
 }
 
-func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *NbsUdpAddr, error) { //mark::::
-	n, peerAddr, err := conn.RealConn.ReadFromUDP(b)
-	data, pAddr := conn.unpackAddr(b[:n], peerAddr)
-	b = make([]byte, len(data))
-	copy(b, data)
-	return n, pAddr, err
+func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	return conn.RealConn.ReadFromUDP(b)
 }
 
-func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *NbsUdpAddr) (int, error) { //mark::::
-
-	data := conn.packAddr(b)
-	peerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(addr.PubIp),
-		Port: int(addr.PubPort),
-	}
-	//TODO:: judge the data length value returned by raw udp socket.
-	return conn.RealConn.WriteToUDP(data, peerAddr)
+func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+	return conn.RealConn.WriteToUDP(b, addr)
 }
 
 func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {

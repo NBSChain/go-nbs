@@ -7,7 +7,12 @@ option java_outer_classname = "InitMessage";
 package pb;
 
 message InitSub{
-    string nodeId       = 1;
+    bool   canServer    = 1;
+    string nodeId       = 2;
+    string natServer    = 3;
+    string natIP        = 4;
+    int32  natPort      = 5;
+    string priIP        = 6;
 }
 
 message InitSubACK{

@@ -127,6 +127,7 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
+			NatServer: network.natAddr.NatServer,
 			NatIp:     network.natAddr.PubIp,
 			NatPort:   network.natAddr.NatPort,
 			PriIp:     host,
@@ -162,6 +163,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
+			NatServer: network.natAddr.NatServer,
 			NatIp:     network.natAddr.PubIp,
 			NatPort:   network.natAddr.NatPort,
 			PriIp:     host,
@@ -264,7 +266,7 @@ func (network *nbsNetwork) findWhoAmI() error {
 
 	response, err := network.parseNatResponse(conn)
 	if err != nil {
-		logger.Debug("get NAT server info success.")
+		logger.Debug("get NAT server info failed.", err)
 		return err
 	}
 
