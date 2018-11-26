@@ -8,8 +8,6 @@ import (
 
 type pubSubService struct{}
 
-var gossipInst = gossip.GetGossipInstance()
-
 /*****************************************************************
 *
 *		service callback function.
@@ -18,7 +16,7 @@ var gossipInst = gossip.GetGossipInstance()
 
 func (service *pubSubService) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.PublishResponse, error) {
 
-	if err := gossipInst.Publish(request.Topics, []byte(request.Message)); err != nil {
+	if err := gossip.GetGossipInstance().Publish(request.Topics, []byte(request.Message)); err != nil {
 		return nil, err
 	}
 
@@ -28,7 +26,7 @@ func (service *pubSubService) Publish(ctx context.Context, request *pb.PublishRe
 }
 func (service *pubSubService) Subscribe(ctx context.Context, request *pb.SubscribeRequest) (*pb.SubscribeResponse, error) {
 
-	if err := gossipInst.Subscribe(request.Topics); err != nil {
+	if err := gossip.GetGossipInstance().Subscribe(request.Topics); err != nil {
 		return nil, err
 	}
 
@@ -39,7 +37,7 @@ func (service *pubSubService) Subscribe(ctx context.Context, request *pb.Subscri
 
 func (service *pubSubService) Peers(ctx context.Context, request *pb.PeersRequest) (*pb.PeersResponse, error) {
 
-	inputViews, outputView := gossipInst.AllPeers(request.Topics, int(request.Depth))
+	inputViews, outputView := gossip.GetGossipInstance().AllPeers(request.Topics, int(request.Depth))
 
 	return &pb.PeersResponse{
 		InPeers:  inputViews,
@@ -48,7 +46,7 @@ func (service *pubSubService) Peers(ctx context.Context, request *pb.PeersReques
 }
 func (service *pubSubService) Topics(ctx context.Context, request *pb.TopicsRequest) (*pb.TopicsResponse, error) {
 
-	topics := gossipInst.AllMyTopics()
+	topics := gossip.GetGossipInstance().AllMyTopics()
 
 	return &pb.TopicsResponse{
 		Topics: topics,

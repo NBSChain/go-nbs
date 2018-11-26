@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/gogo/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -57,13 +56,6 @@ func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
 
 func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 	return conn.LocAddr
-}
-
-func SplitHostPort(addr string) (string, int32, error) {
-	host, port, err := net.SplitHostPort(addr)
-	intPort, _ := strconv.Atoi(port)
-
-	return host, int32(intPort), err
 }
 
 /************************************************************************

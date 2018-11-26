@@ -17,13 +17,6 @@ func NewNatManager(networkId string) *Manager {
 
 	denat.GetDeNatSerIns().Setup(networkId)
 
-	localPeers := ExternalIP()
-	if len(localPeers) == 0 {
-		logger.Panic("no available network")
-	}
-
-	logger.Debug("all network interfaces:", localPeers)
-
 	natObj := &Manager{
 		networkId: networkId,
 		canServe:  make(chan bool),
@@ -193,49 +186,4 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	}
 	task.UdpConn = conn
 	task.Err <- err
-}
-
-func ExternalIP() []string {
-
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		return nil
-	}
-
-	var ips []string
-	for _, face := range interfaces {
-
-		if face.Flags&net.FlagUp == 0 ||
-			face.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		address, err := face.Addrs()
-		if err != nil {
-			continue
-		}
-
-		for _, addr := range address {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-
-			//TODO:: Support ip v6 later.
-			if ip = ip.To4(); ip == nil {
-				continue
-			}
-
-			ips = append(ips, ip.String())
-		}
-	}
-
-	return ips
 }

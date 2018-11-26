@@ -2,6 +2,8 @@ package nbsnet
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"net"
+	"strconv"
 )
 
 //TODO:: refactoring this address setting.
@@ -38,4 +40,56 @@ func CanServe(natType net_pb.NatType) bool {
 	}
 
 	return canService
+}
+
+func SplitHostPort(addr string) (string, int32, error) {
+	host, port, err := net.SplitHostPort(addr)
+	intPort, _ := strconv.Atoi(port)
+
+	return host, int32(intPort), err
+}
+
+func ExternalIP() []string {
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+
+	var ips []string
+	for _, face := range interfaces {
+
+		if face.Flags&net.FlagUp == 0 ||
+			face.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		address, err := face.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range address {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+
+			//TODO:: Support ip v6 later.
+			if ip = ip.To4(); ip == nil {
+				continue
+			}
+
+			ips = append(ips, ip.String())
+		}
+	}
+
+	return ips
 }

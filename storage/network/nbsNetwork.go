@@ -68,6 +68,13 @@ func newNetwork() *nbsNetwork {
 
 func (network *nbsNetwork) StartUp(peerId string) error {
 
+	localPeers := nbsnet.ExternalIP()
+	if len(localPeers) == 0 {
+		logger.Panic("no available network")
+	}
+
+	logger.Debug("all network interfaces:", localPeers)
+
 	network.networkId = peerId
 
 	network.natManager = nat.NewNatManager(network.networkId)
@@ -293,13 +300,14 @@ func (network *nbsNetwork) findWhoAmI() error {
 
 func (network *nbsNetwork) connectToNatServer(serverIP string) (*net.UDPConn, error) {
 
-	config := utils.GetConfig()
+	host, port, _ := nbsnet.SplitHostPort(serverIP)
 	natServerAddr := &net.UDPAddr{
-		IP:   net.ParseIP(serverIP),
-		Port: config.NatServerPort,
+		IP:   net.ParseIP(host),
+		Port: int(port),
 	}
 
 	conn, err := net.DialUDP("udp4", nil, natServerAddr)
+
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +350,7 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatRegRes, error) {
 
 	responseData := make([]byte, utils.NormalReadBuffer)
-	hasRead, _, err := conn.ReadFromUDP(responseData)
+	hasRead, err := conn.Read(responseData)
 	if err != nil {
 		logger.Error("reading failed from nat server", err)
 		return nil, err

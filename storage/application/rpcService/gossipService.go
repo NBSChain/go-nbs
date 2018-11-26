@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/NBSChain/go-nbs/console/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip"
 )
 
 type gossipService struct{}
@@ -15,7 +16,7 @@ func (service *gossipService) StartService(ctx context.Context, request *pb.Star
 		return nil, account.ENoAvailableAccount
 	}
 
-	if err := gossipInst.StartUp(peerId); err != nil {
+	if err := gossip.GetGossipInstance().StartUp(peerId); err != nil {
 		return nil, err
 	}
 
