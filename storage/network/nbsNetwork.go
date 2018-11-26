@@ -80,10 +80,11 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 	network.natManager = nat.NewNatManager(network.networkId)
 
 	err := network.findWhoAmI()
-
 	if err != nil {
 		return err
 	}
+
+	network.natAddr.NetworkId = peerId
 
 	if network.natAddr.CanServe {
 		return nil
