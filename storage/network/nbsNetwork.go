@@ -259,6 +259,8 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 		return nil, err
 	}
 
+	logger.Debug("Step6:make direct connection:->", c.LocalAddr().String(), c.RemoteAddr().String())
+
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  c,
 		CType:     nbsnet.CTypeNormal,

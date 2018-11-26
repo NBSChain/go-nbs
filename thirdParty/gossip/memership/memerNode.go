@@ -92,13 +92,13 @@ func (node *MemManager) receivingCmd() {
 			continue
 		}
 
-		logger.Debug("receive contract apply:", peerAddr)
-
 		message := &pb.Gossip{}
 		if err := proto.Unmarshal(buffer[:n], message); err != nil {
 			logger.Warning("this is not a gossip message:->", buffer)
 			continue
 		}
+
+		logger.Debug("gossip server:->", message, peerAddr)
 
 		switch message.MessageType {
 		case pb.MsgType_init:

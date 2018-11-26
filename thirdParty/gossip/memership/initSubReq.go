@@ -47,7 +47,7 @@ func (node *MemManager) registerMySelf() error {
 		}
 
 		if err := node.intSubStep3(conn); err == nil {
-			logger.Debug("find contract server success.")
+			logger.Debug("find gossip contact server success.")
 			success = true
 			break
 		}
