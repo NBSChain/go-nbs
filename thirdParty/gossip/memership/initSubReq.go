@@ -132,6 +132,7 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, peerAddr *net.UDPAddr) 
 
 	task := innerTask{
 		tType: ProxyInitSubRequest,
+		param: make([]interface{}, 2),
 	}
 
 	rAddr := &nbsnet.NbsUdpAddr{

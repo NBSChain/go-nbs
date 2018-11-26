@@ -65,7 +65,6 @@ func (app *NbsApplication) Start() error {
 
 	network.GetInstance()
 
-	//TODO:: configure this property when nbs node startup.
 	gossip.GetGossipInstance()
 
 	return nil

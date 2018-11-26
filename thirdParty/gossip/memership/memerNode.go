@@ -103,6 +103,8 @@ func (node *MemManager) receivingCmd() {
 		switch message.MessageType {
 		case pb.MsgType_init:
 			node.intSubStep2(message.InitMsg, peerAddr)
+		case pb.MsgType_reqContractAck:
+			node.subToContract(message.ContactRes, peerAddr)
 		default:
 			continue
 		}
