@@ -52,7 +52,6 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 	tunnel := &KATunnel{
 		networkId:  nat.networkId,
 		natAddr:    netNatAddr,
-		closed:     make(chan bool),
 		serverHub:  listener,
 		kaConn:     client,
 		sharedAddr: client.LocalAddr().String(),

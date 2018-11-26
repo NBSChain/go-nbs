@@ -28,7 +28,6 @@ type ConnTask struct {
 type KATunnel struct {
 	natAddr    *nbsnet.NbsUdpAddr
 	networkId  string
-	closed     chan bool
 	serverHub  *net.UDPConn
 	kaConn     *net.UDPConn
 	sharedAddr string
@@ -46,19 +45,14 @@ func (tunnel *KATunnel) Close() {
 
 	tunnel.serverHub.Close()
 	tunnel.kaConn.Close()
-	tunnel.closed <- true
 }
 
 func (tunnel *KATunnel) runLoop() {
 
 	for {
-		select {
-		case <-time.After(KeepAliveTime):
-			tunnel.sendKeepAlive()
-		case <-tunnel.closed:
-			logger.Info("keep alive channel is closed.")
-			return
-		}
+		tunnel.sendKeepAlive()
+
+		time.Sleep(KeepAliveTime)
 	}
 }
 

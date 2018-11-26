@@ -150,17 +150,6 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		return err
 	}
 
-	port := strconv.Itoa(utils.GetConfig().NatChanSerPort)
-	item := &HostBehindNat{
-		updateTIme: time.Now(),
-		pubAddr:    peerAddr,
-		priAddr:    net.JoinHostPort(request.PrivateIp, port),
-	}
-
-	nat.cacheLock.Lock()
-	nat.cache[request.NodeId] = item
-	nat.cacheLock.Unlock()
-
 	return nil
 }
 
