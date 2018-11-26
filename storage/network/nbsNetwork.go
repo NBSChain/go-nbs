@@ -73,7 +73,7 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 		logger.Panic("no available network")
 	}
 
-	logger.Debug("all network interfaces:", localPeers)
+	logger.Debug("all network interfaces:->", localPeers)
 
 	network.networkId = peerId
 
@@ -258,7 +258,7 @@ func (network *nbsNetwork) findWhoAmI() error {
 	serverIP := denat.GetDeNatSerIns().GetValidServer()
 	conn, err := network.connectToNatServer(serverIP)
 	if err != nil {
-		logger.Error("can't know who am I", err)
+		logger.Error("can't know who am I:->", err)
 		return err
 	}
 	defer conn.Close()
@@ -267,13 +267,13 @@ func (network *nbsNetwork) findWhoAmI() error {
 
 	localHost, err := network.sendNatRequest(conn)
 	if err != nil {
-		logger.Error("failed to read nat response:", err)
+		logger.Error("failed to read nat response:->", err)
 		return err
 	}
 
 	response, err := network.parseNatResponse(conn)
 	if err != nil {
-		logger.Debug("get NAT server info failed.", err)
+		logger.Debug("get NAT server info failed:->", err)
 		return err
 	}
 
@@ -335,12 +335,12 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 
 	requestData, err := proto.Marshal(request)
 	if err != nil {
-		logger.Error("failed to marshal nat request", err)
+		logger.Error("failed to marshal nat request:->", err)
 		return "", err
 	}
 
 	if no, err := conn.Write(requestData); err != nil || no == 0 {
-		logger.Error("failed to send nat request to selfNatServer ", err, no)
+		logger.Error("failed to send nat request to selfNatServer:->", err, no)
 		return "", err
 	}
 
@@ -352,17 +352,17 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 	responseData := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(responseData)
 	if err != nil {
-		logger.Error("reading failed from nat server", err)
+		logger.Error("reading failed from nat server:->", err)
 		return nil, err
 	}
 
 	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("unmarshal Err:", err)
+		logger.Error("unmarshal Err:->", err)
 		return nil, err
 	}
 
-	logger.Debug("response:", response)
+	logger.Debug("response:->", response)
 
 	return response.BootRegRes, nil
 }
