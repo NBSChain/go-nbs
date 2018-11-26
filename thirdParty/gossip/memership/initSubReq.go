@@ -141,6 +141,7 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, peerAddr *net.UDPAddr) 
 		NatServer: request.NatServer,
 		NatIp:     request.NatIP,
 		NatPort:   request.NatPort,
+		PubIp:     peerAddr.IP.String(),
 		PriIp:     request.PriIP,
 	}
 	task.param[0] = request
