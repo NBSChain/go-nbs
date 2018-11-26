@@ -126,6 +126,7 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 		return
 	}
 
+	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
 }
 
 /************************************************************************

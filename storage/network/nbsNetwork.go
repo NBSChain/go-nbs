@@ -149,24 +149,27 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error) {
 
 	var realConn *net.UDPConn
+	var cType nbsnet.ConnType
 	if network.natAddr.CanServe {
 		c, err := net.ListenUDP(nt, lAddr)
 		if err != nil {
 			return nil, err
 		}
 		realConn = c
+		cType = nbsnet.CTypeNormal
 	} else {
 		c, err := shareport.ListenUDP(nt, lAddr.String())
 		if err != nil {
 			return nil, err
 		}
 		realConn = c
+		cType = nbsnet.CTypeNat
 	}
 
 	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  realConn,
-		CType:     nbsnet.CTypeNormal,
+		CType:     cType,
 		SessionID: lAddr.String(),
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
@@ -209,10 +212,20 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 		realConn = c
 	}
 
+	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  realConn,
 		CType:     nbsnet.CTypeNat,
 		SessionID: sessionID,
+		LocAddr: &nbsnet.NbsUdpAddr{
+			NetworkId: network.networkId,
+			CanServe:  network.natAddr.CanServe,
+			NatServer: network.natAddr.NatServer,
+			NatIp:     network.natAddr.PubIp,
+			NatPort:   network.natAddr.NatPort,
+			PriIp:     host,
+			PriPort:   port,
+		},
 	}
 
 	return conn, nil

@@ -138,6 +138,8 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 		Err: make(chan error),
 	}
 
+	logger.Debug("Step1: notify applier's nat server:", req)
+
 	go nat.waitInviteAnswer(localHost, connId, connChan)
 
 	select {
@@ -161,6 +163,8 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	}
 	defer lisConn.Close()
 
+	logger.Debug("Step2: wait the answer:", host)
+
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
@@ -169,8 +173,8 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	}
 
 	res := &net_pb.NatRequest{}
-
 	proto.Unmarshal(buffer[:n], res)
+
 	if res.MsgType != net_pb.NatMsgType_ReverseDigACK ||
 		res.InviteAck.SessionId != sessionID {
 		task.UdpConn = nil
@@ -185,4 +189,6 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	}
 	task.UdpConn = conn
 	task.Err <- err
+
+	logger.Debug("Step5: get answer and make a connection:->", host, peerAddr.String())
 }

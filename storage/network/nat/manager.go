@@ -219,5 +219,7 @@ func (nat *Manager) forwardInvite(invite *net_pb.ReverseInvite, peerAddr *net.UD
 		return err
 	}
 
+	logger.Debug("Step3: forward notification to applier:", item.pubAddr)
+
 	return nil
 }
