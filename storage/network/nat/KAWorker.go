@@ -31,6 +31,8 @@ func (tunnel *KATunnel) readKeepAlive() {
 			logger.Warning("keep alive response Unmarshal failed:", err)
 		}
 
+		logger.Info("keep alive:", response)
+
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:
 			tunnel.updateTime = time.Now()
@@ -48,6 +50,8 @@ func (tunnel *KATunnel) process(buffer []byte, peerAddr *net.UDPAddr) error {
 
 	request := &net_pb.NatRequest{}
 	proto.Unmarshal(buffer, request)
+
+	logger.Info("listen connection:", request)
 
 	switch request.MsgType {
 	case net_pb.NatMsgType_DigOut, net_pb.NatMsgType_DigIn:
