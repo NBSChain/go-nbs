@@ -13,7 +13,7 @@ import (
 const (
 	KeepAliveTime       = time.Second * 15
 	KeepAliveTimeOut    = 45
-	HolePunchingTimeOut = 4
+	HolePunchingTimeOut = 6
 )
 
 type ProxyTask struct {
