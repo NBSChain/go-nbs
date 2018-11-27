@@ -73,11 +73,3 @@ func (tunnel *KATunnel) listening() {
 		}
 	}
 }
-
-//TODO::
-func (tunnel *KATunnel) connManage() {
-}
-
-//TODO::
-func (tunnel *KATunnel) restoreNatChannel() {
-}

@@ -2,47 +2,47 @@ package nat
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/golang/protobuf/proto"
 	"time"
 )
 
-func (tunnel *KATunnel) readRegResponse() error {
-
-	resChan := make(chan error)
-	defer close(resChan)
-
-	go tunnel.runLoop()
-
-	select {
-	case err := <-resChan:
-		return err
-	case <-time.After(time.Second * 2):
-		return fmt.Errorf("timeout when reading channel register messae.")
-	}
+func (tunnel *KATunnel) readKeepAlive() {
+	logger.Info("windows-> no need to get data from keep alive connection")
+	tunnel.server()
 }
 
-func (tunnel *KATunnel) runLoop(resChan chan error) {
+func (tunnel *KATunnel) listening() {
+
+	tunnel.server()
+}
+
+func (tunnel *KATunnel) server() {
 
 	for {
-		responseData := make([]byte, 2048)
-		hasRead, peerAddr, err := peer.receivingHub.ReadFrom(responseData)
+		responseData := make([]byte, utils.NormalReadBuffer)
+		hasRead, peerAddr, err := tunnel.serverHub.ReadFrom(responseData)
 		if err != nil {
-			fmt.Println("failed to read nat response from natServer", err)
+			logger.Warning("receiving port:", err, peerAddr)
 			continue
 		}
 
-		response := &net_pb.Response{}
+		response := &net_pb.NatResponse{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
 		}
 
 		switch response.MsgType {
-		case net_pb.NatMsgType_BootStrapReg:
-
-			resValue := response.BootRegRes
-			tunnel.publicIp = resValue.PublicIp
-			tunnel.publicPort = resValue.PublicPort
-			resChan <- nil
+		case net_pb.NatMsgType_KeepAlive:
+			tunnel.updateTime = time.Now()
+			tunnel.natAddr.NatIp = response.KeepAlive.PubIP
+			tunnel.natAddr.NatPort = response.KeepAlive.PubPort
+		case net_pb.NatMsgType_ReverseDig:
+			tunnel.answerInvite(response.Invite)
+		case net_pb.NatMsgType_Connect:
+			tunnel.digOut(response.ConnRes)
 		}
 	}
 }

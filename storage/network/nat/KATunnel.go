@@ -81,3 +81,11 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 
 	return nil
 }
+
+//TODO::
+func (tunnel *KATunnel) connManage() {
+}
+
+//TODO::
+func (tunnel *KATunnel) restoreNatChannel() {
+}
