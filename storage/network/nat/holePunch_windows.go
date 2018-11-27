@@ -99,34 +99,6 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	return nil, fmt.Errorf("time out")
 }
 
-func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
-
-	myPort := strconv.Itoa(int(invite.ToPort))
-
-	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+myPort,
-		invite.PubIp+":"+invite.FromPort)
-	if err != nil {
-		logger.Errorf("failed to dial up peer to answer inviter:", err)
-		return
-	}
-	defer conn.Close()
-
-	req := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_ReverseDigACK,
-		InviteAck: &net_pb.ReverseInviteAck{
-			SessionId: invite.SessionId,
-		},
-	}
-
-	data, _ := proto.Marshal(req)
-	if _, err := conn.Write(data); err != nil {
-		logger.Errorf("failed to write answer to inviter:", err)
-		return
-	}
-
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
-}
-
 /************************************************************************
 *
 *			server side

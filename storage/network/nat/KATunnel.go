@@ -3,8 +3,10 @@ package nat
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -88,4 +90,35 @@ func (tunnel *KATunnel) connManage() {
 
 //TODO::
 func (tunnel *KATunnel) restoreNatChannel() {
+}
+
+/******************************
+****************************/
+
+func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
+
+	myPort := strconv.Itoa(int(invite.ToPort))
+
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+myPort,
+		invite.PubIp+":"+invite.FromPort)
+	if err != nil {
+		logger.Errorf("failed to dial up peer to answer inviter:", err)
+		return
+	}
+	defer conn.Close()
+
+	req := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_ReverseDigACK,
+		InviteAck: &net_pb.ReverseInviteAck{
+			SessionId: invite.SessionId,
+		},
+	}
+
+	data, _ := proto.Marshal(req)
+	if _, err := conn.Write(data); err != nil {
+		logger.Errorf("failed to write answer to inviter:", err)
+		return
+	}
+
+	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
 }
