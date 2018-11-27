@@ -207,7 +207,7 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 
 	rawData, _ := proto.Marshal(res)
 
-	nat.sysNatServer.Write(rawData)
+	nat.sysNatServer.WriteToUDP(rawData, peerAddr)
 
 	return nil
 }
