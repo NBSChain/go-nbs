@@ -196,6 +196,19 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 		nat.cache[nodeId] = item
 	}
 
+	res := &net_pb.NatResponse{
+		MsgType: net_pb.NatMsgType_KeepAlive,
+		KeepAlive: &net_pb.NatKeepAlive{
+			NodeId:  req.NodeId,
+			PubIP:   peerAddr.IP.String(),
+			PubPort: int32(peerAddr.Port),
+		},
+	}
+
+	rawData, _ := proto.Marshal(res)
+
+	nat.sysNatServer.Write(rawData)
+
 	return nil
 }
 

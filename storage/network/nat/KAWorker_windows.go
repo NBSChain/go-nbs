@@ -9,16 +9,28 @@ import (
 )
 
 func (tunnel *KATunnel) readKeepAlive() {
+
 	logger.Info("windows-> no need to get data from keep alive connection")
-	tunnel.server()
+
+	for {
+		responseData := make([]byte, utils.NormalReadBuffer)
+		hasRead, err := tunnel.kaConn.Read(responseData)
+		if err != nil {
+			logger.Warning("receiving port:", err)
+			continue
+		}
+
+		response := &net_pb.NatResponse{}
+		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
+			fmt.Println("failed to unmarshal nat response data", err)
+			continue
+		}
+
+		logger.Info("keep alive connection :", response)
+	}
 }
 
 func (tunnel *KATunnel) listening() {
-
-	tunnel.server()
-}
-
-func (tunnel *KATunnel) server() {
 
 	for {
 		responseData := make([]byte, utils.NormalReadBuffer)
@@ -33,6 +45,8 @@ func (tunnel *KATunnel) server() {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
 		}
+
+		logger.Debug("server hub connection :", response)
 
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:
