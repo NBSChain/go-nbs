@@ -41,12 +41,12 @@ func (node *MemManager) registerMySelf() error {
 
 		conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut))
 
-		if err := node.intSubStep1(conn); err != nil {
+		if err := node.sendInitSubToContactProxyNode(conn); err != nil {
 			logger.Error("send init sub request failed:", err)
 			goto CloseConn
 		}
 
-		if err := node.intSubStep3(conn); err == nil {
+		if err := node.checkProxyValidation(conn); err == nil {
 			logger.Debug("find gossip contact server success.")
 			success = true
 			break
@@ -63,7 +63,7 @@ func (node *MemManager) registerMySelf() error {
 	return nil
 }
 
-func (node *MemManager) intSubStep1(conn *nbsnet.NbsUdpConn) error {
+func (node *MemManager) sendInitSubToContactProxyNode(conn *nbsnet.NbsUdpConn) error {
 
 	lAddr := conn.LocAddr
 
@@ -89,7 +89,7 @@ func (node *MemManager) intSubStep1(conn *nbsnet.NbsUdpConn) error {
 	return nil
 }
 
-func (node *MemManager) intSubStep3(conn *nbsnet.NbsUdpConn) error {
+func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)
@@ -114,7 +114,7 @@ func (node *MemManager) intSubStep3(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) intSubStep2(request *pb.InitSub, peerAddr *net.UDPAddr) {
+func (node *MemManager) notifySubscriberAndCacheRequest(request *pb.InitSub, peerAddr *net.UDPAddr) {
 
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,
@@ -148,4 +148,8 @@ func (node *MemManager) intSubStep2(request *pb.InitSub, peerAddr *net.UDPAddr) 
 	task.param[1] = rAddr
 
 	node.taskSignal <- task
+}
+
+func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) {
+	logger.Info("gossip sub start:", ack, addr)
 }

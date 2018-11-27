@@ -92,8 +92,11 @@ func (tunnel *KATunnel) connManage() {
 func (tunnel *KATunnel) restoreNatChannel() {
 }
 
-/******************************
-****************************/
+/************************************************************************
+*
+*			server side
+*
+*************************************************************************/
 
 func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 

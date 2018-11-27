@@ -31,6 +31,7 @@ const (
 	natChanSerPort   = 11002
 	gossipCtrlPort   = 12001
 	NormalReadBuffer = 1 << 11
+	AdditionalCopies = 1
 )
 
 var (

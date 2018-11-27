@@ -22,7 +22,7 @@ message InitSubACK{
 
 message ReqContact{
      string applierId    = 1;
-     int32 ttl           = 2;
+     int32 TTL           = 2;
 }
 
 message ReqContactACK{

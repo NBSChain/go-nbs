@@ -16,7 +16,8 @@ const (
 )
 
 type peerNodeItem struct {
-	nodeId string
+	nodeId      string
+	probability float64
 }
 
 type innerTask struct {
@@ -27,8 +28,8 @@ type innerTask struct {
 type MemManager struct {
 	peerId      string
 	serviceConn *nbsnet.NbsUdpConn
-	inPut       map[string]peerNodeItem
-	outPut      map[string]peerNodeItem
+	inputView   map[string]*peerNodeItem
+	partialView map[string]*peerNodeItem
 	taskSignal  chan innerTask
 }
 
@@ -39,10 +40,10 @@ var (
 func NewMemberNode(peerId string) *MemManager {
 
 	node := &MemManager{
-		peerId:     peerId,
-		taskSignal: make(chan innerTask),
-		inPut:      make(map[string]peerNodeItem),
-		outPut:     make(map[string]peerNodeItem),
+		peerId:      peerId,
+		taskSignal:  make(chan innerTask),
+		inputView:   make(map[string]*peerNodeItem),
+		partialView: make(map[string]*peerNodeItem),
 	}
 
 	return node
@@ -102,7 +103,7 @@ func (node *MemManager) receivingCmd() {
 
 		switch message.MessageType {
 		case pb.MsgType_init:
-			node.intSubStep2(message.InitMsg, peerAddr)
+			node.notifySubscriberAndCacheRequest(message.InitMsg, peerAddr)
 		case pb.MsgType_reqContractAck:
 			node.subToContract(message.ContactRes, peerAddr)
 		default:
@@ -115,7 +116,7 @@ func (node *MemManager) taskWorker(task innerTask) {
 
 	switch task.tType {
 	case ProxyInitSubRequest:
-		node.intSubStep4(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
+		node.findProperContactNode(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
 	}
 }
 
@@ -126,5 +127,17 @@ func (node *MemManager) taskDispatcher() {
 		case task := <-node.taskSignal:
 			node.taskWorker(task)
 		}
+	}
+}
+
+func (node *MemManager) updateProbability(view map[string]*peerNodeItem) {
+
+	var summerOut float64
+	for _, item := range view {
+		summerOut += item.probability
+	}
+
+	for _, item := range view {
+		item.probability = item.probability / summerOut
 	}
 }
