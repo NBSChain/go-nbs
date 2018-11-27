@@ -18,6 +18,7 @@ const (
 type peerNodeItem struct {
 	nodeId      string
 	probability float64
+	addr        *nbsnet.NbsUdpAddr
 }
 
 type innerTask struct {
@@ -103,7 +104,7 @@ func (node *MemManager) receivingCmd() {
 
 		switch message.MessageType {
 		case pb.MsgType_init:
-			node.notifySubscriberAndCacheRequest(message.InitMsg, peerAddr)
+			node.confirmAndPrepare(message.InitMsg, peerAddr)
 		case pb.MsgType_reqContractAck:
 			node.subToContract(message.ContactRes, peerAddr)
 		default:

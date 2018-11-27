@@ -114,7 +114,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) notifySubscriberAndCacheRequest(request *pb.InitSub, peerAddr *net.UDPAddr) {
+func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDPAddr) {
 
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,

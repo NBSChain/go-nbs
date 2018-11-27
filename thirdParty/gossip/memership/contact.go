@@ -31,9 +31,10 @@ func (node *MemManager) findProperContactNode(request *pb.InitSub, applierAddr *
 }
 
 func (node *MemManager) actAsContact(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
+
 	count := len(node.partialView)
 	if count == 0 {
-		node.acceptThisSub(request, applierAddr)
+		node.acceptSub(request, applierAddr)
 		return
 	}
 
@@ -41,8 +42,10 @@ func (node *MemManager) actAsContact(request *pb.InitSub, applierAddr *nbsnet.Nb
 		node.forwardSub(item, request, applierAddr)
 	}
 
-	//random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
-
+	for i := 0; i < utils.AdditionalCopies; i++ {
+		item := node.choseRandomInPartialView()
+		node.forwardSub(item, request, applierAddr)
+	}
 }
 
 func (node *MemManager) indirectTheSubRequest(gossip *pb.Gossip) {
@@ -64,7 +67,33 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 	//TODO:: make connection to him and send the request.
 }
 
-func (node *MemManager) acceptThisSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) acceptSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+
+	_, ok := node.partialView[sub.NodeId]
+	if ok {
+		item := node.choseRandomInPartialView()
+		node.forwardSub(item, sub, addr)
+		return
+	}
+
+	item := &peerNodeItem{
+		nodeId:      sub.NodeId,
+		addr:        addr,
+		probability: 1, //TODO::
+	}
+	node.partialView[sub.NodeId] = item
+
+	//TODO:: ? need to update probability?
+	node.updateProbability(node.partialView)
+
+	node.notifySubscriber(sub, addr)
+}
+
+func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+	//TODO::
+}
+
+func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_reqContractAck,
 		ContactRes: &pb.ReqContactACK{
@@ -88,8 +117,4 @@ func (node *MemManager) acceptThisSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) 
 	}
 
 	conn.Send(msgData)
-}
-
-func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
-
 }
