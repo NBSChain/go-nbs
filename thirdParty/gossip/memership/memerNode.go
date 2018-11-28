@@ -7,18 +7,27 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"time"
 )
 
 type TaskType int
 
 const (
+	MemberShipKeepAlive = time.Second * 10
+)
+
+const (
 	ProxyInitSubRequest TaskType = iota + 1
+	KeepAliveSend
+	KeepAliveWithPayLoad
 )
 
 type peerNodeItem struct {
 	nodeId      string
 	probability float64
 	addr        *nbsnet.NbsUdpAddr
+	updateTime  time.Time
+	conn        *nbsnet.NbsUdpConn
 }
 
 type innerTask struct {
@@ -108,6 +117,9 @@ func (node *MemManager) receivingCmd() {
 			node.confirmAndPrepare(message.InitMsg, peerAddr)
 		case pb.MsgType_reqContractAck:
 			node.subToContract(message.ContactRes, peerAddr)
+		case pb.MsgType_heartBeat:
+			node.pareKeepAlive(message.HeartBeat, peerAddr)
+
 		default:
 			continue
 		}
@@ -119,6 +131,9 @@ func (node *MemManager) taskWorker(task innerTask) {
 	switch task.tType {
 	case ProxyInitSubRequest:
 		node.findProperContactNode(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
+	case KeepAliveWithPayLoad:
+		Typ, payLoad, nodeId := task.param[0].(pb.MsgType), task.param[1].([]byte), task.param[2].(string)
+		node.keepAliveWithData(Typ, payLoad, nodeId)
 	}
 }
 
@@ -128,6 +143,8 @@ func (node *MemManager) taskDispatcher() {
 		select {
 		case task := <-node.taskSignal:
 			node.taskWorker(task)
+		case <-time.After(MemberShipKeepAlive):
+			node.keepAlive()
 		}
 	}
 }

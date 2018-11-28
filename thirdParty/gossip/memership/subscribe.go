@@ -149,5 +149,20 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 }
 
 func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) {
-	logger.Info("gossip sub start:", ack, addr)
+
+	logger.Debug("gossip sub start:", ack, addr)
+
+	_, ok := node.inputView[ack.SupplierID]
+	if ok {
+		logger.Info("duplicated sub confirm")
+		return
+	}
+
+	item := &peerNodeItem{
+		nodeId:      ack.SupplierID,
+		probability: 1, //TODO::
+		addr:        nbsnet.ConvertFromGossipAddr(ack.Supplier, addr.IP.String()),
+	}
+
+	node.inputView[ack.SupplierID] = item
 }

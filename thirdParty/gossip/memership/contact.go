@@ -77,33 +77,36 @@ func (node *MemManager) acceptSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
 		node.forwardSub(item, sub, addr)
 		return
 	}
+	conn, err := node.notifySubscriber(sub, addr)
+	if nil != err {
+		logger.Error("failed to notify the subscriber:", err)
+		return
+	}
 
 	item := &peerNodeItem{
 		nodeId:      sub.NodeId,
 		addr:        addr,
 		probability: 1, //TODO::
+		conn:        conn,
 	}
 	node.partialView[sub.NodeId] = item
 
 	//TODO:: ? need to update probability?
 	node.updateProbability(node.partialView)
-
-	node.notifySubscriber(sub, addr)
 }
 
 func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
 	//TODO::
 }
 
-func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
 
 	port := utils.GetConfig().GossipCtrlPort
 	conn, err := network.GetInstance().Connect(nil, addr, port)
 	if err != nil {
 		logger.Error("the contact failed to notify the subscriber:", err)
-		return
+		return nil, err
 	}
-	defer conn.Close()
 
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_reqContractAck,
@@ -117,8 +120,10 @@ func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAdd
 	msgData, err := proto.Marshal(msg)
 	if err != nil {
 		logger.Error("failed to marshal the contact init msg:", err)
-		return
+		return nil, err
 	}
 
 	conn.Send(msgData)
+
+	return conn, nil
 }

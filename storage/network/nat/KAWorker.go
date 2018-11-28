@@ -7,7 +7,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"time"
 )
 
 /************************************************************************
@@ -22,6 +21,7 @@ func (tunnel *KATunnel) readKeepAlive() {
 
 		n, err := tunnel.kaConn.Read(buffer)
 		if err != nil {
+			//TODO::recovery and broadcast the new information
 			logger.Warning("reading keep alive message failed:", err)
 			continue
 		}
@@ -35,9 +35,8 @@ func (tunnel *KATunnel) readKeepAlive() {
 
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:
-			tunnel.updateTime = time.Now()
-			tunnel.natAddr.NatIp = response.KeepAlive.PubIP
-			tunnel.natAddr.NatPort = response.KeepAlive.PubPort
+			tunnel.refreshNatInfo(response.KeepAlive)
+
 		case net_pb.NatMsgType_ReverseDig:
 			tunnel.answerInvite(response.Invite)
 		case net_pb.NatMsgType_Connect:

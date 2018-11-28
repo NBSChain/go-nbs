@@ -125,3 +125,16 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 
 	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
 }
+
+func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.NatKeepAlive) {
+	tunnel.updateTime = time.Now()
+
+	if tunnel.natAddr.NatIp != alive.PubIP &&
+		tunnel.natAddr.NatPort != alive.PubPort {
+
+		tunnel.natAddr.NatIp = alive.PubIP
+		tunnel.natAddr.NatPort = alive.PubPort
+		//TODO::tell other node ,this has changed.
+		logger.Info("node's nat info changed.")
+	}
+}

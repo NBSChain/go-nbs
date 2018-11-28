@@ -27,6 +27,12 @@ enum MsgType {
     initACK         = 13;
 }
 
+message HeartBeat{
+    MsgType type    = 1;
+    string  sender  = 2;
+    int64   seqNo   = 3;
+    bytes   payload = 4;
+}
 
 message gossip {
     MsgType messageType         = 1;
@@ -34,4 +40,5 @@ message gossip {
     InitSubACK initACK          = 11;
     ReqContact contactReq       = 12;
     ReqContactACK contactRes    = 13;
+    HeartBeat heartBeat         = 14;
 }

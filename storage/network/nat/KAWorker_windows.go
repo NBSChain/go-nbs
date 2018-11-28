@@ -5,7 +5,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
-	"time"
 )
 
 func (tunnel *KATunnel) readKeepAlive() {
@@ -32,9 +31,7 @@ func (tunnel *KATunnel) listening() {
 
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:
-			tunnel.updateTime = time.Now()
-			tunnel.natAddr.NatIp = response.KeepAlive.PubIP
-			tunnel.natAddr.NatPort = response.KeepAlive.PubPort
+			tunnel.refreshNatInfo(response.KeepAlive)
 		case net_pb.NatMsgType_ReverseDig:
 			tunnel.answerInvite(response.Invite)
 		case net_pb.NatMsgType_Connect:
