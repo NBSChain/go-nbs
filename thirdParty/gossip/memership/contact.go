@@ -22,8 +22,10 @@ func (node *MemManager) findProperContactNode(request *pb.InitSub, applierAddr *
 	req := &pb.Gossip{
 		MessageType: pb.MsgType_reqContract,
 		ContactReq: &pb.ReqContact{
-			ApplierId: request.NodeId,
+			Seq:       request.Seq,
 			TTL:       int32(counter),
+			ApplierID: request.NodeId,
+			Applier:   request.Addr,
 		},
 	}
 
@@ -94,13 +96,6 @@ func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nb
 }
 
 func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
-	msg := &pb.Gossip{
-		MessageType: pb.MsgType_reqContractAck,
-		ContactRes: &pb.ReqContactACK{
-			ApplierId:  sub.NodeId,
-			SupplierId: node.peerId,
-		},
-	}
 
 	port := utils.GetConfig().GossipCtrlPort
 	conn, err := network.GetInstance().Connect(nil, addr, port)
@@ -109,6 +104,15 @@ func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAdd
 		return
 	}
 	defer conn.Close()
+
+	msg := &pb.Gossip{
+		MessageType: pb.MsgType_reqContractAck,
+		ContactRes: &pb.ReqContactACK{
+			Seq:        sub.Seq,
+			SupplierID: node.peerId,
+			Supplier:   nbsnet.ConvertToGossipAddr(conn.LocalAddr()),
+		},
+	}
 
 	msgData, err := proto.Marshal(msg)
 	if err != nil {

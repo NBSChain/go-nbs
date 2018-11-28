@@ -2,6 +2,7 @@ package nbsnet
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"net"
 	"strconv"
 )
@@ -92,4 +93,25 @@ func ExternalIP() []string {
 	}
 
 	return ips
+}
+
+func ConvertToGossipAddr(addr *NbsUdpAddr) *pb.BasicHost {
+	return &pb.BasicHost{
+		CanServer: addr.CanServe,
+		NatServer: addr.NatServer,
+		NatIP:     addr.NatIp,
+		NatPort:   addr.NatPort,
+		PriIP:     addr.PriIp,
+	}
+}
+
+func ConvertFromGossipAddr(addr *pb.BasicHost, PubIp string) *NbsUdpAddr {
+	return &NbsUdpAddr{
+		CanServe:  addr.CanServer,
+		NatServer: addr.NatServer,
+		NatIp:     addr.NatIP,
+		NatPort:   addr.NatPort,
+		PubIp:     PubIp,
+		PriIp:     addr.PriIP,
+	}
 }

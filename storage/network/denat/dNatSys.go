@@ -13,7 +13,6 @@ type DecenterNatSys interface {
 	GetValidServer() string
 	BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp
 	ProxyConnInvite(invite *net_pb.NatConnect) error
-	FindSerByPeerId(peerId string) string
 }
 
 //decentralized nat server = dns
@@ -69,7 +68,4 @@ func (s *ServerNode) BroadCast(request *net_pb.DeNatSysReq) *net_pb.DeNatSysRsp 
 
 func (s *ServerNode) ProxyConnInvite(invite *net_pb.NatConnect) error {
 	return nil
-}
-func (s *ServerNode) FindSerByPeerId(peerId string) string {
-	return s.hosts[0] //TIPS:: simply use the first server.
 }

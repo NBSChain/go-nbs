@@ -65,16 +65,12 @@ func (node *MemManager) registerMySelf() error {
 
 func (node *MemManager) sendInitSubToContactProxyNode(conn *nbsnet.NbsUdpConn) error {
 
-	lAddr := conn.LocAddr
-
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
-			NodeId:    node.peerId,
-			CanServer: lAddr.CanServe,
-			NatIP:     lAddr.NatIp,
-			NatPort:   lAddr.NatPort,
-			PriIP:     lAddr.PriIp,
+			Seq:    time.Now().Unix(),
+			NodeId: node.peerId,
+			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr),
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -119,8 +115,7 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,
 		InitACK: &pb.InitSubACK{
-			ContactId: node.peerId,
-			ApplierId: request.NodeId,
+			Seq: request.Seq,
 		},
 	}
 
@@ -135,15 +130,9 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 		param: make([]interface{}, 2),
 	}
 
-	rAddr := &nbsnet.NbsUdpAddr{
-		NetworkId: request.NodeId,
-		CanServe:  request.CanServer,
-		NatServer: request.NatServer,
-		NatIp:     request.NatIP,
-		NatPort:   request.NatPort,
-		PubIp:     peerAddr.IP.String(),
-		PriIp:     request.PriIP,
-	}
+	rAddr := nbsnet.ConvertFromGossipAddr(request.Addr, peerAddr.IP.String())
+	rAddr.NetworkId = request.NodeId
+
 	task.param[0] = request
 	task.param[1] = rAddr
 

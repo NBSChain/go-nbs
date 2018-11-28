@@ -7,5 +7,9 @@ option java_outer_classname = "BasicHost";
 package pb;
 
 message BasicHost{
-
+    bool   canServer    = 1;
+    string natServer    = 2;
+    string natIP        = 3;
+    int32  natPort      = 4;
+    string priIP        = 5;
 }

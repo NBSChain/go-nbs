@@ -108,9 +108,7 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 
 func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
 
-	remoteNatServer := denat.GetDeNatSerIns().FindSerByPeerId(rAddr.NetworkId)
-
-	conn, err := shareport.DialUDP("udp4", "", remoteNatServer)
+	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 	if err != nil {
 		return nil, err
 	}
