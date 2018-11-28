@@ -12,4 +12,5 @@ message BasicHost{
     string natIP        = 3;
     int32  natPort      = 4;
     string priIP        = 5;
+    string pubIp        = 6;
 }

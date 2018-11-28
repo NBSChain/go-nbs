@@ -136,7 +136,8 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
 			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.PubIp,
+			NatIp:     network.natAddr.NatIp,
+			PubIp:     network.natAddr.PubIp,
 			NatPort:   network.natAddr.NatPort,
 			PriIp:     host,
 			PriPort:   port,
@@ -175,8 +176,9 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
 			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.PubIp,
+			NatIp:     network.natAddr.NatIp,
 			NatPort:   network.natAddr.NatPort,
+			PubIp:     network.natAddr.PubIp,
 			PriIp:     host,
 			PriPort:   port,
 		},
@@ -221,7 +223,8 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
 			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.PubIp,
+			NatIp:     network.natAddr.NatIp,
+			PubIp:     network.natAddr.PubIp,
 			NatPort:   network.natAddr.NatPort,
 			PriIp:     host,
 			PriPort:   port,
@@ -269,7 +272,8 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 			NetworkId: network.networkId,
 			CanServe:  network.natAddr.CanServe,
 			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.PubIp,
+			NatIp:     network.natAddr.NatIp,
+			PubIp:     network.natAddr.PubIp,
 			NatPort:   network.natAddr.NatPort,
 			PriIp:     host,
 			PriPort:   port,
@@ -333,13 +337,14 @@ func (network *nbsNetwork) connectToNatServer(serverIP string) (*net.UDPConn, er
 	}
 
 	conn, err := net.DialUDP("udp4", nil, natServerAddr)
-
 	if err != nil {
 		return nil, err
 	}
 
-	conn.SetDeadline(time.Now().Add(nat.BootStrapNatServerTimeOutInSec * time.Second))
-
+	err = conn.SetDeadline(time.Now().Add(nat.BootStrapNatServerTimeOutInSec * time.Second))
+	if err != nil {
+		return nil, err
+	}
 	return conn, nil
 }
 

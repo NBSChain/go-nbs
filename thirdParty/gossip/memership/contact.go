@@ -10,44 +10,45 @@ import (
 	"math/big"
 )
 
-func (node *MemManager) findProperContactNode(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) findProperContactNode(sub *newSub) {
 
 	counter := 2 * len(node.partialView)
-	if counter == 0 {
-		node.actAsContact(request, applierAddr)
-		return
-	}
 
-	node.indirectTheSubRequest(request, applierAddr, counter)
+	node.indirectTheSubRequest(sub, counter)
 }
 
-func (node *MemManager) actAsContact(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) actAsContact(sub *newSub) {
 
 	count := len(node.partialView)
 	if count == 0 {
-		node.acceptSub(request, applierAddr)
+		node.acceptSub(sub)
 		return
 	}
 
 	for _, item := range node.partialView {
-		node.forwardSub(item, request, applierAddr)
+		node.forwardSub(item, sub)
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
 		item := node.choseRandomInPartialView()
-		node.forwardSub(item, request, applierAddr)
+		node.forwardSub(item, sub)
 	}
 }
 
-func (node *MemManager) indirectTheSubRequest(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr, counter int) {
+func (node *MemManager) indirectTheSubRequest(sub *newSub, counter int) {
+
+	if counter == 0 {
+		node.actAsContact(sub)
+		return
+	}
 
 	req := &pb.Gossip{
 		MessageType: pb.MsgType_reqContract,
 		ContactReq: &pb.ReqContact{
-			Seq:       request.Seq,
+			Seq:       sub.seq,
 			TTL:       int32(counter) - 1,
-			ApplierID: request.NodeId,
-			Applier:   request.Addr,
+			ApplierID: sub.nodeId,
+			Applier:   sub.addr,
 		},
 	}
 
@@ -67,7 +68,7 @@ func (node *MemManager) indirectTheSubRequest(request *pb.InitSub, applierAddr *
 	}
 
 	if forwardTime == 0 {
-		node.acceptSub(request, applierAddr)
+		node.acceptSub(sub)
 	}
 }
 
@@ -89,34 +90,38 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 	return <-task.err
 }
 
-func (node *MemManager) acceptSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) acceptSub(sub *newSub) {
 
-	_, ok := node.partialView[sub.NodeId]
+	_, ok := node.partialView[sub.nodeId]
 	if ok {
 		item := node.choseRandomInPartialView()
-		node.forwardSub(item, sub, addr)
+		node.forwardSub(item, sub)
 		return
 	}
-	conn, err := node.notifySubscriber(sub.Seq, addr)
+
+	addr := nbsnet.ConvertFromGossipAddr(sub.addr)
+	addr.NetworkId = sub.nodeId
+
+	conn, err := node.notifySubscriber(sub.seq, addr)
 	if nil != err {
 		logger.Error("failed to notify the subscriber:", err)
 		return
 	}
 
 	item := &peerNodeItem{
-		nodeId: sub.NodeId,
+		nodeId: sub.nodeId,
 		addr:   addr,
 		conn:   conn,
 	}
 
-	node.partialView[sub.NodeId] = item
+	node.partialView[sub.nodeId] = item
 	item.probability = 1 / float64(len(node.partialView))
 
 	//TODO:: ? need to update probability?
 	node.updateProbability(node.partialView)
 }
 
-func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
+func (node *MemManager) forwardSub(item *peerNodeItem, sub *newSub) {
 	//TODO::
 }
 

@@ -102,16 +102,17 @@ func ConvertToGossipAddr(addr *NbsUdpAddr) *pb.BasicHost {
 		NatIP:     addr.NatIp,
 		NatPort:   addr.NatPort,
 		PriIP:     addr.PriIp,
+		PubIp:     addr.PubIp,
 	}
 }
 
-func ConvertFromGossipAddr(addr *pb.BasicHost, PubIp string) *NbsUdpAddr {
+func ConvertFromGossipAddr(addr *pb.BasicHost) *NbsUdpAddr {
 	return &NbsUdpAddr{
 		CanServe:  addr.CanServer,
 		NatServer: addr.NatServer,
 		NatIp:     addr.NatIP,
 		NatPort:   addr.NatPort,
-		PubIp:     PubIp,
+		PubIp:     addr.PubIp,
 		PriIp:     addr.PriIP,
 	}
 }

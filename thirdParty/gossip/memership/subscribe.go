@@ -136,14 +136,14 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 
 	task := innerTask{
 		tType: ProxyInitSubRequest,
-		param: make([]interface{}, 2),
+		param: make([]interface{}, 1),
 	}
 
-	rAddr := nbsnet.ConvertFromGossipAddr(request.Addr, peerAddr.IP.String())
-	rAddr.NetworkId = request.NodeId
-
-	task.param[0] = request
-	task.param[1] = rAddr
+	task.param[0] = &newSub{
+		nodeId: request.NodeId,
+		seq:    request.Seq,
+		addr:   request.Addr,
+	}
 
 	node.taskSignal <- task
 }
@@ -160,7 +160,7 @@ func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) 
 
 	item := &peerNodeItem{
 		nodeId: ack.SupplierID,
-		addr:   nbsnet.ConvertFromGossipAddr(ack.Supplier, addr.IP.String()),
+		addr:   nbsnet.ConvertFromGossipAddr(ack.Supplier),
 	}
 
 	node.inputView[ack.SupplierID] = item

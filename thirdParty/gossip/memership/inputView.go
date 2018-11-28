@@ -36,6 +36,13 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) {
 	switch msg.MessageType {
 	case pb.MsgType_reqContract:
+		req := msg.ContactReq
+		sub := &newSub{
+			nodeId: req.ApplierID,
+			seq:    req.Seq,
+			addr:   req.Applier,
+		}
 
+		node.indirectTheSubRequest(sub, int(req.TTL))
 	}
 }

@@ -21,6 +21,12 @@ const (
 	KeepAliveWithPayLoad
 )
 
+type newSub struct {
+	nodeId string
+	seq    int64
+	addr   *pb.BasicHost
+}
+
 type peerNodeItem struct {
 	nodeId      string
 	probability float64
@@ -130,7 +136,7 @@ func (node *MemManager) taskWorker(task innerTask) {
 
 	switch task.tType {
 	case ProxyInitSubRequest:
-		node.findProperContactNode(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
+		node.findProperContactNode(task.param[0].(*newSub))
 	case KeepAliveWithPayLoad:
 		nodeId, payLoad := task.param[0].(string), task.param[1].([]byte)
 		err := node.keepAliveWithData(nodeId, payLoad)
