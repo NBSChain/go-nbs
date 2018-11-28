@@ -2,6 +2,7 @@ package memership
 
 import (
 	"crypto/rand"
+	"fmt"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/golang/protobuf/proto"
 	"math/big"
@@ -28,7 +29,6 @@ func (node *MemManager) keepAlive() {
 	keepAlive := &pb.Gossip{
 		MessageType: pb.MsgType_heartBeat,
 		HeartBeat: &pb.HeartBeat{
-			Type:    pb.MsgType_heartBeat,
 			Sender:  node.nodeID,
 			SeqNo:   time.Now().Unix(),
 			Payload: nil,
@@ -47,7 +47,9 @@ func (node *MemManager) keepAlive() {
 		if _, err := item.conn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			item.conn.Close()
+			if err := item.conn.Close(); err != nil {
+				logger.Warning(err)
+			}
 			continue
 		}
 
@@ -55,12 +57,11 @@ func (node *MemManager) keepAlive() {
 	}
 }
 
-func (node *MemManager) keepAliveWithData(Typ pb.MsgType, payLoad []byte, nodeId string) {
+func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 
 	keepAlive := &pb.Gossip{
 		MessageType: pb.MsgType_heartBeat,
 		HeartBeat: &pb.HeartBeat{
-			Type:    Typ,
 			Sender:  node.nodeID,
 			SeqNo:   time.Now().Unix(),
 			Payload: payLoad,
@@ -73,19 +74,21 @@ func (node *MemManager) keepAliveWithData(Typ pb.MsgType, payLoad []byte, nodeId
 		item, ok := node.partialView[nodeId]
 		if !ok {
 			logger.Error("can't find the target peer node.")
-			return
+			return fmt.Errorf("can't find the target peer node")
 		}
 
 		if _, err := item.conn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			item.conn.Close()
-			return
+			if err := item.conn.Close(); err != nil {
+				logger.Warning(err)
+			}
+			return fmt.Errorf("can't find the target peer node:->nodeId:%s,err:%s", nodeId, err.Error())
 		}
 
 		item.updateTime = time.Now()
 
-		return
+		return nil
 	}
 
 	//TIPS::broadcast
@@ -93,11 +96,13 @@ func (node *MemManager) keepAliveWithData(Typ pb.MsgType, payLoad []byte, nodeId
 		if _, err := item.conn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			item.conn.Close()
+			if err := item.conn.Close(); err != nil {
+				logger.Warning(err)
+			}
 			continue
 		}
 
 		item.updateTime = time.Now()
 	}
-
+	return nil
 }

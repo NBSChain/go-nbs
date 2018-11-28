@@ -41,7 +41,7 @@ func (node *MemManager) registerMySelf() error {
 
 		conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut))
 
-		if err := node.sendInitSubToContactProxyNode(conn); err != nil {
+		if err := node.acquireProxy(conn); err != nil {
 			logger.Error("send init sub request failed:", err)
 			goto CloseConn
 		}
@@ -63,7 +63,7 @@ func (node *MemManager) registerMySelf() error {
 	return nil
 }
 
-func (node *MemManager) sendInitSubToContactProxyNode(conn *nbsnet.NbsUdpConn) error {
+func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_init,
@@ -159,10 +159,10 @@ func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) 
 	}
 
 	item := &peerNodeItem{
-		nodeId:      ack.SupplierID,
-		probability: 1, //TODO::
-		addr:        nbsnet.ConvertFromGossipAddr(ack.Supplier, addr.IP.String()),
+		nodeId: ack.SupplierID,
+		addr:   nbsnet.ConvertFromGossipAddr(ack.Supplier, addr.IP.String()),
 	}
 
 	node.inputView[ack.SupplierID] = item
+	item.probability = 1 / float64(len(node.inputView))
 }

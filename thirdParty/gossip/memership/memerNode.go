@@ -13,12 +13,11 @@ import (
 type TaskType int
 
 const (
-	MemberShipKeepAlive = time.Second * 10
+	MemberShipKeepAlive = time.Second * 10 //TODO::?? heart beat time interval.
 )
 
 const (
 	ProxyInitSubRequest TaskType = iota + 1
-	KeepAliveSend
 	KeepAliveWithPayLoad
 )
 
@@ -32,6 +31,7 @@ type peerNodeItem struct {
 
 type innerTask struct {
 	tType TaskType
+	err   chan error
 	param []interface{}
 }
 
@@ -118,7 +118,7 @@ func (node *MemManager) receivingCmd() {
 		case pb.MsgType_reqContractAck:
 			node.subToContract(message.ContactRes, peerAddr)
 		case pb.MsgType_heartBeat:
-			node.pareKeepAlive(message.HeartBeat, peerAddr)
+			node.handleKeepAlive(message.HeartBeat, peerAddr)
 
 		default:
 			continue
@@ -132,8 +132,9 @@ func (node *MemManager) taskWorker(task innerTask) {
 	case ProxyInitSubRequest:
 		node.findProperContactNode(task.param[0].(*pb.InitSub), task.param[1].(*nbsnet.NbsUdpAddr))
 	case KeepAliveWithPayLoad:
-		Typ, payLoad, nodeId := task.param[0].(pb.MsgType), task.param[1].([]byte), task.param[2].(string)
-		node.keepAliveWithData(Typ, payLoad, nodeId)
+		nodeId, payLoad := task.param[0].(string), task.param[1].([]byte)
+		err := node.keepAliveWithData(nodeId, payLoad)
+		task.err <- err
 	}
 }
 

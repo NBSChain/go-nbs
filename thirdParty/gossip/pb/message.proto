@@ -28,10 +28,9 @@ enum MsgType {
 }
 
 message HeartBeat{
-    MsgType type    = 1;
-    string  sender  = 2;
-    int64   seqNo   = 3;
-    bytes   payload = 4;
+    string  sender  = 1;
+    int64   seqNo   = 2;
+    bytes   payload = 3;
 }
 
 message gossip {

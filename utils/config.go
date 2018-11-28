@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -25,8 +26,8 @@ type Configure struct {
 }
 
 const (
-	cmdServicePort   = "6080"
 	currentVersion   = "0.1.4"
+	cmdServicePort   = 10001
 	natServerPort    = 11001
 	natChanSerPort   = 11002
 	gossipCtrlPort   = 12001
@@ -84,7 +85,7 @@ func initConfig() *Configure {
 		BlocksDir:         blockStoreDir,
 		ShardFun:          "/repo/flatfs/shard/v1/next-to-last/2",
 		LogFileName:       logFileName,
-		CmdServicePort:    cmdServicePort,
+		CmdServicePort:    strconv.Itoa(cmdServicePort),
 		CurrentVersion:    currentVersion,
 		SysTimeFormat:     "2006-01-02 15:04:05",
 		BootStrapPeers:    defaultBootstrapAddresses,

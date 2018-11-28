@@ -12,24 +12,13 @@ import (
 
 func (node *MemManager) findProperContactNode(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
 
-	//TODO::implement the indirect mechanism .
-	counter := len(node.partialView)
+	counter := 2 * len(node.partialView)
 	if counter == 0 {
 		node.actAsContact(request, applierAddr)
 		return
 	}
 
-	req := &pb.Gossip{
-		MessageType: pb.MsgType_reqContract,
-		ContactReq: &pb.ReqContact{
-			Seq:       request.Seq,
-			TTL:       int32(counter),
-			ApplierID: request.NodeId,
-			Applier:   request.Addr,
-		},
-	}
-
-	node.indirectTheSubRequest(req)
+	node.indirectTheSubRequest(request, applierAddr, counter)
 }
 
 func (node *MemManager) actAsContact(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr) {
@@ -50,23 +39,54 @@ func (node *MemManager) actAsContact(request *pb.InitSub, applierAddr *nbsnet.Nb
 	}
 }
 
-func (node *MemManager) indirectTheSubRequest(gossip *pb.Gossip) {
+func (node *MemManager) indirectTheSubRequest(request *pb.InitSub, applierAddr *nbsnet.NbsUdpAddr, counter int) {
+
+	req := &pb.Gossip{
+		MessageType: pb.MsgType_reqContract,
+		ContactReq: &pb.ReqContact{
+			Seq:       request.Seq,
+			TTL:       int32(counter) - 1,
+			ApplierID: request.NodeId,
+			Applier:   request.Addr,
+		},
+	}
 
 	node.updateProbability(node.partialView)
 
+	var forwardTime int
 	for _, view := range node.partialView {
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
 
-		if pro.Int64() < int64(view.probability*100) {
+		if pro.Int64() > int64(view.probability*100) {
 			continue
 		}
 
-		node.forwardContactRequest(view, gossip)
+		if err := node.forwardContactRequest(view, req); err == nil {
+			forwardTime++
+		}
+	}
+
+	if forwardTime == 0 {
+		node.acceptSub(request, applierAddr)
 	}
 }
 
-func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb.Gossip) {
-	//TODO:: make connection to him and send the request.
+func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb.Gossip) error {
+
+	data, _ := proto.Marshal(gossip)
+
+	task := innerTask{
+		tType: KeepAliveWithPayLoad,
+		param: make([]interface{}, 3),
+		err:   make(chan error),
+	}
+
+	task.param[0] = peerNode.nodeId
+	task.param[1] = data
+
+	node.taskSignal <- task
+
+	return <-task.err
 }
 
 func (node *MemManager) acceptSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
@@ -77,19 +97,20 @@ func (node *MemManager) acceptSub(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) {
 		node.forwardSub(item, sub, addr)
 		return
 	}
-	conn, err := node.notifySubscriber(sub, addr)
+	conn, err := node.notifySubscriber(sub.Seq, addr)
 	if nil != err {
 		logger.Error("failed to notify the subscriber:", err)
 		return
 	}
 
 	item := &peerNodeItem{
-		nodeId:      sub.NodeId,
-		addr:        addr,
-		probability: 1, //TODO::
-		conn:        conn,
+		nodeId: sub.NodeId,
+		addr:   addr,
+		conn:   conn,
 	}
+
 	node.partialView[sub.NodeId] = item
+	item.probability = 1 / float64(len(node.partialView))
 
 	//TODO:: ? need to update probability?
 	node.updateProbability(node.partialView)
@@ -99,7 +120,7 @@ func (node *MemManager) forwardSub(item *peerNodeItem, sub *pb.InitSub, addr *nb
 	//TODO::
 }
 
-func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
+func (node *MemManager) notifySubscriber(Seq int64, addr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
 
 	port := utils.GetConfig().GossipCtrlPort
 	conn, err := network.GetInstance().Connect(nil, addr, port)
@@ -111,19 +132,18 @@ func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAdd
 	msg := &pb.Gossip{
 		MessageType: pb.MsgType_reqContractAck,
 		ContactRes: &pb.ReqContactACK{
-			Seq:        sub.Seq,
+			Seq:        Seq,
 			SupplierID: node.nodeID,
 			Supplier:   nbsnet.ConvertToGossipAddr(conn.LocalAddr()),
 		},
 	}
 
-	msgData, err := proto.Marshal(msg)
-	if err != nil {
-		logger.Error("failed to marshal the contact init msg:", err)
+	msgData, _ := proto.Marshal(msg)
+
+	if _, err := conn.Send(msgData); err != nil {
+		logger.Warning("failed to send data to notify subscriber.", err)
 		return nil, err
 	}
-
-	conn.Send(msgData)
 
 	return conn, nil
 }
