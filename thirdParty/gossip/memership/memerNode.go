@@ -27,7 +27,7 @@ type innerTask struct {
 }
 
 type MemManager struct {
-	peerId      string
+	nodeID      string
 	serviceConn *nbsnet.NbsUdpConn
 	inputView   map[string]*peerNodeItem
 	partialView map[string]*peerNodeItem
@@ -41,7 +41,7 @@ var (
 func NewMemberNode(peerId string) *MemManager {
 
 	node := &MemManager{
-		peerId:      peerId,
+		nodeID:      peerId,
 		taskSignal:  make(chan innerTask),
 		inputView:   make(map[string]*peerNodeItem),
 		partialView: make(map[string]*peerNodeItem),
@@ -61,6 +61,7 @@ func (node *MemManager) InitNode() error {
 	go node.taskDispatcher()
 
 	if err := node.registerMySelf(); err != nil {
+		logger.Warning(err)
 		return err
 	}
 

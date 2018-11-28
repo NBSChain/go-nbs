@@ -47,7 +47,7 @@ func (node *MemManager) registerMySelf() error {
 		}
 
 		if err := node.checkProxyValidation(conn); err == nil {
-			logger.Debug("find gossip contact server success.")
+			logger.Debug("find gossip contact server success.", serverIp)
 			success = true
 			break
 		}
@@ -69,7 +69,7 @@ func (node *MemManager) sendInitSubToContactProxyNode(conn *nbsnet.NbsUdpConn) e
 		MessageType: pb.MsgType_init,
 		InitMsg: &pb.InitSub{
 			Seq:    time.Now().Unix(),
-			NodeId: node.peerId,
+			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr),
 		},
 	}
@@ -102,6 +102,10 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return fmt.Errorf("failed to send init sub request")
 	}
 
+	if msg.InitACK.SupplierID == node.nodeID {
+		return fmt.Errorf("it's yourself")
+	}
+
 	return nil
 }
 
@@ -115,13 +119,18 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 	message := &pb.Gossip{
 		MessageType: pb.MsgType_initACK,
 		InitACK: &pb.InitSubACK{
-			Seq: request.Seq,
+			Seq:        request.Seq,
+			SupplierID: node.nodeID,
 		},
 	}
 
 	msgData, _ := proto.Marshal(message)
 	if _, err := node.serviceConn.WriteToUDP(msgData, peerAddr); err != nil {
 		logger.Warning("failed to send init ack msg:", err)
+		return
+	}
+
+	if node.nodeID == request.NodeId {
 		return
 	}
 

@@ -109,7 +109,7 @@ func (node *MemManager) notifySubscriber(sub *pb.InitSub, addr *nbsnet.NbsUdpAdd
 		MessageType: pb.MsgType_reqContractAck,
 		ContactRes: &pb.ReqContactACK{
 			Seq:        sub.Seq,
-			SupplierID: node.peerId,
+			SupplierID: node.nodeID,
 			Supplier:   nbsnet.ConvertToGossipAddr(conn.LocalAddr()),
 		},
 	}

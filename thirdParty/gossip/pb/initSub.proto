@@ -16,6 +16,7 @@ message InitSub{
 
 message InitSubACK{
     int64 seq            = 1;
+    string supplierID    = 2;
 }
 
 message ReqContact{
