@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
@@ -12,6 +11,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -79,9 +79,17 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.natManager = nat.NewNatManager(network.networkId)
 
-	err := network.findWhoAmI()
-	if err != nil {
-		return err
+	success := false
+	for _, serverIp := range utils.GetConfig().NatServerIP {
+		//serverHost := denat.GetDeNatSerIns().GetValidServer()
+		port := strconv.Itoa(utils.GetConfig().NatServerPort)
+		if err := network.findWhoAmI(net.JoinHostPort(serverIp, port)); err == nil {
+			success = true
+			break
+		}
+	}
+	if !success {
+		return fmt.Errorf("failed to find who am I")
 	}
 
 	network.natAddr.NetworkId = peerId
@@ -282,9 +290,8 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 	return conn, nil
 }
 
-func (network *nbsNetwork) findWhoAmI() error {
+func (network *nbsNetwork) findWhoAmI(serverHost string) error {
 
-	serverHost := denat.GetDeNatSerIns().GetValidServer()
 	conn, err := network.connectToNatServer(serverHost)
 	if err != nil {
 		logger.Error("can't know who am I:->", err)
