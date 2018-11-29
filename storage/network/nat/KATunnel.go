@@ -14,6 +14,14 @@ const (
 	KeepAliveTime       = time.Second * 15
 	KeepAliveTimeOut    = 45
 	HolePunchingTimeOut = 6
+	BootStrapTimeOut    = time.Second * 4
+)
+
+const (
+	_ int32 = iota
+	FromPriNet
+	FromPubNet
+	ToPubNet
 )
 
 type ProxyTask struct {

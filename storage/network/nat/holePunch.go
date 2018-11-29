@@ -75,7 +75,8 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigIn,
 		HoleMsg: &net_pb.HoleDig{
-			SessionId: sessionID,
+			SessionId:   sessionID,
+			NetworkType: FromPubNet,
 		},
 	}
 	data, _ := proto.Marshal(holeMsg)
@@ -161,7 +162,8 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigOut,
 		HoleMsg: &net_pb.HoleDig{
-			SessionId: sessionId,
+			SessionId:   sessionId,
+			NetworkType: ToPubNet,
 		},
 	}
 	data, _ := proto.Marshal(holeMsg)
@@ -202,7 +204,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 	delete(tunnel.workLoad, sessionId)
 }
 
-func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig) {
+func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
 
 	sessionId := msg.SessionId
 
@@ -216,5 +218,15 @@ func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig) {
 	if pTask, ok := tunnel.workLoad[sessionId]; ok {
 		pTask.digResult <- nil
 		go pTask.relayData()
+	}
+
+	res := &net_pb.NatResponse{
+		MsgType: net_pb.NatMsgType_DigSuccess,
+		HoleMsg: msg,
+	}
+
+	data, _ := proto.Marshal(res)
+	if _, err := tunnel.serverHub.WriteTo(data, peerAddr); err != nil {
+		logger.Warning("failed to response the dig confirm.")
 	}
 }

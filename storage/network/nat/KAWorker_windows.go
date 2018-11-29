@@ -37,7 +37,7 @@ func (tunnel *KATunnel) listening() {
 		case net_pb.NatMsgType_Connect:
 			tunnel.digOut(response.ConnRes)
 		case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
-			tunnel.digSuccess(response.HoleMsg)
+			tunnel.digSuccess(response.HoleMsg, peerAddr)
 		}
 	}
 }

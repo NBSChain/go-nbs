@@ -12,8 +12,9 @@ enum NatMsgType {
     Ping            = 4;
     DigIn           = 5;
     DigOut          = 6;
-    ReverseDig      = 7;
-    ReverseDigACK   = 8;
+    DigSuccess      = 7;
+    ReverseDig      = 8;
+    ReverseDigACK   = 9;
     error           = 20;
 }
 
@@ -49,7 +50,7 @@ message NatKeepAlive {
     string nodeId  = 1;
     string lAddr   = 2;
     string PubIP   = 3;
-    int32 PubPort = 4;
+    int32 PubPort  = 4;
 }
 
 message NatPing {
@@ -60,7 +61,8 @@ message NatPing {
 }
 
 message HoleDig {
-    string sessionId = 1;
+    string sessionId  = 1;
+    int32 networkType = 2;
 }
 
 message ErrorNotify {

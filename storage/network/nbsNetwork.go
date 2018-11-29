@@ -326,7 +326,7 @@ func (network *nbsNetwork) findWhoAmI(serverHost string) error {
 		case c := <-network.natManager.WaitNatConfirm():
 			addr.CanServe = c
 
-		case <-time.After(time.Second * nat.BootStrapNatServerTimeOutInSec / 2):
+		case <-time.After(nat.BootStrapTimeOut / 2):
 			addr.CanServe = false
 		}
 	}
@@ -348,7 +348,7 @@ func (network *nbsNetwork) connectToNatServer(serverIP string) (*net.UDPConn, er
 		return nil, err
 	}
 
-	err = conn.SetDeadline(time.Now().Add(nat.BootStrapNatServerTimeOutInSec * time.Second))
+	err = conn.SetDeadline(time.Now().Add(nat.BootStrapTimeOut))
 	if err != nil {
 		return nil, err
 	}

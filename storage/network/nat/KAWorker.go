@@ -54,7 +54,7 @@ func (tunnel *KATunnel) process(buffer []byte, peerAddr *net.UDPAddr) error {
 
 	switch request.MsgType {
 	case net_pb.NatMsgType_DigOut, net_pb.NatMsgType_DigIn:
-		tunnel.digSuccess(request.HoleMsg)
+		tunnel.digSuccess(request.HoleMsg, peerAddr)
 	}
 
 	return nil

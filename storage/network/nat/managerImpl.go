@@ -112,21 +112,27 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigIn,
 		HoleMsg: &net_pb.HoleDig{
-			SessionId: sessionID,
+			SessionId:   sessionID,
+			NetworkType: FromPriNet,
 		},
 	}
 	data, _ := proto.Marshal(holeMsg)
 
-	conn.SetWriteDeadline(time.Now().Add(time.Second * HolePunchingTimeOut / 2))
+	conn.SetDeadline(time.Now().Add(time.Second * HolePunchingTimeOut / 2))
 	if _, err := conn.Write(data); err != nil {
 		logger.Warning("Step 2-2:->can't dial by private network.")
+		return
+	}
+	buffer := make([]byte, utils.NormalReadBuffer)
+	if _, err := conn.Read(buffer); err != nil {
+		logger.Warning("Step 2-3:->can't dial by private network.")
 		return
 	}
 
 	task.UdpConn = conn
 	task.Err <- err
 
-	logger.Info("Step 2-1:->dig in private network success:->",
+	logger.Info("Step 2-4:->dig in private network success:->",
 		conn.LocalAddr().String(), conn.RemoteAddr().String())
 }
 

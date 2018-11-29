@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const BootStrapNatServerTimeOutInSec = 4
-
 func (nat *Manager) pong(ping *net_pb.NatPing, peerAddr *net.UDPAddr) error {
 
 	if ping.TTL <= 0 {
@@ -98,7 +96,7 @@ func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, *net_pb
 		return nil, nil, err
 	}
 
-	conn.SetDeadline(time.Now().Add(time.Second * BootStrapNatServerTimeOutInSec / 2))
+	conn.SetDeadline(time.Now().Add(BootStrapTimeOut / 2))
 
 	ping := &net_pb.NatPing{
 		Ping:  nat.networkId,
