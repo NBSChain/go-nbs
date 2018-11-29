@@ -94,7 +94,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 	return nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
 }
 
-func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int) {
+func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int, sessionID string) {
 
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP:   net.ParseIP(lAddr.PriIp),
@@ -105,9 +105,24 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	})
 
 	if err != nil {
-		logger.Warning("can't dial by private network.", lAddr.PriIp, lAddr.PriPort, rAddr.PriIp, toPort)
+		logger.Warning("Step 2-1:can't dial by private network.")
 		return
 	}
+
+	holeMsg := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_DigIn,
+		HoleMsg: &net_pb.HoleDig{
+			SessionId: sessionID,
+		},
+	}
+	data, _ := proto.Marshal(holeMsg)
+
+	conn.SetWriteDeadline(time.Now().Add(time.Second * HolePunchingTimeOut / 2))
+	if _, err := conn.Write(data); err != nil {
+		logger.Warning("Step 2-2:->can't dial by private network.")
+		return
+	}
+
 	task.UdpConn = conn
 	task.Err <- err
 
