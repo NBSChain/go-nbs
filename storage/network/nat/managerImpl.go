@@ -50,6 +50,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 	netNatAddr.NatServer = serverHost
 
 	tunnel := &KATunnel{
+		natChanged: make(chan struct{}),
 		networkId:  nat.networkId,
 		natAddr:    netNatAddr,
 		serverHub:  listener,
@@ -69,6 +70,10 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 	go tunnel.connManage()
 
 	nat.NatKATun = tunnel
+	select {
+	case <-tunnel.natChanged:
+	case <-time.After(time.Second * 2):
+	}
 
 	return nil
 }

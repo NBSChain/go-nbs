@@ -28,6 +28,7 @@ type ConnTask struct {
 }
 
 type KATunnel struct {
+	natChanged chan struct{}
 	natAddr    *nbsnet.NbsUdpAddr
 	networkId  string
 	serverHub  *net.UDPConn
@@ -134,7 +135,7 @@ func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.NatKeepAlive) {
 
 		tunnel.natAddr.NatIp = alive.PubIP
 		tunnel.natAddr.NatPort = alive.PubPort
-		//TODO::tell other node ,this has changed.
+		tunnel.natChanged <- struct{}{}
 		logger.Info("node's nat info changed.")
 	}
 }

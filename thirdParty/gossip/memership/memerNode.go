@@ -18,7 +18,6 @@ const (
 
 const (
 	ProxyInitSubRequest TaskType = iota + 1
-	KeepAliveWithPayLoad
 )
 
 type newSub struct {
@@ -137,10 +136,6 @@ func (node *MemManager) taskWorker(task innerTask) {
 	switch task.tType {
 	case ProxyInitSubRequest:
 		node.findProperContactNode(task.param[0].(*newSub))
-	case KeepAliveWithPayLoad:
-		nodeId, payLoad := task.param[0].(string), task.param[1].([]byte)
-		err := node.keepAliveWithData(nodeId, payLoad)
-		task.err <- err
 	}
 }
 
@@ -149,7 +144,7 @@ func (node *MemManager) taskDispatcher() {
 	for {
 		select {
 		case task := <-node.taskSignal:
-			node.taskWorker(task)
+			go node.taskWorker(task)
 		case <-time.After(MemberShipKeepAlive):
 			node.keepAlive()
 		}

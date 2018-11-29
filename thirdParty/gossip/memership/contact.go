@@ -76,18 +76,7 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 
 	data, _ := proto.Marshal(gossip)
 
-	task := innerTask{
-		tType: KeepAliveWithPayLoad,
-		param: make([]interface{}, 3),
-		err:   make(chan error),
-	}
-
-	task.param[0] = peerNode.nodeId
-	task.param[1] = data
-
-	node.taskSignal <- task
-
-	return <-task.err
+	return node.keepAliveWithData(peerNode.nodeId, data)
 }
 
 func (node *MemManager) acceptSub(sub *newSub) {
