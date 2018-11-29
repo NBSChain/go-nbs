@@ -99,7 +99,7 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	})
 
 	if err != nil {
-		logger.Debug("can't dial by private network.")
+		logger.Debug("can't dial by private network.", lAddr.PriIp, lAddr.PriPort, rAddr.PriIp, toPort)
 		return
 	}
 	task.UdpConn = conn

@@ -54,7 +54,7 @@ func (node *MemManager) keepAlive() {
 		}
 
 		item.updateTime = now
-		logger.Debug("send gossip heart beat to :->", nodeId, item)
+		logger.Debug("normal send gossip heart beat to :->", nodeId, item.addr)
 	}
 }
 
@@ -89,6 +89,7 @@ func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 
 		item.updateTime = time.Now()
 
+		logger.Debug("send gossip heart beat with payload :->", nodeId, item.addr)
 		return nil
 	}
 
@@ -105,5 +106,6 @@ func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 
 		item.updateTime = time.Now()
 	}
+	logger.Debug(" broad cast heart beat with payload :->", nodeId, len(node.partialView))
 	return nil
 }

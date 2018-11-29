@@ -36,7 +36,9 @@ func newNbsGossip() *nbsGossip {
 	if peerId == "" {
 		logger.Warning("no account right now, so the message gossip can't setup")
 	} else {
-		gossipObj.StartUp(peerId)
+		if err := gossipObj.StartUp(peerId); err != nil {
+			logger.Error("gossip start failed:", err)
+		}
 	}
 
 	return gossipObj
@@ -72,7 +74,9 @@ func (manager *nbsGossip) StartUp(peerId string) error {
 	manager.peerId = peerId
 
 	memberNode := memership.NewMemberNode(peerId)
-	memberNode.InitNode()
+	if err := memberNode.InitNode(); err != nil {
+		return err
+	}
 	manager.memberManager = memberNode
 
 	logger.Info("gossip service start up......")

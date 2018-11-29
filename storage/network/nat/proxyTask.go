@@ -1,5 +1,5 @@
 package nat
 
-func (proxier *ProxyTask) relayData() {
+func (task *ProxyTask) relayData() {
 
 }

@@ -29,7 +29,7 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 		logger.Warning("keep alive payload err:->", err)
 		return
 	}
-
+	logger.Debug("get gossip heart beat with payload:", msg)
 	node.ctrlMsg(msg, addr)
 }
 
