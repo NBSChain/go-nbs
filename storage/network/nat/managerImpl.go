@@ -89,7 +89,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 		return nil, err
 	}
 
-	go nat.directDialInPriNet(lAddr, rAddr, connChan, toPort)
+	go nat.directDialInPriNet(lAddr, rAddr, connChan, toPort, connId)
 
 	return nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
 }
