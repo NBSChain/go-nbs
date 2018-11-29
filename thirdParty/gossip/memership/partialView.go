@@ -54,6 +54,7 @@ func (node *MemManager) keepAlive() {
 		}
 
 		item.updateTime = now
+		logger.Debug("send gossip heart beat to :->", nodeId, item)
 	}
 }
 

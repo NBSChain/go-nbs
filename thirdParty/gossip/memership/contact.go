@@ -8,6 +8,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"math/big"
+	"time"
 )
 
 func (node *MemManager) findProperContactNode(sub *newSub) {
@@ -92,8 +93,8 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 
 func (node *MemManager) acceptSub(sub *newSub) {
 
-	_, ok := node.partialView[sub.nodeId]
-	if ok {
+	item, ok := node.partialView[sub.nodeId]
+	if ok && time.Now().Sub(item.updateTime) > MemberShipKeepAlive {
 		item := node.choseRandomInPartialView()
 		node.forwardSub(item, sub)
 		return
@@ -108,7 +109,7 @@ func (node *MemManager) acceptSub(sub *newSub) {
 		return
 	}
 
-	item := &peerNodeItem{
+	item = &peerNodeItem{
 		nodeId: sub.nodeId,
 		addr:   addr,
 		conn:   conn,
