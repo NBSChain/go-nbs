@@ -96,8 +96,6 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 
 func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int) {
 
-	logger.Info("Step 2-1:->dig in private network:->", lAddr, rAddr, toPort)
-
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP:   net.ParseIP(lAddr.PriIp),
 		Port: int(lAddr.PriPort),
@@ -112,6 +110,9 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	}
 	task.UdpConn = conn
 	task.Err <- err
+
+	logger.Info("Step 2-1:->dig in private network success:->",
+		conn.LocalAddr().String(), conn.RemoteAddr().String())
 }
 
 func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {

@@ -27,7 +27,7 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		logger.Debug("server hub connection :", response)
+		logger.Debug("server hub connection :", response, peerAddr)
 
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:
@@ -36,6 +36,8 @@ func (tunnel *KATunnel) listening() {
 			tunnel.answerInvite(response.Invite)
 		case net_pb.NatMsgType_Connect:
 			tunnel.digOut(response.ConnRes)
+		case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
+			tunnel.digSuccess(response.HoleMsg)
 		}
 	}
 }
