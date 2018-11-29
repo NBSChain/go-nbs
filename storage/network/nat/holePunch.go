@@ -6,6 +6,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
@@ -91,11 +92,21 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 
 	for i := 0; i < HolePunchingTimeOut; i++ {
 
+		logger.Info("Step 4:-> I start to dig in:->", i, pubAddr, tunnel.sharedAddr)
+
 		if _, err := conn.Write(data); err != nil {
 			logger.Error(err)
 		}
+		conn.SetReadDeadline(time.Now().Add(time.Second))
+		buffer := make([]byte, utils.NormalReadBuffer)
+		if _, err := conn.Read(buffer); err != nil {
+			logger.Warning("dig read failed:->", err)
+		} else {
+			msg := &net_pb.NatResponse{}
+			proto.Unmarshal(buffer, msg)
+			logger.Info("read dig res:->", msg)
+		}
 
-		logger.Info("Step 4:-> I start to dig in:->", i, pubAddr, tunnel.sharedAddr)
 		select {
 		case err := <-task.Err:
 			if err == nil {
@@ -110,7 +121,7 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 				return nil, err
 			}
 		default:
-			time.Sleep(time.Second)
+			logger.Debug("retry again......")
 		}
 	}
 

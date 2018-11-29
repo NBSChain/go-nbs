@@ -105,7 +105,7 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	})
 
 	if err != nil {
-		logger.Warning("Step 2-1:can't dial by private network.")
+		logger.Warning("Step 2-1:can't dial by private network.", err)
 		return
 	}
 
@@ -120,12 +120,12 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 
 	conn.SetDeadline(time.Now().Add(time.Second * HolePunchingTimeOut / 2))
 	if _, err := conn.Write(data); err != nil {
-		logger.Warning("Step 2-2:->can't dial by private network.")
+		logger.Warning("Step 2-2:->can't dial by private network.", err)
 		return
 	}
 	buffer := make([]byte, utils.NormalReadBuffer)
 	if _, err := conn.Read(buffer); err != nil {
-		logger.Warning("Step 2-3:->can't dial by private network.")
+		logger.Warning("Step 2-3:->can't dial by private network.", err)
 		return
 	}
 
