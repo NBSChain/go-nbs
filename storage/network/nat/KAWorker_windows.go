@@ -15,7 +15,7 @@ func (tunnel *KATunnel) listening() {
 
 	for {
 		responseData := make([]byte, utils.NormalReadBuffer)
-		hasRead, peerAddr, err := tunnel.serverHub.ReadFrom(responseData)
+		hasRead, peerAddr, err := tunnel.serverHub.ReadFromUDP(responseData)
 		if err != nil {
 			logger.Warning("receiving port:", err, peerAddr)
 			continue
