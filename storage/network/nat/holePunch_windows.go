@@ -54,7 +54,7 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 	}
 
 	tunnel.inviteTask[connId] = connChan
-	logger.Info("Step 1:->notify the nat server:->", request)
+	logger.Info("Step 1:->notify the nat server:->", connReq)
 
 	return connChan, nil
 }
