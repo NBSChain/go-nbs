@@ -54,7 +54,7 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 	}
 
 	tunnel.inviteTask[connId] = connChan
-	logger.Info("Step 1:->notify the nat server:->", connReq)
+	logger.Info("Step 1:->notify the nat server:->")
 
 	return connChan, nil
 }
@@ -80,15 +80,16 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	for i := 0; i < HolePunchingTimeOut; i++ {
 
 		conn.Write(data)
-		logger.Info("Step 4:-> I start to dig in:->", holeMsg)
+		logger.Info("Step 4:-> I start to dig in:->", i, pubAddr, tunnel.sharedAddr)
 
 		select {
 		case err := <-task.Err:
 			if err == nil {
 				if task.UdpConn != nil { //private network succes
+					logger.Info("Step 6-1:-> create connection from task.UdpConn:->")
 					return task.UdpConn, nil
 				} else { //this conn works
-					logger.Info("Step 6:-> create connection from I success:->")
+					logger.Info("Step 6-2:-> create connection from this conn:->")
 					return conn, nil
 				}
 			} else {
@@ -163,12 +164,16 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	for i := 0; i < HolePunchingTimeOut; i++ {
 
-		tunnel.serverHub.WriteTo(data, remNatAddr)
+		if _, err := tunnel.serverHub.WriteTo(data, remNatAddr); err != nil {
+			logger.Error(err.Error())
+		}
+
+		logger.Info("Step 3:-> peer start to dig out:->", holeMsg)
 
 		select {
 		case err := <-task.digResult:
 			if err != nil {
-				logger.Errorf("failed to dig out", err)
+				logger.Error("failed to dig out", err)
 			} else {
 				logger.Info("Step 7:->peer packet in :->")
 			}
@@ -178,7 +183,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 		}
 	}
 
-	logger.Errorf("dig out time out")
+	logger.Error("dig out time out")
 	delete(tunnel.workLoad, sessionId)
 }
 

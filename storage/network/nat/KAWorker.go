@@ -31,7 +31,7 @@ func (tunnel *KATunnel) readKeepAlive() {
 			logger.Warning("keep alive response Unmarshal failed:", err)
 		}
 
-		logger.Info("keep alive:", response)
+		logger.Debug("keep alive:", response)
 
 		switch response.MsgType {
 		case net_pb.NatMsgType_KeepAlive:

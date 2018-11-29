@@ -75,8 +75,6 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 		return err
 	}
 
-	logger.Debug("keep alive channel start")
-
 	if no, err := tunnel.kaConn.Write(requestData); err != nil || no == 0 {
 		logger.Warning("failed to send keep alive channel message:", err)
 		return err
