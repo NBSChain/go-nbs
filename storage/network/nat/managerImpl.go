@@ -95,6 +95,9 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 }
 
 func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int) {
+
+	logger.Info("Step 2-1:->dig in private network:->", lAddr, rAddr, toPort)
+
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP:   net.ParseIP(lAddr.PriIp),
 		Port: int(lAddr.PriPort),
@@ -104,7 +107,7 @@ func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *Co
 	})
 
 	if err != nil {
-		logger.Debug("can't dial by private network.", lAddr.PriIp, lAddr.PriPort, rAddr.PriIp, toPort)
+		logger.Warning("can't dial by private network.", lAddr.PriIp, lAddr.PriPort, rAddr.PriIp, toPort)
 		return
 	}
 	task.UdpConn = conn

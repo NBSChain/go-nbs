@@ -136,6 +136,6 @@ func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.NatKeepAlive) {
 		tunnel.natAddr.NatIp = alive.PubIP
 		tunnel.natAddr.NatPort = alive.PubPort
 		tunnel.natChanged <- struct{}{}
-		logger.Info("node's nat info changed.")
+		logger.Info("node's nat info changed.", alive)
 	}
 }
