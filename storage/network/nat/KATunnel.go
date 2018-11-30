@@ -28,7 +28,7 @@ const (
 type ProxyTask struct {
 	sessionID string
 	toAddr    *net.UDPAddr
-	digResult chan error
+	err       chan error
 }
 
 type ConnTask struct {

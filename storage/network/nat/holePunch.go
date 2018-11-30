@@ -97,6 +97,10 @@ func (nat *Manager) forwardDigRequest(req *net_pb.NatConnect, peerAddr *net.UDPA
 func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	sessionId := req.SessionId
+	if _, ok := tunnel.workLoad[sessionId]; ok {
+		logger.Info("duplicate connect require")
+		return
+	}
 
 	remNatAddr := &net.UDPAddr{
 		IP:   net.ParseIP(req.FromAddr.NatIP),
@@ -118,7 +122,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 			IP:   net.ParseIP(tunnel.natAddr.PriIp),
 			Port: int(req.ToPort),
 		},
-		digResult: make(chan error),
+		err: make(chan error),
 	}
 
 	tunnel.workLoad[sessionId] = task
@@ -132,7 +136,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 		logger.Info("Step 3:-> peer start to dig out:->", holeMsg)
 
 		select {
-		case err := <-task.digResult:
+		case err := <-task.err:
 			if err != nil {
 				logger.Error("failed to dig out", err)
 			} else {
@@ -146,16 +150,6 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	logger.Error("dig out time out")
 	delete(tunnel.workLoad, sessionId)
-}
-
-func (tunnel *KATunnel) digSuccess(sessionId string) {
-
-	logger.Info("Step 5:-> dig success:->", sessionId)
-
-	if pTask, ok := tunnel.workLoad[sessionId]; ok {
-		pTask.digResult <- nil
-		go pTask.relayData()
-	}
 }
 
 func (tunnel *KATunnel) digSuccessRes(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {

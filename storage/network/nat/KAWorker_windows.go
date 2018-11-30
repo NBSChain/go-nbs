@@ -38,6 +38,8 @@ func (tunnel *KATunnel) listening() {
 			tunnel.digOut(response.ConnRes)
 		case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
 			tunnel.digSuccess(response.HoleMsg, peerAddr)
+		case net_pb.NatMsgType_DigSuccess:
+			logger.Debug("dig success:->", peerAddr)
 		}
 	}
 }
@@ -97,4 +99,31 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	}
 
 	return nil, fmt.Errorf("time out")
+}
+
+func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
+
+	res := &net_pb.NatResponse{
+		MsgType: net_pb.NatMsgType_DigSuccess,
+		HoleMsg: msg,
+	}
+
+	data, _ := proto.Marshal(res)
+
+	if _, err := tunnel.serverHub.WriteTo(data, peerAddr); err != nil {
+		logger.Warning("failed to response the dig confirm.")
+		return
+	}
+	sid := msg.SessionId
+	logger.Info("Step 5:-> dig success:->", sid)
+
+	if pTask, ok := tunnel.workLoad[sid]; ok {
+		pTask.err <- nil
+		go pTask.relayData()
+	} else {
+		tunnel.workLoad[sid] = &ProxyTask{
+			sessionID: sid,
+			toAddr:    peerAddr,
+		}
+	}
 }
