@@ -3,10 +3,14 @@
 package nat
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
+	"time"
 )
 
 /************************************************************************
@@ -26,42 +30,35 @@ func (tunnel *KATunnel) readKeepAlive() {
 			continue
 		}
 
-		response := &net_pb.NatResponse{}
-		if err := proto.Unmarshal(buffer[:n], response); err != nil {
-			logger.Warning("keep alive response Unmarshal failed:", err)
-		}
-
-		logger.Debug("keep alive:", response)
-
-		switch response.MsgType {
-		case net_pb.NatMsgType_KeepAlive:
-			tunnel.refreshNatInfo(response.KeepAlive)
-
-		case net_pb.NatMsgType_ReverseDig:
-			tunnel.answerInvite(response.Invite)
-		case net_pb.NatMsgType_Connect:
-			tunnel.digOut(response.ConnRes)
+		if err := tunnel.process(buffer[:n]); err != nil {
+			continue
 		}
 	}
 }
 
-func (tunnel *KATunnel) process(buffer []byte, peerAddr *net.UDPAddr) error {
+func (tunnel *KATunnel) process(buffer []byte) error {
 
-	request := &net_pb.NatRequest{}
-	proto.Unmarshal(buffer, request)
+	response := &net_pb.NatResponse{}
+	if err := proto.Unmarshal(buffer, response); err != nil {
+		logger.Warning("keep alive response Unmarshal failed:", err)
+		return err
+	}
 
-	logger.Info("listen connection:", request)
+	logger.Debug("keep alive:", response)
 
-	switch request.MsgType {
-	case net_pb.NatMsgType_DigOut, net_pb.NatMsgType_DigIn:
-		tunnel.digSuccess(request.HoleMsg, peerAddr)
+	switch response.MsgType {
+	case net_pb.NatMsgType_KeepAlive:
+		tunnel.refreshNatInfo(response.KeepAlive)
+	case net_pb.NatMsgType_ReverseDig:
+		tunnel.answerInvite(response.Invite)
+	case net_pb.NatMsgType_Connect:
+		tunnel.digOut(response.ConnRes)
 	}
 
 	return nil
 }
 
 func (tunnel *KATunnel) listening() {
-
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := tunnel.serverHub.ReadFromUDP(buffer)
@@ -70,9 +67,87 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		if err := tunnel.process(buffer[:n], peerAddr); err != nil {
-			logger.Warning("process nat response message failed")
+		request := &net_pb.NatRequest{}
+		if err := proto.Unmarshal(buffer[:n], request); err != nil {
+			logger.Warning("parse message failed", err)
 			continue
 		}
+
+		logger.Debug("listen connection:", request)
+
+		switch request.MsgType {
+		default:
+			logger.Warning("unknown msg for linux/unix/bsd systems.")
+		}
 	}
+}
+
+//TIPS::unix/bsd/linux need to read the response from same connection
+func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) {
+
+	holeMsg := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_DigIn,
+		HoleMsg: &net_pb.HoleDig{
+			SessionId:   sessionID,
+			NetworkType: FromPubNet,
+		},
+	}
+	data, _ := proto.Marshal(holeMsg)
+
+	port := strconv.Itoa(int(rAddr.NatPort))
+	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
+	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
+	if err != nil {
+		logger.Warning("dig hole in pub network failed", err)
+		task.Err <- err
+		return
+	}
+
+	go tunnel.waitDigResponse(task, conn)
+
+	logger.Info("Step 4:-> I start to dig in:->", pubAddr, tunnel.sharedAddr)
+	tunnel.digDig(data, conn, task)
+}
+
+func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
+
+	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
+		task.Err <- err
+		return
+	}
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		logger.Error("dig in public network failed:->", err)
+		task.Err <- err
+		return
+	}
+	response := &net_pb.NatResponse{}
+	if err = proto.Unmarshal(buffer[:n], response); err != nil {
+		logger.Warning("keep alive response Unmarshal failed:", err)
+		task.Err <- err
+		return
+	}
+
+	switch response.MsgType {
+	case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
+		res := &net_pb.NatResponse{
+			MsgType: net_pb.NatMsgType_DigSuccess,
+			HoleMsg: response.HoleMsg,
+		}
+
+		data, _ := proto.Marshal(res)
+
+		if _, err := conn.Write(data); err != nil {
+			logger.Warning("failed to response the dig confirm.")
+		}
+	case net_pb.NatMsgType_DigSuccess:
+		logger.Info("dig in public network success.")
+	}
+
+	task.Err <- nil
+	task.UdpConn = conn
+
+	return
 }

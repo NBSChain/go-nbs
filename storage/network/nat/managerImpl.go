@@ -58,7 +58,6 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
 		workLoad:   make(map[string]*ProxyTask),
-		inviteTask: make(map[string]*ConnTask),
 	}
 
 	go tunnel.runLoop()
@@ -88,52 +87,18 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 	if err != nil {
 		return nil, err
 	}
+	defer close(connChan.Err)
 
-	go nat.directDialInPriNet(lAddr, rAddr, connChan, toPort, connId)
+	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, connChan, toPort, connId)
 
-	return nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
-}
+	go nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
 
-func (nat *Manager) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int, sessionID string) {
-
-	conn, err := net.DialUDP("udp4", &net.UDPAddr{
-		IP:   net.ParseIP(lAddr.PriIp),
-		Port: int(lAddr.PriPort),
-	}, &net.UDPAddr{
-		IP:   net.ParseIP(rAddr.PriIp),
-		Port: toPort,
-	})
-
-	if err != nil {
-		logger.Warning("Step 2-1:can't dial by private network.", err)
-		return
+	select {
+	case err := <-connChan.Err:
+		return connChan.UdpConn, err
+	case <-time.After(HolePunchTimeOut):
+		return nil, fmt.Errorf("time out")
 	}
-
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigIn,
-		HoleMsg: &net_pb.HoleDig{
-			SessionId:   sessionID,
-			NetworkType: FromPriNet,
-		},
-	}
-	data, _ := proto.Marshal(holeMsg)
-
-	conn.SetDeadline(time.Now().Add(time.Second * HolePunchingTimeOut / 2))
-	if _, err := conn.Write(data); err != nil {
-		logger.Warning("Step 2-2:->can't dial by private network.", err)
-		return
-	}
-	buffer := make([]byte, utils.NormalReadBuffer)
-	if _, err := conn.Read(buffer); err != nil {
-		logger.Warning("Step 2-3:->can't dial by private network.", err)
-		return
-	}
-
-	task.UdpConn = conn
-	task.Err <- err
-
-	logger.Info("Step 2-4:->dig in private network success:->",
-		conn.LocalAddr().String(), conn.RemoteAddr().String())
 }
 
 func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
@@ -177,7 +142,7 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 		} else {
 			return connChan.UdpConn, nil
 		}
-	case <-time.After(HolePunchingTimeOut * time.Second):
+	case <-time.After(HolePunchTimeOut):
 		return nil, fmt.Errorf("time out")
 	}
 }
@@ -201,7 +166,10 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	}
 
 	res := &net_pb.NatRequest{}
-	proto.Unmarshal(buffer[:n], res)
+	if err := proto.Unmarshal(buffer[:n], res); err != nil {
+		task.Err <- err
+		return
+	}
 
 	if res.MsgType != net_pb.NatMsgType_ReverseDigACK ||
 		res.InviteAck.SessionId != sessionID {

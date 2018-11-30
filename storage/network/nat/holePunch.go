@@ -1,15 +1,11 @@
 package nat
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -63,69 +59,11 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 	}
 
 	connChan := &ConnTask{
-		Err: make(chan error),
+		Err:     make(chan error),
+		UdpConn: nil,
 	}
-
-	tunnel.inviteTask[connId] = connChan
-	logger.Info("Step 1:->notify the nat server:->")
+	logger.Info("Step 1:->notify the nat server:->", rAddr.NatServer)
 	return connChan, nil
-}
-
-func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) (*net.UDPConn, error) {
-
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigIn,
-		HoleMsg: &net_pb.HoleDig{
-			SessionId:   sessionID,
-			NetworkType: FromPubNet,
-		},
-	}
-	data, _ := proto.Marshal(holeMsg)
-
-	port := strconv.Itoa(int(rAddr.NatPort))
-	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
-	if err != nil {
-		logger.Warning("dig hole in pub network failed", err)
-		return nil, err
-	}
-
-	for i := 0; i < HolePunchingTimeOut; i++ {
-
-		logger.Info("Step 4:-> I start to dig in:->", i, pubAddr, tunnel.sharedAddr)
-
-		if _, err := conn.Write(data); err != nil {
-			logger.Error(err)
-		}
-		conn.SetReadDeadline(time.Now().Add(time.Second))
-		buffer := make([]byte, utils.NormalReadBuffer)
-		if _, err := conn.Read(buffer); err != nil {
-			logger.Warning("dig read failed:->", err)
-		} else {
-			msg := &net_pb.NatResponse{}
-			proto.Unmarshal(buffer, msg)
-			logger.Info("read dig res:->", msg)
-		}
-
-		select {
-		case err := <-task.Err:
-			if err == nil {
-				if task.UdpConn != nil { //private network succes
-					logger.Info("Step 6-1:-> create connection from task.UdpConn:->")
-					return task.UdpConn, nil
-				} else { //this conn works
-					logger.Info("Step 6-2:-> create connection from this conn:->")
-					return conn, nil
-				}
-			} else {
-				return nil, err
-			}
-		default:
-			logger.Debug("retry again......")
-		}
-	}
-
-	return nil, fmt.Errorf("time out")
 }
 
 /************************************************************************
@@ -190,7 +128,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	tunnel.workLoad[sessionId] = task
 
-	for i := 0; i < HolePunchingTimeOut; i++ {
+	for i := 0; i < TryDigHoleTimes; i++ {
 
 		if _, err := tunnel.serverHub.WriteTo(data, remNatAddr); err != nil {
 			logger.Error(err.Error())
@@ -215,21 +153,17 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 	delete(tunnel.workLoad, sessionId)
 }
 
-func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
+func (tunnel *KATunnel) digSuccess(sessionId string) {
 
-	sessionId := msg.SessionId
-
-	logger.Info("Step 5:-> dig success:->", msg)
-
-	if cTask, ok := tunnel.inviteTask[sessionId]; ok {
-		cTask.Err <- nil
-		delete(tunnel.inviteTask, sessionId)
-	}
+	logger.Info("Step 5:-> dig success:->", sessionId)
 
 	if pTask, ok := tunnel.workLoad[sessionId]; ok {
 		pTask.digResult <- nil
 		go pTask.relayData()
 	}
+}
+
+func (tunnel *KATunnel) digSuccessRes(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
 
 	res := &net_pb.NatResponse{
 		MsgType: net_pb.NatMsgType_DigSuccess,
@@ -237,6 +171,7 @@ func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
 	}
 
 	data, _ := proto.Marshal(res)
+
 	if _, err := tunnel.serverHub.WriteTo(data, peerAddr); err != nil {
 		logger.Warning("failed to response the dig confirm.")
 	}

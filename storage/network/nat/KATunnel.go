@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	KeepAliveTime       = time.Second * 15
-	KeepAliveTimeOut    = 45
-	HolePunchingTimeOut = 6
-	BootStrapTimeOut    = time.Second * 4
+	KeepAliveTime    = time.Second * 15
+	KeepAliveTimeOut = 45
+	HolePunchTimeOut = 4 * time.Second
+	TryDigHoleTimes  = 3
+	BootStrapTimeOut = time.Second * 4
 )
 
 const (
@@ -44,7 +45,6 @@ type KATunnel struct {
 	sharedAddr string
 	updateTime time.Time
 	workLoad   map[string]*ProxyTask
-	inviteTask map[string]*ConnTask
 }
 
 /************************************************************************
@@ -143,5 +143,54 @@ func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.NatKeepAlive) {
 		tunnel.natAddr.NatPort = alive.PubPort
 		tunnel.natChanged <- struct{}{}
 		logger.Info("node's nat info changed.", alive)
+	}
+}
+
+func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int, sessionID string) {
+
+	conn, err := net.DialUDP("udp4", &net.UDPAddr{
+		IP:   net.ParseIP(lAddr.PriIp),
+		Port: int(lAddr.PriPort),
+	}, &net.UDPAddr{
+		IP:   net.ParseIP(rAddr.PriIp),
+		Port: toPort,
+	})
+
+	if err != nil {
+		logger.Warning("Step 2-1:can't dial by private network.", err)
+		task.Err <- err
+		return
+	}
+
+	holeMsg := &net_pb.NatRequest{
+		MsgType: net_pb.NatMsgType_DigIn,
+		HoleMsg: &net_pb.HoleDig{
+			SessionId:   sessionID,
+			NetworkType: FromPriNet,
+		},
+	}
+	data, _ := proto.Marshal(holeMsg)
+
+	go tunnel.waitDigResponse(task, conn)
+
+	logger.Info("Step 2-4:->dig in private network:->",
+		conn.LocalAddr().String(), conn.RemoteAddr().String())
+	tunnel.digDig(data, conn, task)
+}
+
+func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
+
+	for i := 0; i < TryDigHoleTimes; i++ {
+
+		if _, err := conn.Write(data); err != nil {
+			logger.Error(err)
+		}
+		select {
+		case <-task.Err:
+			logger.Debug("dig in action finished.")
+			return
+		case <-time.After(time.Second):
+			logger.Debug("dig again")
+		}
 	}
 }
