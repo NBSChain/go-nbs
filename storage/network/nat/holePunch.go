@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-//UdpConn inviter call first
-func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*ConnTask, error) {
+//udpConn inviter call first
+func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) error {
 
 	connReq := &net_pb.NatConnect{
 
@@ -39,7 +39,7 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 
 	toItemData, err := proto.Marshal(request)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	host, port, _ := nbsnet.SplitHostPort(rAddr.NatServer)
@@ -50,20 +50,15 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 	})
 	if err != nil {
 		logger.Warning("failed to send dig request:", err)
-		return nil, err
+		return err
 	}
 	defer conn.Close()
 
 	if _, err := conn.Write(toItemData); err != nil {
-		return nil, err
-	}
-
-	connChan := &ConnTask{
-		Err:     make(chan error),
-		UdpConn: nil,
+		return err
 	}
 	logger.Info("Step 1:->notify the nat server:->", rAddr.NatServer)
-	return connChan, nil
+	return nil
 }
 
 /************************************************************************

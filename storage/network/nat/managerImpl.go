@@ -83,25 +83,54 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 
 func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
 
-	connChan, err := nat.NatKATun.StartDigHole(lAddr, rAddr, connId, toPort)
-	if err != nil {
+	if err := nat.NatKATun.StartDigHole(lAddr, rAddr, connId, toPort); err != nil {
 		return nil, err
 	}
-	defer close(connChan.Err)
-
-	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, connChan, toPort, connId)
-
-	go nat.NatKATun.DigInPubNet(lAddr, rAddr, connChan, connId)
-
-	select {
-	case err := <-connChan.Err:
-		return connChan.UdpConn, err
-	case <-time.After(HolePunchTimeOut):
-		return nil, fmt.Errorf("time out")
+	priConnTask := &ConnTask{
+		err: make(chan error),
 	}
+	pubConnTask := &ConnTask{
+		err: make(chan error),
+	}
+	defer close(priConnTask.err)
+	defer close(pubConnTask.err)
+
+	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
+
+	go nat.NatKATun.DigInPubNet(lAddr, rAddr, pubConnTask, connId)
+
+	var pubFail, priFail bool
+
+	for i := 2; i > 0; i-- {
+		select {
+		case err := <-priConnTask.err:
+			if err == nil {
+				return priConnTask.udpConn, nil
+			} else {
+				priFail = true
+				if pubFail {
+					return nil, err
+				}
+			}
+			return priConnTask.udpConn, err
+		case err := <-pubConnTask.err:
+			if err == nil {
+				return pubConnTask.udpConn, nil
+			} else {
+				pubFail = true
+				if priFail {
+					return nil, err
+				}
+			}
+		case <-time.After(HolePunchTimeOut / 2):
+			return nil, fmt.Errorf("time out")
+		}
+	}
+	return nil, fmt.Errorf("time out")
 }
 
-func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
+func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
+	connId string, toPort int) (*net.UDPConn, error) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 	if err != nil {
@@ -128,7 +157,7 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 	}
 
 	connChan := &ConnTask{
-		Err: make(chan error),
+		err: make(chan error),
 	}
 
 	logger.Debug("Step1: notify applier's nat server:", req)
@@ -136,11 +165,11 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, connId 
 	go nat.waitInviteAnswer(localHost, connId, connChan)
 
 	select {
-	case err := <-connChan.Err:
+	case err := <-connChan.err:
 		if err != nil {
 			return nil, err
 		} else {
-			return connChan.UdpConn, nil
+			return connChan.udpConn, nil
 		}
 	case <-time.After(HolePunchTimeOut):
 		return nil, fmt.Errorf("time out")
@@ -151,7 +180,7 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 
 	lisConn, err := shareport.ListenUDP("udp4", host)
 	if err != nil {
-		task.Err <- err
+		task.err <- err
 		return
 	}
 	defer lisConn.Close()
@@ -161,30 +190,30 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
-		task.Err <- err
+		task.err <- err
 		return
 	}
 
 	res := &net_pb.NatRequest{}
 	if err := proto.Unmarshal(buffer[:n], res); err != nil {
-		task.Err <- err
+		task.err <- err
 		return
 	}
 
 	if res.MsgType != net_pb.NatMsgType_ReverseDigACK ||
 		res.InviteAck.SessionId != sessionID {
-		task.UdpConn = nil
-		task.Err <- fmt.Errorf("didn't get the answer")
+		task.udpConn = nil
+		task.err <- fmt.Errorf("didn't get the answer")
 		return
 	}
 
 	conn, err := shareport.DialUDP("udp4", host, peerAddr.String())
 	if err != nil {
-		task.Err <- err
+		task.err <- err
 		return
 	}
-	task.UdpConn = conn
-	task.Err <- err
+	task.udpConn = conn
+	task.err <- err
 
 	logger.Debug("Step5: get answer and make a connection:->", host, peerAddr.String())
 }

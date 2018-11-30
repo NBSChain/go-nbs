@@ -32,8 +32,8 @@ type ProxyTask struct {
 }
 
 type ConnTask struct {
-	UdpConn *net.UDPConn
-	Err     chan error
+	err     chan error
+	udpConn *net.UDPConn
 }
 
 type KATunnel struct {
@@ -61,7 +61,10 @@ func (tunnel *KATunnel) Close() {
 func (tunnel *KATunnel) runLoop() {
 
 	for {
-		tunnel.sendKeepAlive()
+		if err := tunnel.sendKeepAlive(); err != nil {
+			logger.Warning("failed to send nat keep alive message")
+			//TODO::if failed more than 3 times, wo need to find new nat server
+		}
 
 		time.Sleep(KeepAliveTime)
 	}
@@ -158,7 +161,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 
 	if err != nil {
 		logger.Warning("Step 2-1:can't dial by private network.", err)
-		task.Err <- err
+		task.err <- err
 		return
 	}
 
@@ -186,7 +189,7 @@ func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
 			logger.Error(err)
 		}
 		select {
-		case <-task.Err:
+		case <-task.err:
 			logger.Debug("dig in action finished.")
 			return
 		case <-time.After(time.Second):

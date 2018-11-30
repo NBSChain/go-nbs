@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
-	"time"
 )
 
 /************************************************************************
@@ -44,7 +43,7 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 		return err
 	}
 
-	logger.Debug("keep alive:", response)
+	logger.Debug("keep alive:->", response)
 
 	switch response.MsgType {
 	case net_pb.NatMsgType_KeepAlive:
@@ -99,7 +98,7 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
 	if err != nil {
 		logger.Warning("dig hole in pub network failed", err)
-		task.Err <- err
+		task.err <- err
 		return
 	}
 
@@ -111,22 +110,17 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 
 func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 
-	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
-		task.Err <- err
-		return
-	}
-
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, err := conn.Read(buffer)
 	if err != nil {
 		logger.Error("dig in public network failed:->", err)
-		task.Err <- err
+		task.err <- err
 		return
 	}
 	response := &net_pb.NatResponse{}
 	if err = proto.Unmarshal(buffer[:n], response); err != nil {
 		logger.Warning("keep alive response Unmarshal failed:", err)
-		task.Err <- err
+		task.err <- err
 		return
 	}
 
@@ -146,8 +140,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		logger.Info("dig in public network success.")
 	}
 
-	task.Err <- nil
-	task.UdpConn = conn
-
+	task.err <- nil
+	task.udpConn = conn
 	return
 }

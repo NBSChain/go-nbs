@@ -396,7 +396,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 
 	response := &net_pb.NatResponse{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
-		logger.Error("unmarshal Err:->", err)
+		logger.Error("unmarshal err:->", err)
 		return nil, err
 	}
 

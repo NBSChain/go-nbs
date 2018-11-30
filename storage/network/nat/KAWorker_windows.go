@@ -79,11 +79,11 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 		}
 
 		select {
-		case err := <-task.Err:
+		case err := <-task.err:
 			if err == nil {
-				if task.UdpConn != nil { //private network succes
-					logger.Info("Step 6-1:-> create connection from task.UdpConn:->")
-					return task.UdpConn, nil
+				if task.udpConn != nil { //private network succes
+					logger.Info("Step 6-1:-> create connection from task.udpConn:->")
+					return task.udpConn, nil
 				} else { //this conn works
 					logger.Info("Step 6-2:-> create connection from this conn:->")
 					return conn, nil
