@@ -109,9 +109,9 @@ func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, *net_pb
 
 func (nat *Manager) sendPing(ping *net_pb.NatPing, conn *net.UDPConn) error {
 
-	request := &net_pb.NatRequest{
-		Ping:    ping,
-		MsgType: net_pb.NatMsgType_Ping,
+	request := &net_pb.NatManage{
+		PingPong: ping,
+		MsgType:  utils.NatPingPong,
 	}
 
 	data, _ := proto.Marshal(request)

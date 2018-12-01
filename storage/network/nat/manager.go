@@ -54,23 +54,23 @@ func (nat *Manager) natServiceListening() {
 		}
 
 		switch request.MsgType {
-		case net_pb.NatMsgType_BootStrapReg:
-			if err = nat.checkWhoIsHe(request.BootRegReq, peerAddr); err != nil {
+		case utils.NatBootReg:
+			if err = nat.checkWhoIsHe(request.BootReg, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case net_pb.NatMsgType_Ping:
-			if err = nat.pong(request.Ping, peerAddr); err != nil {
+		case utils.NatPingPong:
+			if err = nat.pong(request.PingPong, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case net_pb.NatMsgType_Connect:
+		case utils.NatConnect:
 			if err = nat.forwardDigRequest(request.ConnReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case net_pb.NatMsgType_KeepAlive:
+		case utils.NatKeepAlive:
 			if err = nat.updateKATime(request.KeepAlive, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case net_pb.NatMsgType_ReverseDig:
+		case utils.NatReversDig:
 			if err = nat.forwardInvite(request.Invite, peerAddr); err != nil {
 				logger.Error(err)
 			}
@@ -84,8 +84,8 @@ func (nat *Manager) natServiceListening() {
 
 func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 
-	response := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_error,
+	response := &net_pb.NatManage{
+		MsgType: utils.NatError,
 		Error: &net_pb.ErrorNotify{
 			ErrMsg: err.Error(),
 		},
@@ -95,7 +95,7 @@ func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 	nat.sysNatServer.WriteToUDP(resData, peerAddr)
 }
 
-func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
+func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatManage, error) {
 
 	data := make([]byte, utils.NormalReadBuffer)
 
@@ -105,7 +105,7 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 		return nil, nil, err
 	}
 
-	request := &net_pb.NatRequest{}
+	request := &net_pb.NatManage{}
 	if err := proto.Unmarshal(data[:n], request); err != nil {
 		logger.Warning("can't parse the nat request", err, peerAddr)
 		return nil, nil, err
@@ -116,9 +116,9 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatRequest, error) {
 	return peerAddr, request, nil
 }
 
-func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UDPAddr) error {
+func (nat *Manager) checkWhoIsHe(request *net_pb.BootReg, peerAddr *net.UDPAddr) error {
 
-	response := &net_pb.BootNatRegRes{}
+	response := &net_pb.BootRegAck{}
 	response.PublicIp = peerAddr.IP.String()
 	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
@@ -134,9 +134,9 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootNatRegReq, peerAddr *net.UD
 		response.NatType = net_pb.NatType_BehindNat
 	}
 
-	pbRes := &net_pb.NatResponse{
-		MsgType:    net_pb.NatMsgType_BootStrapReg,
-		BootRegRes: response,
+	pbRes := &net_pb.NatManage{
+		MsgType:    utils.NatBootReg,
+		BootRegAck: response,
 	}
 
 	pbResData, err := proto.Marshal(pbRes)
@@ -196,8 +196,8 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 		nat.cache[nodeId] = item
 	}
 
-	res := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_KeepAlive,
+	res := &net_pb.NatManage{
+		MsgType: utils.NatKeepAlive,
 		KeepAlive: &net_pb.NatKeepAlive{
 			NodeId:  req.NodeId,
 			PubIP:   peerAddr.IP.String(),
@@ -221,8 +221,8 @@ func (nat *Manager) forwardInvite(invite *net_pb.ReverseInvite, peerAddr *net.UD
 		return fmt.Errorf("no such node behind nat device")
 	}
 
-	res := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_ReverseDig,
+	res := &net_pb.NatManage{
+		MsgType: utils.NatReversDig,
 		Invite:  invite,
 	}
 

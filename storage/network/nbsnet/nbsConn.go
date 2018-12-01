@@ -15,6 +15,7 @@ const (
 	CTypeNormal
 	CTypeNatSimplex
 	CTypeNatDuplex
+	CTypeNatListen
 )
 
 type NbsUdpConn struct {

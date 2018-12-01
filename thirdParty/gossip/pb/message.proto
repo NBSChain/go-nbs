@@ -8,25 +8,6 @@ package pb;
 
 import "initSub.proto";
 
-enum MsgType {
-    unknown         = 0;
-
-    init            = 1;
-    reqContract     = 2;
-    reqContractAck  = 3;
-    forwardSubReq   = 4;
-    subReqAck       = 5;
-    redirectContract= 6;
-    dropOutView     = 7;
-    dropInView      = 8;
-    updateOutView   = 9;
-    updateInView    = 10;
-    reSubReqContract= 11;
-    heartBeat       = 12;
-
-    initACK         = 13;
-}
-
 message HeartBeat{
     string  sender  = 1;
     int64   seqNo   = 2;
@@ -34,7 +15,7 @@ message HeartBeat{
 }
 
 message gossip {
-    MsgType messageType         = 1;
+    int32 msgType               = 1;
     InitSub initMsg             = 10;
     InitSubACK initACK          = 11;
     ReqContact contactReq       = 12;

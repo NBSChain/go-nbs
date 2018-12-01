@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"time"
@@ -32,8 +33,8 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 		ToPort:    int32(toPort),
 	}
 
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_Connect,
+	request := &net_pb.NatManage{
+		MsgType: utils.NatConnect,
 		ConnReq: connReq,
 	}
 
@@ -69,9 +70,9 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 //TIPS:: the server forward the connection invite to peer
 func (nat *Manager) forwardDigRequest(req *net_pb.NatConnect, peerAddr *net.UDPAddr) error {
 
-	res := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_Connect,
-		ConnRes: req,
+	res := &net_pb.NatManage{
+		MsgType: utils.NatConnect,
+		ConnReq: req,
 	}
 	rawData, _ := proto.Marshal(res)
 
@@ -107,8 +108,8 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 		Port: int(req.FromAddr.NatPort),
 	}
 
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigOut,
+	holeMsg := &net_pb.NatManage{
+		MsgType: utils.NatDigOut,
 		DigMsg: &net_pb.HoleDig{
 			SessionId:   sessionId,
 			NetworkType: ToPubNet,
@@ -154,8 +155,8 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 func (tunnel *KATunnel) digSuccessRes(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
 
-	res := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_DigSuccess,
+	res := &net_pb.NatManage{
+		MsgType: utils.NatDigSuccess,
 		DigMsg:  msg,
 	}
 

@@ -14,7 +14,7 @@ import (
 const (
 	KeepAliveTime    = time.Second * 15
 	KeepAliveTimeOut = 45
-	HolePunchTimeOut = 4 * time.Second
+	HolePunchTimeOut = 2 * time.Second
 	TryDigHoleTimes  = 3
 	BootStrapTimeOut = time.Second * 4
 )
@@ -73,8 +73,8 @@ func (tunnel *KATunnel) runLoop() {
 
 func (tunnel *KATunnel) sendKeepAlive() error {
 
-	request := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_KeepAlive,
+	request := &net_pb.NatManage{
+		MsgType: utils.NatKeepAlive,
 		KeepAlive: &net_pb.NatKeepAlive{
 			NodeId: tunnel.networkId,
 			LAddr:  tunnel.sharedAddr,
@@ -121,8 +121,8 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	}
 	defer conn.Close()
 
-	req := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_ReverseDigACK,
+	req := &net_pb.NatManage{
+		MsgType: utils.NatReversDigAck,
 		InviteAck: &net_pb.ReverseInviteAck{
 			SessionId: invite.SessionId,
 		},
@@ -166,19 +166,38 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		return
 	}
 
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigIn,
-		DigMsg: &net_pb.HoleDig{
-			SessionId:   sessionID,
-			NetworkType: FromPriNet,
+	holeMsg := &net_pb.NatManage{
+		MsgType: utils.NatPriDigSyn,
+		PriDigSyn: &net_pb.PriNetDig{
+			SessionId: sessionID,
 		},
 	}
 	data, _ := proto.Marshal(holeMsg)
 
-	go tunnel.waitDigResponse(task, conn)
+	if _, err := conn.Write(data); err != nil {
+		logger.Error("Step 2-2:private network dig dig failed:->", err)
+		task.err <- err
+		return
+	}
 
-	logger.Info("Step 2-4:->dig in private network:->")
-	tunnel.digDig(data, conn, task)
+	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
+	logger.Info("Step 2-4:->dig in private network:->", conStr)
+
+	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
+		task.err <- err
+		return
+	}
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	_, err = conn.Read(buffer)
+	if err != nil {
+		logger.Error("Step 2-3:private network reading dig result failed:->", err, conStr)
+		task.err <- err
+		return
+	}
+
+	task.err <- nil
+	task.udpConn = conn
 }
 
 func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
@@ -209,7 +228,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		task.err <- err
 		return
 	}
-	response := &net_pb.NatResponse{}
+	response := &net_pb.NatManage{}
 	if err = proto.Unmarshal(buffer[:n], response); err != nil {
 		logger.Warning("reading dig result Unmarshal failed:", err, conStr)
 		task.err <- err
@@ -219,9 +238,9 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 	logger.Debug("get dig response:->", response, conStr)
 
 	switch response.MsgType {
-	case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
-		res := &net_pb.NatResponse{
-			MsgType: net_pb.NatMsgType_DigSuccess,
+	case utils.NatDigIn, utils.NatDigOut:
+		res := &net_pb.NatManage{
+			MsgType: utils.NatDigSuccess,
 			DigMsg:  response.DigMsg,
 		}
 
@@ -230,7 +249,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		if _, err := conn.Write(data); err != nil {
 			logger.Warning("failed to confirm the dig :->", conStr)
 		}
-	case net_pb.NatMsgType_DigSuccess:
+	case utils.NatDigSuccess:
 		logger.Info("dig dig success:->", conStr)
 	}
 

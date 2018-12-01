@@ -43,7 +43,7 @@ func (node *MemManager) indirectTheSubRequest(sub *newSub, counter int) {
 	}
 
 	req := &pb.Gossip{
-		MessageType: pb.MsgType_reqContract,
+		MsgType: utils.GspRegContact,
 		ContactReq: &pb.ReqContact{
 			Seq:       sub.seq,
 			TTL:       int32(counter) - 1,
@@ -125,7 +125,7 @@ func (node *MemManager) notifySubscriber(Seq int64, addr *nbsnet.NbsUdpAddr) (*n
 	}
 
 	msg := &pb.Gossip{
-		MessageType: pb.MsgType_reqContractAck,
+		MsgType: utils.GspContactAck,
 		ContactRes: &pb.ReqContactACK{
 			Seq:        Seq,
 			SupplierID: node.nodeID,

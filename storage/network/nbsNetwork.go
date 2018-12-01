@@ -172,7 +172,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 			return nil, err
 		}
 		realConn = c
-		cType = nbsnet.CTypeNatSimplex
+		cType = nbsnet.CTypeNatListen
 	}
 
 	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
@@ -363,15 +363,15 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 	localAddr := conn.LocalAddr().String()
 
 	host, port, err := net.SplitHostPort(localAddr)
-	bootRequest := &net_pb.BootNatRegReq{
+	bootRequest := &net_pb.BootReg{
 		NodeId:      network.networkId,
 		PrivateIp:   host,
 		PrivatePort: port,
 	}
 
-	request := &net_pb.NatRequest{
-		MsgType:    net_pb.NatMsgType_BootStrapReg,
-		BootRegReq: bootRequest,
+	request := &net_pb.NatManage{
+		MsgType: utils.NatBootReg,
+		BootReg: bootRequest,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -388,7 +388,7 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 	return host, nil
 }
 
-func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatRegRes, error) {
+func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootRegAck, error) {
 
 	responseData := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(responseData)
@@ -397,7 +397,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 		return nil, err
 	}
 
-	response := &net_pb.NatResponse{}
+	response := &net_pb.NatManage{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("unmarshal err:->", err)
 		return nil, err
@@ -405,5 +405,5 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootNatR
 
 	logger.Debug("response:->", response)
 
-	return response.BootRegRes, nil
+	return response.BootRegAck, nil
 }

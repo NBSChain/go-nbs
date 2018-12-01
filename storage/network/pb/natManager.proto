@@ -4,21 +4,6 @@ package net.pb;
 
 import "nbsAddr.proto";
 
-enum NatMsgType {
-    UnknownReq      = 0;
-    BootStrapReg    = 1;
-    KeepAlive       = 2;
-    Connect         = 3;
-    Ping            = 4;
-    DigIn           = 5;
-    DigOut          = 6;
-    DigSuccess      = 7;
-    ReverseDig      = 8;
-    ReverseDigACK   = 9;
-    BoardOnHole     = 10;
-    error           = 20;
-}
-
 enum NatType {
     UnknownRES      = 0;
     NoNatDevice     = 1;
@@ -27,13 +12,13 @@ enum NatType {
     ToBeChecked     = 4;
 }
 
-message BootNatRegReq {
+message BootReg {
     string  nodeId      = 1;
     string  privatePort = 3;
     string  privateIp   = 2;
 }
 
-message BootNatRegRes {
+message BootRegAck {
     NatType natType    = 1;
     string  nodeId      = 2;
     string  publicIp    = 3;
@@ -88,26 +73,23 @@ message ReverseInviteAck {
     string sessionId = 1;
 }
 
-message natRequest {
-    NatMsgType msgType          = 1;
-    BootNatRegReq BootRegReq    = 2;
+message PriNetDig{
+    string sessionId = 1;
+}
+
+message natManage {
+    int32 msgType               = 1;
+    BootReg BootReg             = 2;
     NatConnect connReq          = 3;
     NatKeepAlive keepAlive      = 4;
-    NatPing ping                = 5;
+    NatPing pingPong            = 5;
     HoleDig digMsg              = 6;
     ReverseInvite invite        = 7;
     ReverseInviteAck inviteAck  = 8;
     HolePayLoad holePayLoad     = 9;
-}
+    PriNetDig  priDigSyn        = 10;
 
-message natResponse {
-    NatMsgType msgType          = 1;
-    BootNatRegRes BootRegRes    = 2;
-    NatConnect connRes          = 3;
-    NatKeepAlive keepAlive      = 4;
-    NatPing pong                = 5;
-    HoleDig digMsg              = 6;
-    ReverseInvite invite        = 7;
-    HolePayLoad holePayLoad     = 8;
-    ErrorNotify error           = 50;
+    ErrorNotify error           = 20;
+
+    BootRegAck BootRegAck       = 30;
 }
