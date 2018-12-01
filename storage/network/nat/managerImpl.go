@@ -101,7 +101,6 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	go nat.NatKATun.DigInPubNet(lAddr, rAddr, pubConnTask, connId)
 
 	var pubFail, priFail bool
-
 	for i := 2; i > 0; i-- {
 		select {
 		case err := <-priConnTask.err:
@@ -142,7 +141,7 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	_, fromPort, _ := net.SplitHostPort(localHost)
 
 	req := &net_pb.NatManage{
-		MsgType: utils.NatReversDig,
+		MsgType: nbsnet.NatReversDig,
 		Invite: &net_pb.ReverseInvite{
 			SessionId: connId,
 			PubIp:     lAddr.PubIp,
@@ -200,7 +199,7 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 		return
 	}
 
-	if res.MsgType != utils.NatReversDigAck ||
+	if res.MsgType != nbsnet.NatReversDigAck ||
 		res.InviteAck.SessionId != sessionID {
 		task.udpConn = nil
 		task.err <- fmt.Errorf("didn't get the answer")

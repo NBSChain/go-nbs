@@ -66,7 +66,7 @@ func (node *MemManager) registerMySelf() error {
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
 	msg := &pb.Gossip{
-		MsgType: utils.GspInitSub,
+		MsgType: nbsnet.GspInitSub,
 		InitMsg: &pb.InitSub{
 			Seq:    time.Now().Unix(),
 			NodeId: node.nodeID,
@@ -98,7 +98,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return err
 	}
 
-	if msg.MsgType != utils.GspInitSubACK {
+	if msg.MsgType != nbsnet.GspInitSubACK {
 		return fmt.Errorf("failed to send init sub request")
 	}
 
@@ -117,7 +117,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDPAddr) {
 
 	message := &pb.Gossip{
-		MsgType: utils.GspInitSubACK,
+		MsgType: nbsnet.GspInitSubACK,
 		InitACK: &pb.InitSubACK{
 			Seq:        request.Seq,
 			SupplierID: node.nodeID,

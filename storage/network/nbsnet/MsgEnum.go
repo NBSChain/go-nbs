@@ -1,4 +1,4 @@
-package utils
+package nbsnet
 
 const (
 	_               int32 = iota

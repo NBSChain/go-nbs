@@ -3,8 +3,8 @@ package memership
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"math/big"
 	"time"
@@ -28,7 +28,7 @@ func (node *MemManager) choseRandomInPartialView() *peerNodeItem {
 func (node *MemManager) keepAlive() {
 
 	keepAlive := &pb.Gossip{
-		MsgType: utils.GspHeartBeat,
+		MsgType: nbsnet.GspHeartBeat,
 		HeartBeat: &pb.HeartBeat{
 			Sender:  node.nodeID,
 			SeqNo:   time.Now().Unix(),
@@ -63,7 +63,7 @@ func (node *MemManager) keepAlive() {
 func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 
 	keepAlive := &pb.Gossip{
-		MsgType: utils.GspHeartBeat,
+		MsgType: nbsnet.GspHeartBeat,
 		HeartBeat: &pb.HeartBeat{
 			Sender:  node.nodeID,
 			SeqNo:   time.Now().Unix(),

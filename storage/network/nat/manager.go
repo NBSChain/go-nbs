@@ -2,6 +2,7 @@ package nat
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -54,23 +55,23 @@ func (nat *Manager) natServiceListening() {
 		}
 
 		switch request.MsgType {
-		case utils.NatBootReg:
+		case nbsnet.NatBootReg:
 			if err = nat.checkWhoIsHe(request.BootReg, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case utils.NatPingPong:
+		case nbsnet.NatPingPong:
 			if err = nat.pong(request.PingPong, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case utils.NatConnect:
+		case nbsnet.NatConnect:
 			if err = nat.forwardDigRequest(request.ConnReq, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case utils.NatKeepAlive:
+		case nbsnet.NatKeepAlive:
 			if err = nat.updateKATime(request.KeepAlive, peerAddr); err != nil {
 				logger.Error(err)
 			}
-		case utils.NatReversDig:
+		case nbsnet.NatReversDig:
 			if err = nat.forwardInvite(request.Invite, peerAddr); err != nil {
 				logger.Error(err)
 			}
@@ -85,7 +86,7 @@ func (nat *Manager) natServiceListening() {
 func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 
 	response := &net_pb.NatManage{
-		MsgType: utils.NatError,
+		MsgType: nbsnet.NatError,
 		Error: &net_pb.ErrorNotify{
 			ErrMsg: err.Error(),
 		},
@@ -137,7 +138,7 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootReg, peerAddr *net.UDPAddr)
 	}
 
 	pbRes := &net_pb.NatManage{
-		MsgType:    utils.NatBootReg,
+		MsgType:    nbsnet.NatBootReg,
 		BootRegAck: response,
 	}
 
@@ -203,7 +204,7 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 	}
 
 	res := &net_pb.NatManage{
-		MsgType: utils.NatKeepAlive,
+		MsgType: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.NatKeepAlive{
 			NodeId:  req.NodeId,
 			PubIP:   peerAddr.IP.String(),
@@ -213,7 +214,9 @@ func (nat *Manager) updateKATime(req *net_pb.NatKeepAlive, peerAddr *net.UDPAddr
 
 	rawData, _ := proto.Marshal(res)
 
-	nat.sysNatServer.WriteToUDP(rawData, peerAddr)
+	if _, err := nat.sysNatServer.WriteToUDP(rawData, peerAddr); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -228,7 +231,7 @@ func (nat *Manager) forwardInvite(invite *net_pb.ReverseInvite, peerAddr *net.UD
 	}
 
 	res := &net_pb.NatManage{
-		MsgType: utils.NatReversDig,
+		MsgType: nbsnet.NatReversDig,
 		Invite:  invite,
 	}
 

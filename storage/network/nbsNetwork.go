@@ -370,7 +370,7 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 	}
 
 	request := &net_pb.NatManage{
-		MsgType: utils.NatBootReg,
+		MsgType: nbsnet.NatBootReg,
 		BootReg: bootRequest,
 	}
 

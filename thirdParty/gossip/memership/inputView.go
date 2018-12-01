@@ -1,8 +1,8 @@
 package memership
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
-	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
 	"time"
@@ -37,7 +37,7 @@ func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) {
 	logger.Debug("get gossip heart beat with payload:", msg)
 
 	switch msg.MsgType {
-	case utils.GspRegContact:
+	case nbsnet.GspRegContact:
 		req := msg.ContactReq
 		sub := &newSub{
 			nodeId: req.ApplierID,

@@ -46,11 +46,11 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 	logger.Debug("keep alive:->", response)
 
 	switch response.MsgType {
-	case utils.NatKeepAlive:
+	case nbsnet.NatKeepAlive:
 		tunnel.refreshNatInfo(response.KeepAlive)
-	case utils.NatReversDig:
+	case nbsnet.NatReversDig:
 		tunnel.answerInvite(response.Invite)
-	case utils.NatConnect:
+	case nbsnet.NatConnect:
 		tunnel.digOut(response.ConnReq)
 	}
 
@@ -85,7 +85,7 @@ func (tunnel *KATunnel) listening() {
 func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) {
 
 	holeMsg := &net_pb.NatManage{
-		MsgType: utils.NatDigIn,
+		MsgType: nbsnet.NatDigIn,
 		DigMsg: &net_pb.HoleDig{
 			SessionId:   sessionID,
 			NetworkType: FromPubNet,

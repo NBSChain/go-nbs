@@ -118,11 +118,11 @@ func (node *MemManager) receivingCmd() {
 		logger.Debug("gossip server:->", message, peerAddr)
 
 		switch message.MsgType {
-		case utils.GspInitSub:
+		case nbsnet.GspInitSub:
 			node.confirmAndPrepare(message.InitMsg, peerAddr)
-		case utils.GspContactAck:
+		case nbsnet.GspContactAck:
 			node.subToContract(message.ContactRes, peerAddr)
-		case utils.GspHeartBeat:
+		case nbsnet.GspHeartBeat:
 			node.handleKeepAlive(message.HeartBeat, peerAddr)
 
 		default:

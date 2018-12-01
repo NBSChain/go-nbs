@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -111,7 +112,7 @@ func (nat *Manager) sendPing(ping *net_pb.NatPing, conn *net.UDPConn) error {
 
 	request := &net_pb.NatManage{
 		PingPong: ping,
-		MsgType:  utils.NatPingPong,
+		MsgType:  nbsnet.NatPingPong,
 	}
 
 	data, _ := proto.Marshal(request)

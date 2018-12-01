@@ -74,7 +74,7 @@ func (tunnel *KATunnel) runLoop() {
 func (tunnel *KATunnel) sendKeepAlive() error {
 
 	request := &net_pb.NatManage{
-		MsgType: utils.NatKeepAlive,
+		MsgType: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.NatKeepAlive{
 			NodeId: tunnel.networkId,
 			LAddr:  tunnel.sharedAddr,
@@ -122,7 +122,7 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	defer conn.Close()
 
 	req := &net_pb.NatManage{
-		MsgType: utils.NatReversDigAck,
+		MsgType: nbsnet.NatReversDigAck,
 		InviteAck: &net_pb.ReverseInviteAck{
 			SessionId: invite.SessionId,
 		},
@@ -167,7 +167,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	}
 
 	holeMsg := &net_pb.NatManage{
-		MsgType: utils.NatPriDigSyn,
+		MsgType: nbsnet.NatPriDigSyn,
 		PriDigSyn: &net_pb.PriNetDig{
 			SessionId: sessionID,
 		},
@@ -238,9 +238,9 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 	logger.Debug("get dig response:->", response, conStr)
 
 	switch response.MsgType {
-	case utils.NatDigIn, utils.NatDigOut:
+	case nbsnet.NatDigIn, nbsnet.NatDigOut:
 		res := &net_pb.NatManage{
-			MsgType: utils.NatDigSuccess,
+			MsgType: nbsnet.NatDigSuccess,
 			DigMsg:  response.DigMsg,
 		}
 
@@ -249,7 +249,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		if _, err := conn.Write(data); err != nil {
 			logger.Warning("failed to confirm the dig :->", conStr)
 		}
-	case utils.NatDigSuccess:
+	case nbsnet.NatDigSuccess:
 		logger.Info("dig dig success:->", conStr)
 	}
 
