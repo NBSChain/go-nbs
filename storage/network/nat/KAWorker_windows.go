@@ -2,9 +2,14 @@ package nat
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"net"
+	"strconv"
+	"time"
 )
 
 func (tunnel *KATunnel) readKeepAlive() {

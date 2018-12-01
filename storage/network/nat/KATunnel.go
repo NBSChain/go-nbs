@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
@@ -196,4 +197,41 @@ func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
 			logger.Debug("dig again")
 		}
 	}
+}
+
+func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		logger.Error("dig in public network failed:->", err)
+		task.err <- err
+		return
+	}
+	response := &net_pb.NatResponse{}
+	if err = proto.Unmarshal(buffer[:n], response); err != nil {
+		logger.Warning("keep alive response Unmarshal failed:", err)
+		task.err <- err
+		return
+	}
+
+	switch response.MsgType {
+	case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
+		res := &net_pb.NatResponse{
+			MsgType: net_pb.NatMsgType_DigSuccess,
+			HoleMsg: response.HoleMsg,
+		}
+
+		data, _ := proto.Marshal(res)
+
+		if _, err := conn.Write(data); err != nil {
+			logger.Warning("failed to response the dig confirm.")
+		}
+	case net_pb.NatMsgType_DigSuccess:
+		logger.Info("dig in public network success.")
+	}
+
+	task.err <- nil
+	task.udpConn = conn
+	return
 }
