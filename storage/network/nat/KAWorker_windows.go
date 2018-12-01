@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 )
 
 func (tunnel *KATunnel) readKeepAlive() {
@@ -25,7 +23,7 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		response := &net_pb.NatResponse{}
+		response := &net_pb.NatManage{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
@@ -34,49 +32,47 @@ func (tunnel *KATunnel) listening() {
 		logger.Debug("server hub connection :", response, peerAddr)
 
 		switch response.MsgType {
-		case net_pb.NatMsgType_KeepAlive:
+		case utils.NatKeepAlive:
 			tunnel.refreshNatInfo(response.KeepAlive)
-		case net_pb.NatMsgType_ReverseDig:
+		case utils.NatReversDig:
 			tunnel.answerInvite(response.Invite)
-		case net_pb.NatMsgType_Connect:
-			tunnel.digOut(response.ConnRes)
-		case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
-			tunnel.digSuccess(response.HoleMsg, peerAddr)
-		case net_pb.NatMsgType_DigSuccess:
+		case utils.NatConnect:
+			tunnel.digOut(response.ConnReq)
+		case utils.NatDigIn, utils.NatDigOut:
+			tunnel.digSuccess(response.DigMsg, peerAddr)
+		case utils.NatDigSuccess:
 			logger.Debug("dig success:->", peerAddr)
-		case net_pb.NatMsgType_BoardOnHole:
-			tunnel.unpackMsg(response.HolePayLoad)
 		}
 	}
 }
 
 func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) (*net.UDPConn, error) {
 
-	holeMsg := &net_pb.NatRequest{
-		MsgType: net_pb.NatMsgType_DigIn,
-		DigMsg: &net_pb.HoleDig{
-			SessionId:   sessionID,
-			NetworkType: FromPubNet,
-		},
-	}
-	data, _ := proto.Marshal(holeMsg)
-
-	port := strconv.Itoa(int(rAddr.NatPort))
-	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
-	if err != nil {
-		logger.Warning("dig hole in pub network failed", err)
-		return nil, err
-	}
+	//holeMsg := &net_pb.NatManage{
+	//	MsgType: utils.NatDigIn,
+	//	DigMsg: &net_pb.HoleDig{
+	//		SessionId:   sessionID,
+	//		NetworkType: FromPubNet,
+	//	},
+	//}
+	//data, _ := proto.Marshal(holeMsg)
+	//
+	//port := strconv.Itoa(int(rAddr.NatPort))
+	//pubAddr := net.JoinHostPort(rAddr.NatIp, port)
+	//conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
+	//if err != nil {
+	//	logger.Warning("dig hole in pub network failed", err)
+	//	return nil, err
+	//}
 
 	return nil, fmt.Errorf("time out")
 }
 
 func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
 
-	res := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_DigSuccess,
-		HoleMsg: msg,
+	res := &net_pb.NatManage{
+		MsgType: utils.NatDigSuccess,
+		DigMsg:  msg,
 	}
 
 	data, _ := proto.Marshal(res)
