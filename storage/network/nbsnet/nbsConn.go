@@ -135,3 +135,7 @@ func (conn *NbsUdpConn) unpackAddr(d []byte, pAddr net.Addr) ([]byte, *NbsUdpAdd
 
 	return msg.RawData, peerAddr
 }
+func (conn *NbsUdpConn) String() string {
+	return "[" + conn.RealConn.LocalAddr().String() + "]-->[" +
+		conn.RealConn.RemoteAddr().String() + "]"
+}

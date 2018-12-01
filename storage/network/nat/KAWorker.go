@@ -104,6 +104,6 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 
 	go tunnel.waitDigResponse(task, conn)
 
-	logger.Info("Step 4:-> I start to dig in:->", pubAddr, tunnel.sharedAddr)
+	logger.Info("Step 4:-> I start to dig in:->")
 	tunnel.digDig(data, conn, task)
 }

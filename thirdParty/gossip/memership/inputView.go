@@ -9,8 +9,6 @@ import (
 
 func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 
-	logger.Debug("gossip heart beat :", beat, addr)
-
 	item, ok := node.inputView[beat.Sender]
 	if !ok {
 		logger.Warning("no such input view item:->", beat.Sender)
@@ -21,6 +19,7 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 
 	payLoad := beat.Payload
 	if payLoad == nil {
+		logger.Debug("gossip heart beat response:->", beat, addr)
 		return
 	}
 
@@ -29,11 +28,13 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 		logger.Warning("keep alive payload err:->", err)
 		return
 	}
-	logger.Debug("get gossip heart beat with payload:", msg)
 	node.ctrlMsg(msg, addr)
 }
 
 func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) {
+
+	logger.Debug("get gossip heart beat with payload:", msg)
+
 	switch msg.MessageType {
 	case pb.MsgType_reqContract:
 		req := msg.ContactReq

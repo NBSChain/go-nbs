@@ -54,7 +54,8 @@ func (node *MemManager) keepAlive() {
 		}
 
 		item.updateTime = now
-		logger.Debug("normal send gossip heart beat to :->", nodeId, item.addr)
+
+		logger.Debug("gossip heart beat empty payload:->", nodeId, item.conn.String())
 	}
 }
 

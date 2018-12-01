@@ -177,8 +177,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 
 	go tunnel.waitDigResponse(task, conn)
 
-	logger.Info("Step 2-4:->dig in private network:->",
-		conn.LocalAddr().String(), conn.RemoteAddr().String())
+	logger.Info("Step 2-4:->dig in private network:->")
 	tunnel.digDig(data, conn, task)
 }
 
@@ -201,19 +200,23 @@ func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
 
 func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 
+	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
+
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		logger.Error("dig in public network failed:->", err)
+		logger.Error("reading dig result failed:->", err, conStr)
 		task.err <- err
 		return
 	}
 	response := &net_pb.NatResponse{}
 	if err = proto.Unmarshal(buffer[:n], response); err != nil {
-		logger.Warning("keep alive response Unmarshal failed:", err)
+		logger.Warning("reading dig result Unmarshal failed:", err, conStr)
 		task.err <- err
 		return
 	}
+
+	logger.Debug("get dig response:->", response, conStr)
 
 	switch response.MsgType {
 	case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
@@ -225,10 +228,10 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		data, _ := proto.Marshal(res)
 
 		if _, err := conn.Write(data); err != nil {
-			logger.Warning("failed to response the dig confirm.")
+			logger.Warning("failed to confirm the dig :->", conStr)
 		}
 	case net_pb.NatMsgType_DigSuccess:
-		logger.Info("dig in public network success.")
+		logger.Info("dig dig success:->", conStr)
 	}
 
 	task.err <- nil
