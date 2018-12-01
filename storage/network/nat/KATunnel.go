@@ -73,12 +73,15 @@ func (tunnel *KATunnel) runLoop() {
 
 func (tunnel *KATunnel) sendKeepAlive() error {
 
-	request := &net_pb.NatManage{
-		MsgType: nbsnet.NatKeepAlive,
-		KeepAlive: &net_pb.NatKeepAlive{
-			NodeId: tunnel.networkId,
-			LAddr:  tunnel.sharedAddr,
-		},
+	KeepAlive := &net_pb.NatKeepAlive{
+		NodeId: tunnel.networkId,
+		LAddr:  tunnel.sharedAddr,
+	}
+	kaData, _ := proto.Marshal(KeepAlive)
+	request := &net_pb.NatMsg{
+		T: nbsnet.NatKeepAlive,
+		L: int32(len(kaData)),
+		V: kaData,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -109,8 +112,13 @@ func (tunnel *KATunnel) restoreNatChannel() {
 *
 *************************************************************************/
 
-func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
+func (tunnel *KATunnel) answerInvite(data []byte) {
 
+	invite := &net_pb.ReverseInvite{}
+	if err := proto.Unmarshal(data, invite); err != nil {
+		logger.Warning("answer invite unmarshal err:->", err)
+		return
+	}
 	myPort := strconv.Itoa(int(invite.ToPort))
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+myPort,
@@ -120,16 +128,18 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 		return
 	}
 	defer conn.Close()
-
-	req := &net_pb.NatManage{
-		MsgType: nbsnet.NatReversDigAck,
-		InviteAck: &net_pb.ReverseInviteAck{
-			SessionId: invite.SessionId,
-		},
+	InviteAck := &net_pb.ReverseInviteAck{
+		SessionId: invite.SessionId,
+	}
+	ackData, _ := proto.Marshal(InviteAck)
+	req := &net_pb.NatMsg{
+		T: nbsnet.NatReversDigAck,
+		L: int32(len(ackData)),
+		V: ackData,
 	}
 
-	data, _ := proto.Marshal(req)
-	if _, err := conn.Write(data); err != nil {
+	reqData, _ := proto.Marshal(req)
+	if _, err := conn.Write(reqData); err != nil {
 		logger.Errorf("failed to write answer to inviter:", err)
 		return
 	}
@@ -137,7 +147,15 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
 }
 
-func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.NatKeepAlive) {
+func (tunnel *KATunnel) refreshNatInfo(data []byte) {
+
+	alive := &net_pb.NatKeepAlive{}
+
+	if err := proto.Unmarshal(data, alive); err != nil {
+		logger.Warning("unmarshal nat keep alive err:->", err)
+		return
+	}
+
 	tunnel.updateTime = time.Now()
 
 	if tunnel.natAddr.NatIp != alive.PubIP &&
@@ -165,12 +183,14 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		task.err <- err
 		return
 	}
-
-	holeMsg := &net_pb.NatManage{
-		MsgType: nbsnet.NatPriDigSyn,
-		PriDigSyn: &net_pb.PriNetDig{
-			SessionId: sessionID,
-		},
+	PriDigSyn := &net_pb.PriNetDig{
+		SessionId: sessionID,
+	}
+	synData, _ := proto.Marshal(PriDigSyn)
+	holeMsg := &net_pb.NatMsg{
+		T: nbsnet.NatPriDigSyn,
+		L: int32(len(synData)),
+		V: synData,
 	}
 	data, _ := proto.Marshal(holeMsg)
 
@@ -228,7 +248,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 		task.err <- err
 		return
 	}
-	response := &net_pb.NatManage{}
+	response := &net_pb.NatMsg{}
 	if err = proto.Unmarshal(buffer[:n], response); err != nil {
 		logger.Warning("reading dig result Unmarshal failed:", err, conStr)
 		task.err <- err
@@ -237,11 +257,12 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 
 	logger.Debug("get dig response:->", response, conStr)
 
-	switch response.MsgType {
+	switch response.T {
 	case nbsnet.NatDigIn, nbsnet.NatDigOut:
-		res := &net_pb.NatManage{
-			MsgType: nbsnet.NatDigSuccess,
-			DigMsg:  response.DigMsg,
+		res := &net_pb.NatMsg{
+			T: nbsnet.NatDigSuccess,
+			V: response.V,
+			L: int32(len(response.V)),
 		}
 
 		data, _ := proto.Marshal(res)

@@ -140,15 +140,18 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	localHost := conn.LocalAddr().String()
 	_, fromPort, _ := net.SplitHostPort(localHost)
 
-	req := &net_pb.NatManage{
-		MsgType: nbsnet.NatReversDig,
-		Invite: &net_pb.ReverseInvite{
-			SessionId: connId,
-			PubIp:     lAddr.PubIp,
-			ToPort:    int32(toPort),
-			PeerId:    rAddr.NetworkId,
-			FromPort:  fromPort,
-		},
+	Invite := &net_pb.ReverseInvite{
+		SessionId: connId,
+		PubIp:     lAddr.PubIp,
+		ToPort:    int32(toPort),
+		PeerId:    rAddr.NetworkId,
+		FromPort:  fromPort,
+	}
+	inviteData, _ := proto.Marshal(Invite)
+	req := &net_pb.NatMsg{
+		T: nbsnet.NatReversDig,
+		L: int32(len(inviteData)),
+		V: inviteData,
 	}
 	reqData, _ := proto.Marshal(req)
 	if _, err := conn.Write(reqData); err != nil {
@@ -193,14 +196,13 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 		return
 	}
 
-	res := &net_pb.NatManage{}
+	res := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer[:n], res); err != nil {
 		task.err <- err
 		return
 	}
 
-	if res.MsgType != nbsnet.NatReversDigAck ||
-		res.InviteAck.SessionId != sessionID {
+	if res.T != nbsnet.NatReversDigAck {
 		task.udpConn = nil
 		task.err <- fmt.Errorf("didn't get the answer")
 		return

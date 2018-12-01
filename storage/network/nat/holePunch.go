@@ -2,7 +2,7 @@ package nat
 
 import "C"
 import (
-	"github.com/NBSChain/go-nbs/storage/network/denat"
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/golang/protobuf/proto"
@@ -33,9 +33,11 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 		ToPort:    int32(toPort),
 	}
 
-	request := &net_pb.NatManage{
-		MsgType: nbsnet.NatConnect,
-		ConnReq: connReq,
+	connData, _ := proto.Marshal(connReq)
+	request := &net_pb.NatMsg{
+		T: nbsnet.NatConnect,
+		L: int32(len(connData)),
+		V: connData,
 	}
 
 	toItemData, err := proto.Marshal(request)
@@ -68,11 +70,15 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 *
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
-func (nat *Manager) forwardDigRequest(req *net_pb.NatConnect, peerAddr *net.UDPAddr) error {
-
-	res := &net_pb.NatManage{
-		MsgType: nbsnet.NatConnect,
-		ConnReq: req,
+func (nat *Manager) forwardDigRequest(data []byte, peerAddr *net.UDPAddr) error {
+	req := &net_pb.NatConnect{}
+	if err := proto.Unmarshal(data, req); err != nil {
+		return err
+	}
+	res := &net_pb.NatMsg{
+		T: nbsnet.NatConnect,
+		L: int32(len(data)),
+		V: data,
 	}
 	rawData, _ := proto.Marshal(res)
 
@@ -81,9 +87,7 @@ func (nat *Manager) forwardDigRequest(req *net_pb.NatConnect, peerAddr *net.UDPA
 
 	toItem, ok := nat.cache[req.ToAddr.NetworkId]
 	if !ok {
-		if err := denat.GetDeNatSerIns().ProxyConnInvite(req); err != nil {
-			return err
-		}
+		return fmt.Errorf("this item is no more in my cache")
 	} else {
 		if _, err := nat.sysNatServer.WriteToUDP(rawData, toItem.pubAddr); err != nil {
 			return err
@@ -95,7 +99,14 @@ func (nat *Manager) forwardDigRequest(req *net_pb.NatConnect, peerAddr *net.UDPA
 	return nil
 }
 
-func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
+//TODO:: refactor
+func (tunnel *KATunnel) digOut(data []byte) {
+
+	req := &net_pb.NatConnect{}
+	if err := proto.Unmarshal(data, req); err != nil {
+		logger.Warning("unmarshal connect data failed:->", err)
+		return
+	}
 
 	sessionId := req.SessionId
 	if _, ok := tunnel.workLoad[sessionId]; ok {
@@ -107,15 +118,18 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 		IP:   net.ParseIP(req.FromAddr.NatIP),
 		Port: int(req.FromAddr.NatPort),
 	}
-
-	holeMsg := &net_pb.NatManage{
-		MsgType: nbsnet.NatDigOut,
-		DigMsg: &net_pb.HoleDig{
-			SessionId:   sessionId,
-			NetworkType: ToPubNet,
-		},
+	DigMsg := &net_pb.HoleDig{
+		SessionId:   sessionId,
+		NetworkType: ToPubNet,
 	}
-	data, _ := proto.Marshal(holeMsg)
+	DigData, _ := proto.Marshal(DigMsg)
+	holeMsg := &net_pb.NatMsg{
+		T: nbsnet.NatDigOut,
+		L: int32(len(DigData)),
+		V: DigData,
+	}
+
+	msgData, _ := proto.Marshal(holeMsg)
 
 	task := &ProxyTask{
 		sessionID: sessionId,
@@ -130,7 +144,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	for i := 0; i < TryDigHoleTimes; i++ {
 
-		if _, err := tunnel.serverHub.WriteTo(data, remNatAddr); err != nil {
+		if _, err := tunnel.serverHub.WriteTo(msgData, remNatAddr); err != nil {
 			logger.Error(err.Error())
 		}
 
@@ -153,16 +167,16 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 	delete(tunnel.workLoad, sessionId)
 }
 
-func (tunnel *KATunnel) digSuccessRes(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
+func (tunnel *KATunnel) digSuccessRes(data []byte, peerAddr *net.UDPAddr) {
 
-	res := &net_pb.NatManage{
-		MsgType: nbsnet.NatDigSuccess,
-		DigMsg:  msg,
+	res := &net_pb.NatMsg{
+		T: nbsnet.NatDigSuccess,
+		L: int32(len(data)),
+		V: data,
 	}
 
-	data, _ := proto.Marshal(res)
-
-	if _, err := tunnel.serverHub.WriteTo(data, peerAddr); err != nil {
+	resData, _ := proto.Marshal(res)
+	if _, err := tunnel.serverHub.WriteTo(resData, peerAddr); err != nil {
 		logger.Warning("failed to response the dig confirm.")
 	}
 }

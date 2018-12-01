@@ -37,7 +37,7 @@ func (tunnel *KATunnel) readKeepAlive() {
 
 func (tunnel *KATunnel) process(buffer []byte) error {
 
-	response := &net_pb.NatManage{}
+	response := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer, response); err != nil {
 		logger.Warning("keep alive response Unmarshal failed:", err)
 		return err
@@ -45,13 +45,13 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 
 	logger.Debug("keep alive:->", response)
 
-	switch response.MsgType {
+	switch response.T {
 	case nbsnet.NatKeepAlive:
-		tunnel.refreshNatInfo(response.KeepAlive)
+		tunnel.refreshNatInfo(response.V)
 	case nbsnet.NatReversDig:
-		tunnel.answerInvite(response.Invite)
+		tunnel.answerInvite(response.V)
 	case nbsnet.NatConnect:
-		tunnel.digOut(response.ConnReq)
+		tunnel.digOut(response.V)
 	}
 
 	return nil
@@ -66,7 +66,7 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		request := &net_pb.NatManage{}
+		request := &net_pb.NatMsg{}
 		if err := proto.Unmarshal(buffer[:n], request); err != nil {
 			logger.Warning("parse message failed", err)
 			continue
@@ -74,7 +74,7 @@ func (tunnel *KATunnel) listening() {
 
 		logger.Debug("listen connection:", request)
 
-		switch request.MsgType {
+		switch request.T {
 		default:
 			logger.Warning("unknown msg for linux/unix/bsd systems.")
 		}
@@ -84,12 +84,15 @@ func (tunnel *KATunnel) listening() {
 //TIPS::unix/bsd/linux need to read the response from same connection
 func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) {
 
-	holeMsg := &net_pb.NatManage{
-		MsgType: nbsnet.NatDigIn,
-		DigMsg: &net_pb.HoleDig{
-			SessionId:   sessionID,
-			NetworkType: FromPubNet,
-		},
+	DigMsg := &net_pb.HoleDig{
+		SessionId:   sessionID,
+		NetworkType: FromPubNet,
+	}
+	digData, _ := proto.Marshal(DigMsg)
+	holeMsg := &net_pb.NatMsg{
+		T: nbsnet.NatDigIn,
+		L: int32(len(digData)),
+		V: digData,
 	}
 	data, _ := proto.Marshal(holeMsg)
 

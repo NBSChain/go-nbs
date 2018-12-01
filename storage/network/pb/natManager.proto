@@ -77,19 +77,8 @@ message PriNetDig{
     string sessionId = 1;
 }
 
-message natManage {
-    int32 msgType               = 1;
-    BootReg BootReg             = 2;
-    NatConnect connReq          = 3;
-    NatKeepAlive keepAlive      = 4;
-    NatPing pingPong            = 5;
-    HoleDig digMsg              = 6;
-    ReverseInvite invite        = 7;
-    ReverseInviteAck inviteAck  = 8;
-    HolePayLoad holePayLoad     = 9;
-    PriNetDig  priDigSyn        = 10;
-
-    ErrorNotify error           = 20;
-
-    BootRegAck BootRegAck       = 30;
+message NatMsg {
+    int32 T = 1;
+    int32 L = 2;
+    bytes V = 3;
 }

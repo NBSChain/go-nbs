@@ -368,10 +368,11 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 		PrivateIp:   host,
 		PrivatePort: port,
 	}
-
-	request := &net_pb.NatManage{
-		MsgType: nbsnet.NatBootReg,
-		BootReg: bootRequest,
+	reqData, _ := proto.Marshal(bootRequest)
+	request := &net_pb.NatMsg{
+		T: nbsnet.NatBootReg,
+		L: int32(len(reqData)),
+		V: reqData,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -397,7 +398,7 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootRegA
 		return nil, err
 	}
 
-	response := &net_pb.NatManage{}
+	response := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 		logger.Error("unmarshal err:->", err)
 		return nil, err
@@ -405,5 +406,10 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootRegA
 
 	logger.Debug("response:->", response)
 
-	return response.BootRegAck, nil
+	ack := &net_pb.BootRegAck{}
+	if err := proto.Unmarshal(response.V, ack); err != nil {
+		return nil, err
+	}
+
+	return ack, nil
 }
