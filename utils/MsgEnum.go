@@ -1,7 +1,7 @@
 package utils
 
 const (
-	unkown          int32 = iota
+	_               int32 = iota
 	NatError              = 1000
 	NatBootReg            = 1001
 	NatKeepAlive          = 1002
