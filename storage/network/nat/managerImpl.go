@@ -71,7 +71,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 	nat.NatKATun = tunnel
 	select {
 	case <-tunnel.natChanged:
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 2): //TODO::
 	}
 
 	return nil

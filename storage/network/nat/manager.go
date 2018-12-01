@@ -92,7 +92,9 @@ func (nat *Manager) responseAnError(err error, peerAddr *net.UDPAddr) {
 	}
 
 	resData, _ := proto.Marshal(response)
-	nat.sysNatServer.WriteToUDP(resData, peerAddr)
+	if _, err := nat.sysNatServer.WriteToUDP(resData, peerAddr); err != nil {
+		logger.Warning("write back error message failed:->", err)
+	}
 }
 
 func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatManage, error) {
@@ -161,18 +163,22 @@ func (nat *Manager) checkWhoIsHe(request *net_pb.BootReg, peerAddr *net.UDPAddr)
 func (nat *Manager) cacheManager() {
 
 	for {
-		nat.cacheLock.Lock()
+		select {
+		case <-time.After(KeepAliveTime):
+			nat.cacheLock.Lock()
 
-		currentClock := time.Now()
-		for nodeId, item := range nat.cache {
+			currentClock := time.Now()
+			for nodeId, item := range nat.cache {
 
-			if currentClock.Sub(item.updateTIme) > time.Second*KeepAliveTimeOut {
-				delete(nat.cache, nodeId)
+				if currentClock.Sub(item.updateTIme) > KeepAliveTimeOut {
+					delete(nat.cache, nodeId)
+				}
 			}
-		}
 
-		nat.cacheLock.Unlock()
-		time.Sleep(KeepAliveTime)
+			nat.cacheLock.Unlock()
+		case <-nat.NatKATun.natChanged:
+			logger.Warning("nat server ip changed.")
+		}
 	}
 }
 
