@@ -172,7 +172,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 			return nil, err
 		}
 		realConn = c
-		cType = nbsnet.CTypeNat
+		cType = nbsnet.CTypeNatSimplex
 	}
 
 	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
@@ -208,24 +208,27 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
 
 	var realConn *net.UDPConn
+	var connType nbsnet.ConnType
 	if lAddr.CanServe {
+		connType = nbsnet.CTypeNatSimplex
 		c, err := network.natManager.InvitePeerBehindNat(lAddr, rAddr, sessionID, toPort)
 		if err != nil {
 			return nil, err
 		}
 		realConn = c
 	} else {
-		c, err := network.natManager.PunchANatHole(lAddr, rAddr, sessionID, toPort)
+		c, t, err := network.natManager.PunchANatHole(lAddr, rAddr, sessionID, toPort)
 		if err != nil {
 			return nil, err
 		}
+		connType = t
 		realConn = c
 	}
 
 	host, port, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  realConn,
-		CType:     nbsnet.CTypeNat,
+		CType:     connType,
 		SessionID: sessionID,
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,

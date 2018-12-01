@@ -168,7 +168,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigIn,
-		HoleMsg: &net_pb.HoleDig{
+		DigMsg: &net_pb.HoleDig{
 			SessionId:   sessionID,
 			NetworkType: FromPriNet,
 		},
@@ -222,7 +222,7 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 	case net_pb.NatMsgType_DigIn, net_pb.NatMsgType_DigOut:
 		res := &net_pb.NatResponse{
 			MsgType: net_pb.NatMsgType_DigSuccess,
-			HoleMsg: response.HoleMsg,
+			DigMsg:  response.DigMsg,
 		}
 
 		data, _ := proto.Marshal(res)
@@ -237,4 +237,11 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 	task.err <- nil
 	task.udpConn = conn
 	return
+}
+
+func (tunnel *KATunnel) unpackMsg(payLoad *net_pb.HolePayLoad) {
+	//sid := payLoad.SessionId
+	//if pTask, ok := tunnel.workLoad[sid]; !ok{
+	//	tunnel.
+	//}
 }

@@ -86,7 +86,7 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigIn,
-		HoleMsg: &net_pb.HoleDig{
+		DigMsg: &net_pb.HoleDig{
 			SessionId:   sessionID,
 			NetworkType: FromPubNet,
 		},

@@ -15,6 +15,7 @@ enum NatMsgType {
     DigSuccess      = 7;
     ReverseDig      = 8;
     ReverseDigACK   = 9;
+    BoardOnHole     = 10;
     error           = 20;
 }
 
@@ -65,6 +66,12 @@ message HoleDig {
     int32 networkType = 2;
 }
 
+message HolePayLoad{
+    string sessionId    = 1;
+    int32  targetPort   = 2;
+    bytes  payLoad      = 3;
+}
+
 message ErrorNotify {
     string errMsg = 1;
 }
@@ -74,7 +81,7 @@ message ReverseInvite {
     string pubIp     = 2;
     int32 toPort     = 3;
     string peerId    = 4;
-    string fromPort   = 5;
+    string fromPort  = 5;
 }
 
 message ReverseInviteAck {
@@ -84,21 +91,23 @@ message ReverseInviteAck {
 message natRequest {
     NatMsgType msgType          = 1;
     BootNatRegReq BootRegReq    = 2;
-    NatConnect connReq = 3;
+    NatConnect connReq          = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing ping                = 5;
-    HoleDig holeMsg             = 6;
+    HoleDig digMsg              = 6;
     ReverseInvite invite        = 7;
     ReverseInviteAck inviteAck  = 8;
+    HolePayLoad holePayLoad     = 9;
 }
 
 message natResponse {
     NatMsgType msgType          = 1;
     BootNatRegRes BootRegRes    = 2;
-    NatConnect connRes = 3;
+    NatConnect connRes          = 3;
     NatKeepAlive keepAlive      = 4;
     NatPing pong                = 5;
-    HoleDig holeMsg             = 6;
+    HoleDig digMsg              = 6;
     ReverseInvite invite        = 7;
+    HolePayLoad holePayLoad     = 8;
     ErrorNotify error           = 50;
 }

@@ -109,7 +109,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.NatConnect) {
 
 	holeMsg := &net_pb.NatRequest{
 		MsgType: net_pb.NatMsgType_DigOut,
-		HoleMsg: &net_pb.HoleDig{
+		DigMsg: &net_pb.HoleDig{
 			SessionId:   sessionId,
 			NetworkType: ToPubNet,
 		},
@@ -156,7 +156,7 @@ func (tunnel *KATunnel) digSuccessRes(msg *net_pb.HoleDig, peerAddr *net.UDPAddr
 
 	res := &net_pb.NatResponse{
 		MsgType: net_pb.NatMsgType_DigSuccess,
-		HoleMsg: msg,
+		DigMsg:  msg,
 	}
 
 	data, _ := proto.Marshal(res)

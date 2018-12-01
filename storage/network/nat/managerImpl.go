@@ -81,10 +81,11 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 	return nat.canServe
 }
 
-func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) (*net.UDPConn, error) {
+func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
+	connId string, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
 
 	if err := nat.NatKATun.StartDigHole(lAddr, rAddr, connId, toPort); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	priConnTask := &ConnTask{
 		err: make(chan error),
@@ -105,28 +106,27 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string
 		select {
 		case err := <-priConnTask.err:
 			if err == nil {
-				return priConnTask.udpConn, nil
+				return priConnTask.udpConn, nbsnet.CTypeNormal, nil
 			} else {
 				priFail = true
 				if pubFail {
-					return nil, err
+					return nil, 0, err
 				}
 			}
-			return priConnTask.udpConn, err
 		case err := <-pubConnTask.err:
 			if err == nil {
-				return pubConnTask.udpConn, nil
+				return pubConnTask.udpConn, nbsnet.CTypeNatDuplex, nil
 			} else {
 				pubFail = true
 				if priFail {
-					return nil, err
+					return nil, 0, err
 				}
 			}
 		case <-time.After(HolePunchTimeOut / 2):
-			return nil, fmt.Errorf("time out")
+			return nil, 0, fmt.Errorf("time out")
 		}
 	}
-	return nil, fmt.Errorf("time out")
+	return nil, 0, fmt.Errorf("time out")
 }
 
 func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,

@@ -13,7 +13,8 @@ type ConnType int8
 const (
 	_ ConnType = iota
 	CTypeNormal
-	CTypeNat
+	CTypeNatSimplex
+	CTypeNatDuplex
 )
 
 type NbsUdpConn struct {
@@ -68,19 +69,29 @@ func (conn *NbsUdpConn) Send(b []byte) (int, error) {
 	switch conn.CType {
 	case CTypeNormal:
 		return conn.RealConn.Write(b)
-	case CTypeNat:
+	case CTypeNatSimplex:
 		return conn.RealConn.Write(b)
+
+	case CTypeNatDuplex:
+		pack := &net_pb.HolePayLoad{
+			SessionId: conn.SessionID,
+			PayLoad:   b,
+		}
+		data, _ := proto.Marshal(pack)
+
+		return conn.RealConn.Write(data)
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
 }
 
+//TODO::
 func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 
 	switch conn.CType {
 	case CTypeNormal:
 		return conn.RealConn.Read(b)
-	case CTypeNat:
+	case CTypeNatSimplex:
 		return conn.RealConn.Read(b)
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
