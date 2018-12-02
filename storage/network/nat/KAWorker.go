@@ -79,27 +79,3 @@ func (tunnel *KATunnel) listening() {
 		}
 	}
 }
-
-//TIPS::unix/bsd/linux need to read the response from same connection
-func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, sessionID string) {
-
-	//holeMsg := &net_pb.NatMsg{
-	//	Typ:     nbsnet.NatDigIn,
-	//	Seq:     time.Now().Unix(),
-	//}
-	//data, _ := proto.Marshal(holeMsg)
-	//
-	//port := strconv.Itoa(int(rAddr.NatPort))
-	//pubAddr := net.JoinHostPort(rAddr.NatIp, port)
-	//conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
-	//if err != nil {
-	//	logger.Warning("dig hole in pub network failed", err)
-	//	task.err <- err
-	//	return
-	//}
-	//
-	//go tunnel.waitDigOutRes(task, conn)
-	//
-	//logger.Info("Step 4:-> I start to dig in:->")
-	//tunnel.digDig(data, conn, task)
-}

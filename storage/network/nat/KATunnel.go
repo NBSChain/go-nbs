@@ -21,9 +21,10 @@ const (
 )
 
 type ConnTask struct {
-	err     chan error
-	locPort string
-	udpConn *net.UDPConn
+	err         chan error
+	locPort     string
+	udpConn     *net.UDPConn
+	portCapConn *net.UDPConn
 }
 
 type KATunnel struct {
@@ -35,6 +36,16 @@ type KATunnel struct {
 	sharedAddr string
 	updateTime time.Time
 	digTask    map[string]*ConnTask
+}
+
+func (task *ConnTask) Close() {
+
+	if task.err != nil {
+		close(task.err)
+	}
+	if task.portCapConn != nil {
+		task.portCapConn.Close()
+	}
 }
 
 /************************************************************************
@@ -166,12 +177,14 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		IP:   net.ParseIP(rAddr.PriIp),
 		Port: toPort,
 	})
-
 	if err != nil {
 		logger.Warning("Step 2-1:can't dial by private network.", err)
 		task.err <- err
 		return
 	}
+
+	logger.Debug("hole punch step1-1 start in private network:->",
+		conn.LocalAddr().String(), conn.RemoteAddr().String())
 
 	holeMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatPriDigSyn,
@@ -223,6 +236,10 @@ func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
 	}
 
 	for i := 0; i < TryDigHoleTimes; i++ {
+
+		logger.Debug("hole punch step2-4  dig dig:->",
+			i, conn.LocalAddr().String(), conn.RemoteAddr().String())
+
 		if _, err := conn.Write(data); err != nil {
 			logger.Error(err)
 		}
@@ -263,9 +280,13 @@ func (tunnel *KATunnel) notifyCaller(msg *net_pb.NatConnect, task *ConnTask) {
 		task.err <- err
 		return
 	}
+
+	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
 }
 
 func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
+
+	logger.Debug("hole punch step2-5 waiting dig out response:->")
 
 	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
 		task.err <- err
@@ -287,13 +308,12 @@ func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
 		return
 	}
 
-	logger.Debug("get dig response:->", res)
-
 	if res.Typ == nbsnet.NatDigSuccess {
 		task.err <- nil
 	} else {
 		task.err <- fmt.Errorf("unknown dig response")
 	}
 
+	logger.Debug("hole punch step2-8 dig success:->", res)
 	return
 }

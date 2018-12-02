@@ -18,7 +18,6 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		task.err <- err
 		return
 	}
-	defer conn.Close()
 
 	connReq := &net_pb.NatConnect{
 		NatServer:  lAddr.NatServer,
@@ -35,7 +34,10 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	_, port, _ := net.SplitHostPort(conn.LocalAddr().String())
 	task.locPort = port
+	task.portCapConn = conn
 	tunnel.digTask[sid] = task
+
+	logger.Debug("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
 
 	return
 }
@@ -46,7 +48,7 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 *
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
-func (nat *Manager) forwardDigRequest(data []byte, peerAddr *net.UDPAddr) error {
+func (nat *Manager) forwardDigOutReq(data []byte, peerAddr *net.UDPAddr) error {
 	req := &net_pb.NatConnect{}
 	if err := proto.Unmarshal(data, req); err != nil {
 		return err
@@ -65,15 +67,7 @@ func (nat *Manager) forwardDigRequest(data []byte, peerAddr *net.UDPAddr) error 
 	if _, err := nat.sysNatServer.WriteToUDP(forwardData, toItem.pubAddr); err != nil {
 		return err
 	}
-	simpleNat := &net_pb.SimpleNatInfo{
-		NatInfo: req.Public,
-	}
-	resData, _, _ := nbsnet.PackNatData(simpleNat, nbsnet.NatConnect)
-	if _, err := nat.sysNatServer.WriteToUDP(resData, peerAddr); err != nil {
-		return err
-	}
-
-	logger.Info("Step 2:-> forward to peer:->", req)
+	logger.Debug("hole punch step2-2 forward dig out request:->", req.Public)
 
 	return nil
 }
@@ -89,7 +83,7 @@ func (tunnel *KATunnel) digOut(data []byte) {
 	digTask := &ConnTask{
 		err: make(chan error),
 	}
-	defer close(digTask.err)
+	defer digTask.Close()
 
 	go tunnel.notifyCaller(req, digTask)
 
@@ -109,20 +103,6 @@ func (tunnel *KATunnel) digOut(data []byte) {
 		logger.Info("dig out finished:->", err)
 	case <-time.After(HolePunchTimeOut):
 		logger.Warning("dig out time out")
-	}
-}
-
-func (tunnel *KATunnel) digSuccessRes(data []byte, peerAddr *net.UDPAddr) {
-
-	res := &net_pb.NatMsg{
-		Typ:     nbsnet.NatDigSuccess,
-		Len:     int32(len(data)),
-		PayLoad: data,
-	}
-
-	resData, _ := proto.Marshal(res)
-	if _, err := tunnel.serverHub.WriteTo(resData, peerAddr); err != nil {
-		logger.Warning("failed to response the dig confirm.")
 	}
 }
 
@@ -151,4 +131,7 @@ func (tunnel *KATunnel) makeAHole(data []byte) {
 
 	task.udpConn = conn
 	task.err <- nil
+
+	logger.Debug("hole punch step2-7 create hole channel:->",
+		conn.LocalAddr().String(), ack.Public)
 }

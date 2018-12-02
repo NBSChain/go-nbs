@@ -67,7 +67,7 @@ func (nat *Manager) natServiceListening() {
 				logger.Error(err)
 			}
 		case nbsnet.NatConnect:
-			if err = nat.forwardDigRequest(request.PayLoad, peerAddr); err != nil {
+			if err = nat.forwardDigOutReq(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case nbsnet.NatKeepAlive:
@@ -278,6 +278,6 @@ func (nat *Manager) forwardConnAck(bytes []byte, addr *net.UDPAddr) error {
 	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
 		return err
 	}
-
+	logger.Debug("hole punch step2-6 forward dig out notification:->", ack.Public)
 	return nil
 }

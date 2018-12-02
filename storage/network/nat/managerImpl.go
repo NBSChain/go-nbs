@@ -87,20 +87,21 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	priConnTask := &ConnTask{
 		err: make(chan error),
 	}
-	defer close(priConnTask.err)
+	defer priConnTask.Close()
 
 	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
 
 	pubConnTask := &ConnTask{
 		err: make(chan error),
 	}
-	defer close(pubConnTask.err)
+	defer pubConnTask.Close()
 	go nat.NatKATun.DigHoeInPubNet(lAddr, rAddr, connId, toPort, pubConnTask)
 
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {
 		select {
 		case err := <-priConnTask.err:
+			logger.Debug("hole punch step1-2 dig direct in private network finished:->", err)
 			if err == nil {
 				return priConnTask.udpConn, nbsnet.CTypeNormal, nil
 			} else {
@@ -110,6 +111,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 				}
 			}
 		case err := <-pubConnTask.err:
+			logger.Debug("hole punch step2-x dig in public network finished:->", err)
 			if err == nil {
 				return pubConnTask.udpConn, nbsnet.CTypeNatDuplex, nil
 			} else {
