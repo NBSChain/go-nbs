@@ -26,10 +26,18 @@ message BootRegAck {
 }
 
 message NatConnect {
-    NbsAddr fromAddr    = 1;
-    NbsAddr toAddr      = 2;
-    string sessionId    = 3;
-    int32 toPort        = 4;
+    string NatServer    = 1;
+    string Public       = 2;
+    string TargetId     = 3;
+    int32 TargetPort    = 4;
+    string SessionId    = 5;
+    string FromId       = 6;
+}
+
+message NatConnectAck {
+    string Public       = 1;
+    string sessionId    = 2;
+    string targetId     = 3;
 }
 
 message NatKeepAlive {
@@ -75,6 +83,10 @@ message ReverseInviteAck {
 
 message PriNetDig{
     string sessionId = 1;
+}
+
+message SimpleNatInfo{
+    string natInfo   = 1;
 }
 
 message NatMsg {

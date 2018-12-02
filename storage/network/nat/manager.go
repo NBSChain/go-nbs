@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-var logger = utils.GetLogInstance()
+var (
+	NotFundErr = fmt.Errorf("no such node behind nat device")
+	logger     = utils.GetLogInstance()
+)
 
 type HostBehindNat struct {
 	updateTIme time.Time
@@ -73,6 +76,10 @@ func (nat *Manager) natServiceListening() {
 			}
 		case nbsnet.NatReversDig:
 			if err = nat.forwardInvite(request.PayLoad, peerAddr); err != nil {
+				logger.Error(err)
+			}
+		case nbsnet.NatConnectACK:
+			if err = nat.forwardConnAck(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		}
@@ -228,7 +235,7 @@ func (nat *Manager) forwardInvite(data []byte, peerAddr *net.UDPAddr) error {
 
 	item, ok := nat.cache[invite.PeerId]
 	if !ok {
-		return fmt.Errorf("no such node behind nat device")
+		return NotFundErr
 	}
 
 	res := &net_pb.NatMsg{
@@ -244,6 +251,33 @@ func (nat *Manager) forwardInvite(data []byte, peerAddr *net.UDPAddr) error {
 	}
 
 	logger.Debug("Step3: forward notification to applier:", item.pubAddr)
+
+	return nil
+}
+
+func (nat *Manager) forwardConnAck(bytes []byte, addr *net.UDPAddr) error {
+	ack := &net_pb.NatConnectAck{}
+	if err := proto.Unmarshal(bytes, ack); err != nil {
+		return err
+	}
+
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	item, ok := nat.cache[ack.TargetId]
+	if !ok {
+		return NotFundErr
+	}
+
+	ack.Public = addr.String()
+	data, _, err := nbsnet.PackNatData(ack, nbsnet.NatConnectACK)
+	if err != nil {
+		return err
+	}
+
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+		return err
+	}
 
 	return nil
 }

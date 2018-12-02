@@ -5,11 +5,8 @@ package nat
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
-	"net"
-	"strconv"
 )
 
 /************************************************************************
@@ -52,6 +49,8 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 		tunnel.answerInvite(response.PayLoad)
 	case nbsnet.NatConnect:
 		tunnel.digOut(response.PayLoad)
+	case nbsnet.NatConnectACK:
+		tunnel.makeAHole(response.PayLoad)
 	}
 
 	return nil
@@ -82,31 +81,25 @@ func (tunnel *KATunnel) listening() {
 }
 
 //TIPS::unix/bsd/linux need to read the response from same connection
-func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, sessionID string) {
+func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, sessionID string) {
 
-	DigMsg := &net_pb.HoleDig{
-		SessionId:   sessionID,
-		NetworkType: FromPubNet,
-	}
-	digData, _ := proto.Marshal(DigMsg)
-	holeMsg := &net_pb.NatMsg{
-		Typ:     nbsnet.NatDigIn,
-		Len:     int32(len(digData)),
-		PayLoad: digData,
-	}
-	data, _ := proto.Marshal(holeMsg)
-
-	port := strconv.Itoa(int(rAddr.NatPort))
-	pubAddr := net.JoinHostPort(rAddr.NatIp, port)
-	conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
-	if err != nil {
-		logger.Warning("dig hole in pub network failed", err)
-		task.err <- err
-		return
-	}
-
-	go tunnel.waitDigResponse(task, conn)
-
-	logger.Info("Step 4:-> I start to dig in:->")
-	tunnel.digDig(data, conn, task)
+	//holeMsg := &net_pb.NatMsg{
+	//	Typ:     nbsnet.NatDigIn,
+	//	Seq:     time.Now().Unix(),
+	//}
+	//data, _ := proto.Marshal(holeMsg)
+	//
+	//port := strconv.Itoa(int(rAddr.NatPort))
+	//pubAddr := net.JoinHostPort(rAddr.NatIp, port)
+	//conn, err := shareport.DialUDP("udp4", tunnel.sharedAddr, pubAddr)
+	//if err != nil {
+	//	logger.Warning("dig hole in pub network failed", err)
+	//	task.err <- err
+	//	return
+	//}
+	//
+	//go tunnel.waitDigOutRes(task, conn)
+	//
+	//logger.Info("Step 4:-> I start to dig in:->")
+	//tunnel.digDig(data, conn, task)
 }

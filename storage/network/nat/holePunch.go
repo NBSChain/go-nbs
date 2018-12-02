@@ -1,67 +1,43 @@
 package nat
 
-import "C"
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"strconv"
 	"time"
 )
 
-//udpConn inviter call first
-func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId string, toPort int) error {
+func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
+	sid string, toPort int, task *ConnTask) {
 
-	connReq := &net_pb.NatConnect{
-
-		FromAddr: &net_pb.NbsAddr{
-			NetworkId: lAddr.NetworkId,
-			CanServer: lAddr.CanServe,
-			PriIp:     lAddr.PriIp,
-			NatIP:     lAddr.NatIp,
-			NatPort:   lAddr.NatPort,
-		},
-		ToAddr: &net_pb.NbsAddr{
-			NetworkId: rAddr.NetworkId,
-			CanServer: rAddr.CanServe,
-			PriIp:     rAddr.PriIp,
-			NatIP:     rAddr.NatIp,
-			NatPort:   rAddr.NatPort,
-		},
-		SessionId: connId,
-		ToPort:    int32(toPort),
-	}
-
-	connData, _ := proto.Marshal(connReq)
-	request := &net_pb.NatMsg{
-		Typ:     nbsnet.NatConnect,
-		Len:     int32(len(connData)),
-		PayLoad: connData,
-	}
-
-	toItemData, err := proto.Marshal(request)
+	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 	if err != nil {
-		return err
-	}
-
-	host, port, _ := nbsnet.SplitHostPort(rAddr.NatServer)
-
-	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP(host),
-		Port: int(port),
-	})
-	if err != nil {
-		logger.Warning("failed to send dig request:", err)
-		return err
+		task.err <- err
+		return
 	}
 	defer conn.Close()
 
-	if _, err := conn.Write(toItemData); err != nil {
-		return err
+	connReq := &net_pb.NatConnect{
+		NatServer:  lAddr.NatServer,
+		TargetId:   rAddr.NetworkId,
+		TargetPort: int32(toPort),
+		SessionId:  sid,
+		FromId:     lAddr.NetworkId,
 	}
-	logger.Info("Step 1:->notify the nat server:->", rAddr.NatServer)
-	return nil
+	data, _, _ := nbsnet.PackNatData(connReq, nbsnet.NatConnect)
+	if _, err := conn.Write(data); err != nil {
+		task.err <- err
+		return
+	}
+
+	_, port, _ := net.SplitHostPort(conn.LocalAddr().String())
+	task.locPort = port
+	tunnel.digTask[sid] = task
+
+	return
 }
 
 /************************************************************************
@@ -75,96 +51,65 @@ func (nat *Manager) forwardDigRequest(data []byte, peerAddr *net.UDPAddr) error 
 	if err := proto.Unmarshal(data, req); err != nil {
 		return err
 	}
-	res := &net_pb.NatMsg{
-		Typ:     nbsnet.NatConnect,
-		Len:     int32(len(data)),
-		PayLoad: data,
-	}
-	rawData, _ := proto.Marshal(res)
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
-	toItem, ok := nat.cache[req.ToAddr.NetworkId]
+	toItem, ok := nat.cache[req.TargetId]
 	if !ok {
-		return fmt.Errorf("this item is no more in my cache")
-	} else {
-		if _, err := nat.sysNatServer.WriteToUDP(rawData, toItem.pubAddr); err != nil {
-			return err
-		}
+		return NotFundErr
 	}
 
-	logger.Info("Step 2:-> forward to peer:->", res)
+	req.Public = peerAddr.String()
+	forwardData, _ := proto.Marshal(req)
+	if _, err := nat.sysNatServer.WriteToUDP(forwardData, toItem.pubAddr); err != nil {
+		return err
+	}
+	simpleNat := &net_pb.SimpleNatInfo{
+		NatInfo: req.Public,
+	}
+	resData, _, _ := nbsnet.PackNatData(simpleNat, nbsnet.NatConnect)
+	if _, err := nat.sysNatServer.WriteToUDP(resData, peerAddr); err != nil {
+		return err
+	}
+
+	logger.Info("Step 2:-> forward to peer:->", req)
 
 	return nil
 }
 
-//TODO:: refactor
 func (tunnel *KATunnel) digOut(data []byte) {
 
 	req := &net_pb.NatConnect{}
 	if err := proto.Unmarshal(data, req); err != nil {
-		logger.Warning("unmarshal connect data failed:->", err)
+		logger.Warning("dig out unmarshal err :->", err)
 		return
 	}
 
-	sessionId := req.SessionId
-	if _, ok := tunnel.workLoad[sessionId]; ok {
-		logger.Info("duplicate connect require")
-		return
-	}
-
-	remNatAddr := &net.UDPAddr{
-		IP:   net.ParseIP(req.FromAddr.NatIP),
-		Port: int(req.FromAddr.NatPort),
-	}
-	DigMsg := &net_pb.HoleDig{
-		SessionId:   sessionId,
-		NetworkType: ToPubNet,
-	}
-	DigData, _ := proto.Marshal(DigMsg)
-	holeMsg := &net_pb.NatMsg{
-		Typ:     nbsnet.NatDigOut,
-		Len:     int32(len(DigData)),
-		PayLoad: DigData,
-	}
-
-	msgData, _ := proto.Marshal(holeMsg)
-
-	task := &ProxyTask{
-		sessionID: sessionId,
-		toAddr: &net.UDPAddr{
-			IP:   net.ParseIP(tunnel.natAddr.PriIp),
-			Port: int(req.ToPort),
-		},
+	digTask := &ConnTask{
 		err: make(chan error),
 	}
+	defer close(digTask.err)
 
-	tunnel.workLoad[sessionId] = task
+	go tunnel.notifyCaller(req, digTask)
 
-	for i := 0; i < TryDigHoleTimes; i++ {
-
-		if _, err := tunnel.serverHub.WriteTo(msgData, remNatAddr); err != nil {
-			logger.Error(err.Error())
-		}
-
-		logger.Info("Step 3:-> peer start to dig out:->", holeMsg)
-
-		select {
-		case err := <-task.err:
-			if err != nil {
-				logger.Error("failed to dig out", err)
-			} else {
-				logger.Info("Step 7:->peer packet in :->")
-			}
-			return
-		default:
-			time.Sleep(time.Millisecond * 500)
-		}
+	lPort := strconv.Itoa(int(req.TargetPort))
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, req.Public)
+	if err != nil {
+		return
 	}
+	defer conn.Close()
 
-	logger.Error("dig out time out")
-	delete(tunnel.workLoad, sessionId)
+	go tunnel.waitDigOutRes(digTask, conn)
+
+	go tunnel.digDig(conn, digTask)
+
+	select {
+	case err := <-digTask.err:
+		logger.Info("dig out finished:->", err)
+	case <-time.After(HolePunchTimeOut):
+		logger.Warning("dig out time out")
+	}
 }
 
 func (tunnel *KATunnel) digSuccessRes(data []byte, peerAddr *net.UDPAddr) {
@@ -179,4 +124,31 @@ func (tunnel *KATunnel) digSuccessRes(data []byte, peerAddr *net.UDPAddr) {
 	if _, err := tunnel.serverHub.WriteTo(resData, peerAddr); err != nil {
 		logger.Warning("failed to response the dig confirm.")
 	}
+}
+
+func (tunnel *KATunnel) makeAHole(data []byte) {
+
+	ack := &net_pb.NatConnectAck{}
+	if err := proto.Unmarshal(data, ack); err != nil {
+		logger.Error("failed to punch a hole:->", err)
+		return
+	}
+
+	sid := ack.SessionId
+
+	task, ok := tunnel.digTask[sid]
+	if !ok {
+		logger.Error("can't find the dig task")
+		return
+	}
+	defer delete(tunnel.digTask, sid)
+
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
+	if err != nil {
+		task.err <- err
+		return
+	}
+
+	task.udpConn = conn
+	task.err <- nil
 }

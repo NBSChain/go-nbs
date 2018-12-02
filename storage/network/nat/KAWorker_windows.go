@@ -38,7 +38,7 @@ func (tunnel *KATunnel) listening() {
 			tunnel.answerInvite(response.PayLoad)
 		case nbsnet.NatConnect:
 			tunnel.digOut(response.PayLoad)
-		case nbsnet.NatDigIn, utils.NatDigOut:
+		case utils.NatDigOut:
 			tunnel.digSuccess(response.PayLoad, peerAddr)
 		case nbsnet.NatDigSuccess:
 			logger.Debug("dig success:->", peerAddr)

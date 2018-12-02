@@ -195,6 +195,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 	return conn, nil
 }
 
+//TODO::bind local port and ip can't support right now.
 func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*nbsnet.NbsUdpConn, error) {
 
 	if lAddr == nil {

@@ -57,7 +57,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		kaConn:     client,
 		sharedAddr: client.LocalAddr().String(),
 		updateTime: time.Now(),
-		workLoad:   make(map[string]*ProxyTask),
+		digTask:    make(map[string]*ConnTask),
 	}
 
 	go tunnel.runLoop()
@@ -84,21 +84,18 @@ func (nat *Manager) WaitNatConfirm() chan bool {
 func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	connId string, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
 
-	if err := nat.NatKATun.StartDigHole(lAddr, rAddr, connId, toPort); err != nil {
-		return nil, 0, err
-	}
 	priConnTask := &ConnTask{
 		err: make(chan error),
 	}
-	pubConnTask := &ConnTask{
-		err: make(chan error),
-	}
 	defer close(priConnTask.err)
-	defer close(pubConnTask.err)
 
 	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
 
-	go nat.NatKATun.DigInPubNet(lAddr, rAddr, pubConnTask, connId)
+	pubConnTask := &ConnTask{
+		err: make(chan error),
+	}
+	defer close(pubConnTask.err)
+	go nat.NatKATun.DigHoeInPubNet(lAddr, rAddr, connId, toPort, pubConnTask)
 
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {

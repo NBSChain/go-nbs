@@ -20,21 +20,9 @@ const (
 	BootStrapTimeOut = time.Second * 4
 )
 
-const (
-	_ int32 = iota
-	FromPriNet
-	FromPubNet
-	ToPubNet
-)
-
-type ProxyTask struct {
-	sessionID string
-	toAddr    *net.UDPAddr
-	err       chan error
-}
-
 type ConnTask struct {
 	err     chan error
+	locPort string
 	udpConn *net.UDPConn
 }
 
@@ -46,7 +34,7 @@ type KATunnel struct {
 	kaConn     *net.UDPConn
 	sharedAddr string
 	updateTime time.Time
-	workLoad   map[string]*ProxyTask
+	digTask    map[string]*ConnTask
 }
 
 /************************************************************************
@@ -226,16 +214,21 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	task.udpConn = conn
 }
 
-func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
+func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
+
+	data, _, err := nbsnet.PackEmptyNatData(nbsnet.NatDigOut)
+	if err != nil {
+		task.err <- err
+		return
+	}
 
 	for i := 0; i < TryDigHoleTimes; i++ {
-
 		if _, err := conn.Write(data); err != nil {
 			logger.Error(err)
 		}
 		select {
 		case <-task.err:
-			logger.Debug("dig in action finished.")
+			logger.Debug("dig action finished.")
 			return
 		case <-time.After(time.Second):
 			logger.Debug("dig again")
@@ -243,51 +236,64 @@ func (tunnel *KATunnel) digDig(data []byte, conn *net.UDPConn, task *ConnTask) {
 	}
 }
 
-func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
+func (tunnel *KATunnel) notifyCaller(msg *net_pb.NatConnect, task *ConnTask) {
 
-	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
+	lPort := strconv.Itoa(int(msg.TargetPort))
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
+	if err != nil {
+		logger.Warning("dial err:->", err)
+		task.err <- err
+		return
+	}
+	defer conn.Close()
+
+	ack := &net_pb.NatConnectAck{
+		SessionId: msg.SessionId,
+		TargetId:  msg.FromId,
+	}
+	data, _, err := nbsnet.PackNatData(ack, nbsnet.NatConnectACK)
+	if err != nil {
+		logger.Warning("pack data err:->", err)
+		task.err <- err
+		return
+	}
+
+	if _, err := conn.Write(data); err != nil {
+		logger.Warning("write data err:->", err)
+		task.err <- err
+		return
+	}
+}
+
+func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
+
+	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
+		task.err <- err
+		return
+	}
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		logger.Error("reading dig result failed:->", err, conStr)
-		task.err <- err
-		return
-	}
-	response := &net_pb.NatMsg{}
-	if err = proto.Unmarshal(buffer[:n], response); err != nil {
-		logger.Warning("reading dig result Unmarshal failed:", err, conStr)
+		logger.Warning("reading dig result failed:->", err)
 		task.err <- err
 		return
 	}
 
-	logger.Debug("get dig response:->", response, conStr)
-
-	switch response.Typ {
-	case nbsnet.NatDigIn, nbsnet.NatDigOut:
-		res := &net_pb.NatMsg{
-			Typ:     nbsnet.NatDigSuccess,
-			PayLoad: response.PayLoad,
-			Len:     int32(len(response.PayLoad)),
-		}
-
-		data, _ := proto.Marshal(res)
-
-		if _, err := conn.Write(data); err != nil {
-			logger.Warning("failed to confirm the dig :->", conStr)
-		}
-	case nbsnet.NatDigSuccess:
-		logger.Info("dig dig success:->", conStr)
+	res, err := nbsnet.UnpackNatData(buffer[:n], nil)
+	if err != nil {
+		logger.Warning("reading dig result Unmarshal failed:", err)
+		task.err <- err
+		return
 	}
 
-	task.err <- nil
-	task.udpConn = conn
+	logger.Debug("get dig response:->", res)
+
+	if res.Typ == nbsnet.NatDigSuccess {
+		task.err <- nil
+	} else {
+		task.err <- fmt.Errorf("unknown dig response")
+	}
+
 	return
-}
-
-func (tunnel *KATunnel) unpackMsg(payLoad *net_pb.HolePayLoad) {
-	//sid := payLoad.SessionId
-	//if pTask, ok := tunnel.workLoad[sid]; !ok{
-	//	tunnel.
-	//}
 }
