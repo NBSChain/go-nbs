@@ -78,7 +78,8 @@ message PriNetDig{
 }
 
 message NatMsg {
-    int32 T = 1;
-    int32 L = 2;
-    bytes V = 3;
+    int32 Typ       = 1;
+    int32 Len       = 2;
+    int64 Seq       = 3;
+    bytes PayLoad   = 4;
 }

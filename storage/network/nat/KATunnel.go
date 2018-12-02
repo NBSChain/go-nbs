@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -79,9 +80,9 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 	}
 	kaData, _ := proto.Marshal(KeepAlive)
 	request := &net_pb.NatMsg{
-		T: nbsnet.NatKeepAlive,
-		L: int32(len(kaData)),
-		V: kaData,
+		Typ:     nbsnet.NatKeepAlive,
+		Len:     int32(len(kaData)),
+		PayLoad: kaData,
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -133,9 +134,9 @@ func (tunnel *KATunnel) answerInvite(data []byte) {
 	}
 	ackData, _ := proto.Marshal(InviteAck)
 	req := &net_pb.NatMsg{
-		T: nbsnet.NatReversDigAck,
-		L: int32(len(ackData)),
-		V: ackData,
+		Typ:     nbsnet.NatReversDigAck,
+		Len:     int32(len(ackData)),
+		PayLoad: ackData,
 	}
 
 	reqData, _ := proto.Marshal(req)
@@ -183,17 +184,12 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		task.err <- err
 		return
 	}
-	PriDigSyn := &net_pb.PriNetDig{
-		SessionId: sessionID,
-	}
-	synData, _ := proto.Marshal(PriDigSyn)
+
 	holeMsg := &net_pb.NatMsg{
-		T: nbsnet.NatPriDigSyn,
-		L: int32(len(synData)),
-		V: synData,
+		Typ: nbsnet.NatPriDigSyn,
+		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(holeMsg)
-
 	if _, err := conn.Write(data); err != nil {
 		logger.Error("Step 2-2:private network dig dig failed:->", err)
 		task.err <- err
@@ -213,6 +209,16 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	if err != nil {
 		logger.Error("Step 2-3:private network reading dig result failed:->", err, conStr)
 		task.err <- err
+		return
+	}
+	resMsg := &net_pb.NatMsg{}
+	if err := proto.Unmarshal(buffer, resMsg); err != nil {
+		task.err <- err
+		return
+	}
+
+	if resMsg.Typ != nbsnet.NatPriDigAck || resMsg.Seq != holeMsg.Seq+1 {
+		task.err <- fmt.Errorf("wrong ack package")
 		return
 	}
 
@@ -257,12 +263,12 @@ func (tunnel *KATunnel) waitDigResponse(task *ConnTask, conn *net.UDPConn) {
 
 	logger.Debug("get dig response:->", response, conStr)
 
-	switch response.T {
+	switch response.Typ {
 	case nbsnet.NatDigIn, nbsnet.NatDigOut:
 		res := &net_pb.NatMsg{
-			T: nbsnet.NatDigSuccess,
-			V: response.V,
-			L: int32(len(response.V)),
+			Typ:     nbsnet.NatDigSuccess,
+			PayLoad: response.PayLoad,
+			Len:     int32(len(response.PayLoad)),
 		}
 
 		data, _ := proto.Marshal(res)

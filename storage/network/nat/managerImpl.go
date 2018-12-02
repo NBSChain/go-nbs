@@ -149,9 +149,9 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 	inviteData, _ := proto.Marshal(Invite)
 	req := &net_pb.NatMsg{
-		T: nbsnet.NatReversDig,
-		L: int32(len(inviteData)),
-		V: inviteData,
+		Typ:     nbsnet.NatReversDig,
+		Len:     int32(len(inviteData)),
+		PayLoad: inviteData,
 	}
 	reqData, _ := proto.Marshal(req)
 	if _, err := conn.Write(reqData); err != nil {
@@ -202,7 +202,7 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 		return
 	}
 
-	if res.T != nbsnet.NatReversDigAck {
+	if res.Typ != nbsnet.NatReversDigAck {
 		task.udpConn = nil
 		task.err <- fmt.Errorf("didn't get the answer")
 		return

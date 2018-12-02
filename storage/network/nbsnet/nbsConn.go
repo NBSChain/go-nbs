@@ -3,12 +3,15 @@ package nbsnet
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
 	"time"
 )
 
 type ConnType int8
+
+var logger = utils.GetLogInstance()
 
 const (
 	_ ConnType = iota
@@ -49,7 +52,27 @@ func (conn *NbsUdpConn) Close() error {
 }
 
 func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
-	return conn.RealConn.ReadFromUDP(b)
+	if conn.CType != CTypeNatListen {
+		return conn.RealConn.ReadFromUDP(b)
+	}
+GOON:
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, peerAddr, err := conn.RealConn.ReadFromUDP(buffer)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	msg := &net_pb.NatMsg{}
+	if err := proto.Unmarshal(b[:n], msg); err != nil {
+		logger.Warning("unmarshal listening nat message err:->", err)
+		goto GOON
+	}
+	if conn.preHandleMsg(msg, peerAddr) {
+		goto GOON
+	}
+
+	copy(b, msg.PayLoad)
+	return int(msg.Len), peerAddr, nil
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
@@ -65,8 +88,8 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 *			nat connection
 *
 *************************************************************************/
+//TODO::
 func (conn *NbsUdpConn) Send(b []byte) (int, error) {
-
 	switch conn.CType {
 	case CTypeNormal:
 		return conn.RealConn.Write(b)
@@ -106,47 +129,24 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 *			private functions
 *
 *************************************************************************/
-func (conn *NbsUdpConn) packAddr(d []byte) []byte {
-	lAddr := conn.LocAddr
-	msg := &net_pb.NbsNetMsg{
-		RawData: d,
-		FromAddr: &net_pb.NbsAddr{
-			NetworkId: lAddr.NetworkId,
-			CanServer: lAddr.CanServe,
-			PriIp:     lAddr.PriIp,
-			PriPort:   lAddr.PriPort,
-			NatIP:     lAddr.NatIp,
-			NatPort:   lAddr.NatPort,
-		},
+//TODO::I don't think this is the final resolution.
+func (conn *NbsUdpConn) preHandleMsg(msg *net_pb.NatMsg, addr *net.UDPAddr) bool {
+
+	if msg.Typ == NatPriDigSyn {
+		res := &net_pb.NatMsg{
+			Typ: NatPriDigAck,
+			Seq: msg.Seq + 1,
+		}
+		b, _ := proto.Marshal(res)
+		if _, err := conn.RealConn.WriteTo(b, addr); err != nil {
+			logger.Warning("write back nat message err:->", err)
+		}
+		return true
 	}
-	data, _ := proto.Marshal(msg)
-	return data
+
+	return false
 }
 
-func (conn *NbsUdpConn) unpackAddr(d []byte, pAddr net.Addr) ([]byte, *NbsUdpAddr) {
-
-	msg := &net_pb.NbsNetMsg{}
-
-	proto.Unmarshal(d, msg)
-	if pAddr == nil {
-		pAddr = conn.RealConn.RemoteAddr()
-	}
-
-	host, port, _ := SplitHostPort(pAddr.String())
-	addr := msg.FromAddr
-	peerAddr := &NbsUdpAddr{
-		NetworkId: addr.NetworkId,
-		CanServe:  addr.CanServer,
-		PubIp:     host,
-		PubPort:   port,
-		PriIp:     addr.PriIp,
-		PriPort:   addr.PriPort,
-		NatIp:     addr.NatIP,
-		NatPort:   addr.NatPort,
-	}
-
-	return msg.RawData, peerAddr
-}
 func (conn *NbsUdpConn) String() string {
 	return "[" + conn.RealConn.LocalAddr().String() + "]-->[" +
 		conn.RealConn.RemoteAddr().String() + "]"

@@ -54,25 +54,25 @@ func (nat *Manager) natServiceListening() {
 			continue
 		}
 
-		switch request.T {
+		switch request.Typ {
 		case nbsnet.NatBootReg:
-			if err = nat.checkWhoIsHe(request.V, peerAddr); err != nil {
+			if err = nat.checkWhoIsHe(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case nbsnet.NatPingPong:
-			if err = nat.pong(request.V, peerAddr); err != nil {
+			if err = nat.pong(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case nbsnet.NatConnect:
-			if err = nat.forwardDigRequest(request.V, peerAddr); err != nil {
+			if err = nat.forwardDigRequest(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case nbsnet.NatKeepAlive:
-			if err = nat.updateKATime(request.V, peerAddr); err != nil {
+			if err = nat.updateKATime(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		case nbsnet.NatReversDig:
-			if err = nat.forwardInvite(request.V, peerAddr); err != nil {
+			if err = nat.forwardInvite(request.PayLoad, peerAddr); err != nil {
 				logger.Error(err)
 			}
 		}
@@ -126,9 +126,9 @@ func (nat *Manager) checkWhoIsHe(data []byte, peerAddr *net.UDPAddr) error {
 
 	resData, _ := proto.Marshal(response)
 	pbRes := &net_pb.NatMsg{
-		T: nbsnet.NatBootReg,
-		L: int32(len(resData)),
-		V: resData,
+		Typ:     nbsnet.NatBootReg,
+		Len:     int32(len(resData)),
+		PayLoad: resData,
 	}
 
 	pbResData, err := proto.Marshal(pbRes)
@@ -204,9 +204,9 @@ func (nat *Manager) updateKATime(data []byte, peerAddr *net.UDPAddr) error {
 
 	kaData, _ := proto.Marshal(KeepAlive)
 	res := &net_pb.NatMsg{
-		T: nbsnet.NatKeepAlive,
-		L: int32(len(kaData)),
-		V: kaData,
+		Typ:     nbsnet.NatKeepAlive,
+		Len:     int32(len(kaData)),
+		PayLoad: kaData,
 	}
 
 	rawData, _ := proto.Marshal(res)
@@ -232,9 +232,9 @@ func (nat *Manager) forwardInvite(data []byte, peerAddr *net.UDPAddr) error {
 	}
 
 	res := &net_pb.NatMsg{
-		T: nbsnet.NatReversDig,
-		L: int32(len(data)),
-		V: data,
+		Typ:     nbsnet.NatReversDig,
+		Len:     int32(len(data)),
+		PayLoad: data,
 	}
 
 	rawData, _ := proto.Marshal(res)

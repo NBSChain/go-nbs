@@ -45,13 +45,13 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 
 	logger.Debug("keep alive:->", response)
 
-	switch response.T {
+	switch response.Typ {
 	case nbsnet.NatKeepAlive:
-		tunnel.refreshNatInfo(response.V)
+		tunnel.refreshNatInfo(response.PayLoad)
 	case nbsnet.NatReversDig:
-		tunnel.answerInvite(response.V)
+		tunnel.answerInvite(response.PayLoad)
 	case nbsnet.NatConnect:
-		tunnel.digOut(response.V)
+		tunnel.digOut(response.PayLoad)
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (tunnel *KATunnel) listening() {
 
 		logger.Debug("listen connection:", request)
 
-		switch request.T {
+		switch request.Typ {
 		default:
 			logger.Warning("unknown msg for linux/unix/bsd systems.")
 		}
@@ -90,9 +90,9 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	}
 	digData, _ := proto.Marshal(DigMsg)
 	holeMsg := &net_pb.NatMsg{
-		T: nbsnet.NatDigIn,
-		L: int32(len(digData)),
-		V: digData,
+		Typ:     nbsnet.NatDigIn,
+		Len:     int32(len(digData)),
+		PayLoad: digData,
 	}
 	data, _ := proto.Marshal(holeMsg)
 

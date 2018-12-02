@@ -117,9 +117,9 @@ func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, []byte,
 func (nat *Manager) sendPing(data []byte, conn *net.UDPConn) error {
 
 	request := &net_pb.NatMsg{
-		T: nbsnet.NatPingPong,
-		L: int32(len(data)),
-		V: data,
+		Typ:     nbsnet.NatPingPong,
+		Len:     int32(len(data)),
+		PayLoad: data,
 	}
 
 	reqData, _ := proto.Marshal(request)

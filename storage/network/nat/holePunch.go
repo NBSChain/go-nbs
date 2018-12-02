@@ -35,9 +35,9 @@ func (tunnel *KATunnel) StartDigHole(lAddr, rAddr *nbsnet.NbsUdpAddr, connId str
 
 	connData, _ := proto.Marshal(connReq)
 	request := &net_pb.NatMsg{
-		T: nbsnet.NatConnect,
-		L: int32(len(connData)),
-		V: connData,
+		Typ:     nbsnet.NatConnect,
+		Len:     int32(len(connData)),
+		PayLoad: connData,
 	}
 
 	toItemData, err := proto.Marshal(request)
@@ -76,9 +76,9 @@ func (nat *Manager) forwardDigRequest(data []byte, peerAddr *net.UDPAddr) error 
 		return err
 	}
 	res := &net_pb.NatMsg{
-		T: nbsnet.NatConnect,
-		L: int32(len(data)),
-		V: data,
+		Typ:     nbsnet.NatConnect,
+		Len:     int32(len(data)),
+		PayLoad: data,
 	}
 	rawData, _ := proto.Marshal(res)
 
@@ -124,9 +124,9 @@ func (tunnel *KATunnel) digOut(data []byte) {
 	}
 	DigData, _ := proto.Marshal(DigMsg)
 	holeMsg := &net_pb.NatMsg{
-		T: nbsnet.NatDigOut,
-		L: int32(len(DigData)),
-		V: DigData,
+		Typ:     nbsnet.NatDigOut,
+		Len:     int32(len(DigData)),
+		PayLoad: DigData,
 	}
 
 	msgData, _ := proto.Marshal(holeMsg)
@@ -170,9 +170,9 @@ func (tunnel *KATunnel) digOut(data []byte) {
 func (tunnel *KATunnel) digSuccessRes(data []byte, peerAddr *net.UDPAddr) {
 
 	res := &net_pb.NatMsg{
-		T: nbsnet.NatDigSuccess,
-		L: int32(len(data)),
-		V: data,
+		Typ:     nbsnet.NatDigSuccess,
+		Len:     int32(len(data)),
+		PayLoad: data,
 	}
 
 	resData, _ := proto.Marshal(res)

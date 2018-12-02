@@ -31,15 +31,15 @@ func (tunnel *KATunnel) listening() {
 
 		logger.Debug("server hub connection :", response, peerAddr)
 
-		switch response.T {
+		switch response.Typ {
 		case nbsnet.NatKeepAlive:
-			tunnel.refreshNatInfo(response.V)
+			tunnel.refreshNatInfo(response.PayLoad)
 		case nbsnet.NatReversDig:
-			tunnel.answerInvite(response.V)
+			tunnel.answerInvite(response.PayLoad)
 		case nbsnet.NatConnect:
-			tunnel.digOut(response.V)
+			tunnel.digOut(response.PayLoad)
 		case nbsnet.NatDigIn, utils.NatDigOut:
-			tunnel.digSuccess(response.V, peerAddr)
+			tunnel.digSuccess(response.PayLoad, peerAddr)
 		case nbsnet.NatDigSuccess:
 			logger.Debug("dig success:->", peerAddr)
 		}
@@ -76,9 +76,9 @@ func (tunnel *KATunnel) digSuccess(data []byte, peerAddr *net.UDPAddr) {
 	}
 
 	res := &net_pb.NatMsg{
-		T: nbsnet.NatDigSuccess,
-		L: int32(len(data)),
-		V: data,
+		Typ:     nbsnet.NatDigSuccess,
+		Len:     int32(len(data)),
+		PayLoad: data,
 	}
 
 	resData, _ := proto.Marshal(res)
