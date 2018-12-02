@@ -23,7 +23,7 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		response := &net_pb.NatManage{}
+		response := &net_pb.NatMsg{}
 		if err := proto.Unmarshal(responseData[:hasRead], response); err != nil {
 			fmt.Println("failed to unmarshal nat response data", err)
 			continue
@@ -31,16 +31,16 @@ func (tunnel *KATunnel) listening() {
 
 		logger.Debug("server hub connection :", response, peerAddr)
 
-		switch response.MsgType {
-		case utils.NatKeepAlive:
-			tunnel.refreshNatInfo(response.KeepAlive)
-		case utils.NatReversDig:
-			tunnel.answerInvite(response.Invite)
-		case utils.NatConnect:
-			tunnel.digOut(response.ConnReq)
-		case utils.NatDigIn, utils.NatDigOut:
-			tunnel.digSuccess(response.DigMsg, peerAddr)
-		case utils.NatDigSuccess:
+		switch response.T {
+		case nbsnet.NatKeepAlive:
+			tunnel.refreshNatInfo(response.V)
+		case nbsnet.NatReversDig:
+			tunnel.answerInvite(response.V)
+		case nbsnet.NatConnect:
+			tunnel.digOut(response.V)
+		case nbsnet.NatDigIn, utils.NatDigOut:
+			tunnel.digSuccess(response.V, peerAddr)
+		case nbsnet.NatDigSuccess:
 			logger.Debug("dig success:->", peerAddr)
 		}
 	}
@@ -68,16 +68,22 @@ func (tunnel *KATunnel) DigInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnT
 	return nil, fmt.Errorf("time out")
 }
 
-func (tunnel *KATunnel) digSuccess(msg *net_pb.HoleDig, peerAddr *net.UDPAddr) {
-
-	res := &net_pb.NatManage{
-		MsgType: utils.NatDigSuccess,
-		DigMsg:  msg,
+func (tunnel *KATunnel) digSuccess(data []byte, peerAddr *net.UDPAddr) {
+	msg := &net_pb.HoleDig{}
+	if err := proto.Unmarshal(data, msg); err != nil {
+		logger.Warning("dig success unmarshal err:->", err)
+		return
 	}
 
-	data, _ := proto.Marshal(res)
+	res := &net_pb.NatMsg{
+		T: nbsnet.NatDigSuccess,
+		L: int32(len(data)),
+		V: data,
+	}
 
-	if _, err := tunnel.serverHub.WriteTo(data, peerAddr); err != nil {
+	resData, _ := proto.Marshal(res)
+
+	if _, err := tunnel.serverHub.WriteTo(resData, peerAddr); err != nil {
 		logger.Warning("failed to response the dig confirm.")
 		return
 	}
