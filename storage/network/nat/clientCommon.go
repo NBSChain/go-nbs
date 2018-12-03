@@ -15,7 +15,7 @@ import (
 const (
 	KeepAliveTime    = time.Second * 15
 	KeepAliveTimeOut = time.Second * 45
-	HolePunchTimeOut = 2 * time.Second
+	HolePunchTimeOut = 4 * time.Second
 	TryDigHoleTimes  = 3
 	BootStrapTimeOut = time.Second * 4
 )
@@ -183,7 +183,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	buffer := make([]byte, utils.NormalReadBuffer)
 	_, err = conn.Read(buffer)
 	if err != nil {
-		logger.Error("Step 2-3:private network reading dig result failed:->", err, conStr)
+		logger.Error("Step 1-3:private network reading dig result failed:->", err, conStr)
 		task.err = err
 		task.udpConn <- nil
 		return

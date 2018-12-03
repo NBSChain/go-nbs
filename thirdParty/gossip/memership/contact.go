@@ -80,7 +80,7 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 }
 
 func (node *MemManager) acceptSub(sub *newSub) {
-	logger.Debug("accept the subscriber:->", sub)
+	logger.Debug("accept the subscriber:->", sub.nodeId, sub.addr.String())
 
 	item, ok := node.partialView[sub.nodeId]
 	if ok {

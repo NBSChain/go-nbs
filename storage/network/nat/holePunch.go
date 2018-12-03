@@ -45,7 +45,7 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	task.portCapConn = conn
 	tunnel.digTask[sid] = task
 
-	logger.Debug("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
+	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
 
 	return
 }
@@ -140,7 +140,7 @@ func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
 		case <-task.udpConn:
 			logger.Debug("dig action finished:->", task.err)
 			return
-		case <-time.After(time.Second):
+		case <-time.After(time.Second / 2):
 			logger.Debug("dig again")
 		}
 	}
