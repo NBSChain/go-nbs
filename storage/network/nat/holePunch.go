@@ -1,9 +1,11 @@
 package nat
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
@@ -19,14 +21,18 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		return
 	}
 
-	connReq := &net_pb.NatConnect{
-		NatServer:  lAddr.NatServer,
-		TargetId:   rAddr.NetworkId,
-		TargetPort: int32(toPort),
-		SessionId:  sid,
-		FromId:     lAddr.NetworkId,
+	msg := &net_pb.NatMsg{
+		Typ: nbsnet.NatDigApply,
+		DigApply: &net_pb.DigApply{
+			NatServer:  lAddr.NatServer,
+			TargetId:   rAddr.NetworkId,
+			TargetPort: int32(toPort),
+			SessionId:  sid,
+			FromId:     lAddr.NetworkId,
+		},
 	}
-	data, _, _ := nbsnet.PackNatData(connReq, nbsnet.NatConnect)
+
+	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
 		task.err <- err
 		return
@@ -48,37 +54,8 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 *
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
-func (nat *Manager) forwardDigOutReq(data []byte, peerAddr *net.UDPAddr) error {
-	req := &net_pb.NatConnect{}
-	if err := proto.Unmarshal(data, req); err != nil {
-		return err
-	}
 
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	toItem, ok := nat.cache[req.TargetId]
-	if !ok {
-		return NotFundErr
-	}
-
-	req.Public = peerAddr.String()
-	forwardData, _ := proto.Marshal(req)
-	if _, err := nat.sysNatServer.WriteToUDP(forwardData, toItem.pubAddr); err != nil {
-		return err
-	}
-	logger.Debug("hole punch step2-2 forward dig out request:->", req.Public)
-
-	return nil
-}
-
-func (tunnel *KATunnel) digOut(data []byte) {
-
-	req := &net_pb.NatConnect{}
-	if err := proto.Unmarshal(data, req); err != nil {
-		logger.Warning("dig out unmarshal err :->", err)
-		return
-	}
+func (tunnel *KATunnel) digOut(req *net_pb.DigApply) {
 
 	digTask := &ConnTask{
 		err: make(chan error),
@@ -106,13 +83,7 @@ func (tunnel *KATunnel) digOut(data []byte) {
 	}
 }
 
-func (tunnel *KATunnel) makeAHole(data []byte) {
-
-	ack := &net_pb.NatConnectAck{}
-	if err := proto.Unmarshal(data, ack); err != nil {
-		logger.Error("failed to punch a hole:->", err)
-		return
-	}
+func (tunnel *KATunnel) makeAHole(ack *net_pb.DigConfirm) {
 
 	sid := ack.SessionId
 
@@ -129,9 +100,112 @@ func (tunnel *KATunnel) makeAHole(data []byte) {
 		return
 	}
 
+	msg := &net_pb.NatMsg{
+		Typ: nbsnet.NatDigSuccess,
+	}
+	data, _ := proto.Marshal(msg)
+	if _, err := conn.Write(data); err != nil {
+		task.err <- err
+		return
+	}
+
 	task.udpConn = conn
 	task.err <- nil
 
 	logger.Debug("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
+}
+
+func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
+
+	msg := &net_pb.NatMsg{
+		Typ: nbsnet.NatDigOut,
+		Seq: time.Now().Unix(),
+	}
+	data, _ := proto.Marshal(msg)
+
+	for i := 0; i < TryDigHoleTimes; i++ {
+
+		logger.Debug("hole punch step2-4  dig dig:->",
+			i, conn.LocalAddr().String(), conn.RemoteAddr().String())
+
+		if _, err := conn.Write(data); err != nil {
+			logger.Error(err)
+		}
+		select {
+		case <-task.err:
+			logger.Debug("dig action finished.")
+			return
+		case <-time.After(time.Second):
+			logger.Debug("dig again")
+		}
+	}
+}
+
+func (tunnel *KATunnel) notifyCaller(msg *net_pb.DigApply, task *ConnTask) {
+
+	lPort := strconv.Itoa(int(msg.TargetPort))
+	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
+	if err != nil {
+		logger.Warning("dial err:->", err)
+		task.err <- err
+		return
+	}
+	defer conn.Close()
+
+	confirmMsg := &net_pb.NatMsg{
+		Typ: nbsnet.NatDigConfirm,
+		DigConfirm: &net_pb.DigConfirm{
+			SessionId: msg.SessionId,
+			TargetId:  msg.FromId,
+		},
+	}
+
+	data, err := proto.Marshal(confirmMsg)
+	if err != nil {
+		logger.Warning("pack data err:->", err)
+		task.err <- err
+		return
+	}
+
+	if _, err := conn.Write(data); err != nil {
+		logger.Warning("write data err:->", err)
+		task.err <- err
+		return
+	}
+
+	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
+}
+
+func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
+
+	logger.Debug("hole punch step2-5 waiting dig out response:->")
+
+	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
+		task.err <- err
+		return
+	}
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		logger.Warning("reading dig result failed:->", err)
+		task.err <- err
+		return
+	}
+	res := &net_pb.NatMsg{}
+	if err := proto.Unmarshal(buffer[:n], res); err != nil {
+		logger.Warning("reading dig result Unmarshal failed:", err)
+		task.err <- err
+		return
+	}
+
+	if res.Typ == nbsnet.NatDigSuccess {
+		task.err <- nil
+	} else {
+		task.err <- fmt.Errorf("unknown dig response")
+	}
+
+	logger.Debug("hole punch step2-8 dig success:->", res)
+	return
 }

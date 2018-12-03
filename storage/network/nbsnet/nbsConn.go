@@ -34,8 +34,8 @@ type NbsUdpConn struct {
 *			normal function
 *
 *************************************************************************/
-func (conn *NbsUdpConn) SetDeadline(t time.Time) {
-	conn.RealConn.SetDeadline(t)
+func (conn *NbsUdpConn) SetDeadline(t time.Time) error {
+	return conn.RealConn.SetDeadline(t)
 }
 
 func (conn *NbsUdpConn) Write(d []byte) (int, error) {
@@ -52,27 +52,7 @@ func (conn *NbsUdpConn) Close() error {
 }
 
 func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
-	if conn.CType != CTypeNatListen {
-		return conn.RealConn.ReadFromUDP(b)
-	}
-GOON:
-	buffer := make([]byte, utils.NormalReadBuffer)
-	n, peerAddr, err := conn.RealConn.ReadFromUDP(buffer)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	msg := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(b[:n], msg); err != nil {
-		logger.Warning("unmarshal listening nat message err:->", err)
-		goto GOON
-	}
-	if conn.preHandleMsg(msg, peerAddr) {
-		goto GOON
-	}
-
-	copy(b, msg.PayLoad)
-	return int(msg.Len), peerAddr, nil
+	return conn.RealConn.ReadFromUDP(b)
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
@@ -97,13 +77,7 @@ func (conn *NbsUdpConn) Send(b []byte) (int, error) {
 		return conn.RealConn.Write(b)
 
 	case CTypeNatDuplex:
-		pack := &net_pb.HolePayLoad{
-			SessionId: conn.SessionID,
-			PayLoad:   b,
-		}
-		data, _ := proto.Marshal(pack)
-
-		return conn.RealConn.Write(data)
+		return conn.RealConn.Write(b)
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
@@ -120,8 +94,6 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 	default:
 		return 0, fmt.Errorf("unkown nat connection type")
 	}
-
-	return 0, nil
 }
 
 /************************************************************************

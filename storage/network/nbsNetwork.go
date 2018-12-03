@@ -362,16 +362,14 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 	localAddr := conn.LocalAddr().String()
 
 	host, port, err := net.SplitHostPort(localAddr)
-	bootRequest := &net_pb.BootReg{
-		NodeId:      network.networkId,
-		PrivateIp:   host,
-		PrivatePort: port,
-	}
-	reqData, _ := proto.Marshal(bootRequest)
 	request := &net_pb.NatMsg{
-		Typ:     nbsnet.NatBootReg,
-		Len:     int32(len(reqData)),
-		PayLoad: reqData,
+		Typ: nbsnet.NatBootReg,
+		Seq: time.Now().Unix(),
+		BootReg: &net_pb.BootReg{
+			NodeId:      network.networkId,
+			PrivateIp:   host,
+			PrivatePort: port,
+		},
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -388,7 +386,7 @@ func (network *nbsNetwork) sendNatRequest(conn *net.UDPConn) (string, error) {
 	return host, nil
 }
 
-func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootRegAck, error) {
+func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootAnswer, error) {
 
 	responseData := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(responseData)
@@ -403,12 +401,5 @@ func (network *nbsNetwork) parseNatResponse(conn *net.UDPConn) (*net_pb.BootRegA
 		return nil, err
 	}
 
-	logger.Debug("response:->", response)
-
-	ack := &net_pb.BootRegAck{}
-	if err := proto.Unmarshal(response.PayLoad, ack); err != nil {
-		return nil, err
-	}
-
-	return ack, nil
+	return response.BootAnswer, nil
 }

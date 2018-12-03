@@ -9,90 +9,15 @@ import (
 	"time"
 )
 
-func (nat *Manager) pong(data []byte, peerAddr *net.UDPAddr) error {
+func (nat *Manager) pong(ping *net_pb.PingPong, peerAddr *net.UDPAddr) error {
 
-	ping := &net_pb.NatPing{}
-	if err := proto.Unmarshal(data, ping); err != nil {
-		return err
-	}
+	nat.canServe <- true
 
-	if ping.TTL <= 0 {
-		nat.canServe <- true
-		return nil
-	}
-
-	pong := &net_pb.NatPing{
-		Ping:  ping.Ping,
-		Pong:  nat.networkId,
-		TTL:   ping.TTL - 1,
-		Nonce: "", //TODO::
-	}
-
-	pongData, err := proto.Marshal(pong)
-	if err != nil {
-		logger.Warning("failed to marshal pong data", err)
-		return err
-	}
-
-	if _, err := nat.sysNatServer.WriteToUDP(pongData, peerAddr); err != nil {
-		logger.Warning("failed to send pong", err)
-		return err
-	}
-
+	logger.Debug("I can serve as in public network.")
 	return nil
 }
 
-func (nat *Manager) ping(peerAddr *net.UDPAddr) {
-
-	conn, ping, err := nat.createPingConn(peerAddr)
-	defer conn.Close()
-	if err != nil {
-		logger.Warning("create ping message failed:", err)
-		return
-	}
-
-	if err := nat.sendPing(ping, conn); err != nil {
-		logger.Warning("send ping message failed:", err)
-		return
-	}
-
-	pong, err := nat.readPong(conn)
-	if err != nil {
-		logger.Warning("read pong message failed:", err)
-		return
-	}
-
-	pong.TTL = pong.TTL - 1
-
-	pData, _ := proto.Marshal(pong)
-	if err := nat.sendPing(pData, conn); err != nil {
-		logger.Warning("send ping again message failed:", err)
-		return
-	}
-
-}
-
-func (nat *Manager) readPong(conn *net.UDPConn) (*net_pb.NatPing, error) {
-
-	responseData := make([]byte, utils.NormalReadBuffer)
-	hasRead, err := conn.Read(responseData)
-	if err != nil {
-		logger.Warning("get pong failed", err)
-		return nil, err
-	}
-
-	pong := &net_pb.NatPing{}
-	if err := proto.Unmarshal(responseData[:hasRead], pong); err != nil {
-		logger.Warning("Unmarshal pong failed", err)
-		return nil, err
-	}
-
-	logger.Debug("get pong", pong)
-
-	return pong, nil
-}
-
-func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, []byte, error) {
+func (nat *Manager) ping(peerAddr *net.UDPAddr, reqNodeId string) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   peerAddr.IP,
@@ -100,32 +25,28 @@ func (nat *Manager) createPingConn(peerAddr *net.UDPAddr) (*net.UDPConn, []byte,
 	})
 
 	if err != nil {
-		return nil, nil, err
+		logger.Warning("ping DialUDP err:->", err)
+		return
 	}
+	defer conn.Close()
 
-	conn.SetDeadline(time.Now().Add(BootStrapTimeOut / 2))
-
-	ping := &net_pb.NatPing{
-		Ping:  nat.networkId,
-		Nonce: "", //TODO::security nonce
-		TTL:   2,  //time to live
+	if err := conn.SetDeadline(time.Now().Add(BootStrapTimeOut / 2)); err != nil {
+		logger.Warning("ping SetDeadline err:->", err)
+		return
 	}
-	data, _ := proto.Marshal(ping)
-	return conn, data, nil
-}
-
-func (nat *Manager) sendPing(data []byte, conn *net.UDPConn) error {
 
 	request := &net_pb.NatMsg{
-		Typ:     nbsnet.NatPingPong,
-		Len:     int32(len(data)),
-		PayLoad: data,
+		Typ: nbsnet.NatPingPong,
+		PingPong: &net_pb.PingPong{
+			Ping:  nat.networkId,
+			Pong:  reqNodeId,
+			Nonce: "", //TODO::security nonce
+			TTL:   1,  //time to live
+		},
 	}
-
 	reqData, _ := proto.Marshal(request)
 	if _, err := conn.Write(reqData); err != nil {
-		return err
+		logger.Warning("ping Write err:->", err)
+		return
 	}
-
-	return nil
 }

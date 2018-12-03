@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package net.pb;
 
-import "nbsAddr.proto";
+import "nbsMsg.proto";
 
 enum NatType {
     UnknownRES      = 0;
@@ -14,18 +14,17 @@ enum NatType {
 
 message BootReg {
     string  nodeId      = 1;
-    string  privatePort = 3;
     string  privateIp   = 2;
+    string  privatePort = 3;
 }
 
-message BootRegAck {
-    NatType natType    = 1;
-    string  nodeId      = 2;
-    string  publicIp    = 3;
-    string  publicPort  = 4;
+message BootAnswer {
+    NatType NatType     = 1;
+    string  PublicIp    = 2;
+    string  PublicPort  = 3;
 }
 
-message NatConnect {
+message DigApply {
     string NatServer    = 1;
     string Public       = 2;
     string TargetId     = 3;
@@ -34,39 +33,24 @@ message NatConnect {
     string FromId       = 6;
 }
 
-message NatConnectAck {
+message DigConfirm {
     string Public       = 1;
     string sessionId    = 2;
     string targetId     = 3;
 }
 
-message NatKeepAlive {
+message KeepAlive {
     string nodeId  = 1;
     string lAddr   = 2;
     string PubIP   = 3;
     int32 PubPort  = 4;
 }
 
-message NatPing {
+message PingPong {
     string ping  = 1;
     string pong  = 2;
     string nonce = 3;
     int32  TTL   = 4;
-}
-
-message HoleDig {
-    string sessionId  = 1;
-    int32 networkType = 2;
-}
-
-message HolePayLoad{
-    string sessionId    = 1;
-    int32  targetPort   = 2;
-    bytes  payLoad      = 3;
-}
-
-message ErrorNotify {
-    string errMsg = 1;
 }
 
 message ReverseInvite {
@@ -81,17 +65,15 @@ message ReverseInviteAck {
     string sessionId = 1;
 }
 
-message PriNetDig{
-    string sessionId = 1;
-}
-
-message SimpleNatInfo{
-    string natInfo   = 1;
-}
-
 message NatMsg {
-    int32 Typ       = 1;
-    int32 Len       = 2;
-    int64 Seq       = 3;
-    bytes PayLoad   = 4;
+    MsgType Typ             = 1;
+    int64 Seq               = 2;
+    BootReg BootReg             = 3;
+    KeepAlive KeepAlive            = 4;
+    DigApply DigApply           = 5;
+    DigConfirm DigConfirm     = 6;
+    PingPong PingPong             = 7;
+    ReverseInvite ReverseInvite         = 8;
+    ReverseInviteAck ReverseInviteAck     = 9;
+    BootAnswer BootAnswer = 10;
 }

@@ -44,13 +44,13 @@ func (tunnel *KATunnel) process(buffer []byte) error {
 
 	switch response.Typ {
 	case nbsnet.NatKeepAlive:
-		tunnel.refreshNatInfo(response.PayLoad)
-	case nbsnet.NatReversDig:
-		tunnel.answerInvite(response.PayLoad)
-	case nbsnet.NatConnect:
-		tunnel.digOut(response.PayLoad)
-	case nbsnet.NatConnectACK:
-		tunnel.makeAHole(response.PayLoad)
+		tunnel.refreshNatInfo(response.KeepAlive)
+	case nbsnet.NatReversInvite:
+		tunnel.answerInvite(response.ReverseInvite)
+	case nbsnet.NatDigApply:
+		tunnel.digOut(response.DigApply)
+	case nbsnet.NatDigConfirm:
+		tunnel.makeAHole(response.DigConfirm)
 	}
 
 	return nil

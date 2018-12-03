@@ -44,7 +44,7 @@ func (task *ConnTask) Close() {
 		close(task.err)
 	}
 	if task.portCapConn != nil {
-		task.portCapConn.Close()
+		_ = task.portCapConn.Close()
 	}
 }
 
@@ -53,12 +53,6 @@ func (task *ConnTask) Close() {
 *			client side
 *
 *************************************************************************/
-func (tunnel *KATunnel) Close() {
-
-	tunnel.serverHub.Close()
-	tunnel.kaConn.Close()
-}
-
 func (tunnel *KATunnel) runLoop() {
 
 	for {
@@ -73,15 +67,12 @@ func (tunnel *KATunnel) runLoop() {
 
 func (tunnel *KATunnel) sendKeepAlive() error {
 
-	KeepAlive := &net_pb.NatKeepAlive{
-		NodeId: tunnel.networkId,
-		LAddr:  tunnel.sharedAddr,
-	}
-	kaData, _ := proto.Marshal(KeepAlive)
 	request := &net_pb.NatMsg{
-		Typ:     nbsnet.NatKeepAlive,
-		Len:     int32(len(kaData)),
-		PayLoad: kaData,
+		Typ: nbsnet.NatKeepAlive,
+		KeepAlive: &net_pb.KeepAlive{
+			NodeId: tunnel.networkId,
+			LAddr:  tunnel.sharedAddr,
+		},
 	}
 
 	requestData, err := proto.Marshal(request)
@@ -112,13 +103,7 @@ func (tunnel *KATunnel) restoreNatChannel() {
 *
 *************************************************************************/
 
-func (tunnel *KATunnel) answerInvite(data []byte) {
-
-	invite := &net_pb.ReverseInvite{}
-	if err := proto.Unmarshal(data, invite); err != nil {
-		logger.Warning("answer invite unmarshal err:->", err)
-		return
-	}
+func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	myPort := strconv.Itoa(int(invite.ToPort))
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+myPort,
@@ -128,14 +113,12 @@ func (tunnel *KATunnel) answerInvite(data []byte) {
 		return
 	}
 	defer conn.Close()
-	InviteAck := &net_pb.ReverseInviteAck{
-		SessionId: invite.SessionId,
-	}
-	ackData, _ := proto.Marshal(InviteAck)
+
 	req := &net_pb.NatMsg{
-		Typ:     nbsnet.NatReversDigAck,
-		Len:     int32(len(ackData)),
-		PayLoad: ackData,
+		Typ: nbsnet.NatReversInviteAck,
+		ReverseInviteAck: &net_pb.ReverseInviteAck{
+			SessionId: invite.SessionId,
+		},
 	}
 
 	reqData, _ := proto.Marshal(req)
@@ -147,14 +130,7 @@ func (tunnel *KATunnel) answerInvite(data []byte) {
 	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
 }
 
-func (tunnel *KATunnel) refreshNatInfo(data []byte) {
-
-	alive := &net_pb.NatKeepAlive{}
-
-	if err := proto.Unmarshal(data, alive); err != nil {
-		logger.Warning("unmarshal nat keep alive err:->", err)
-		return
-	}
+func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.KeepAlive) {
 
 	tunnel.updateTime = time.Now()
 
@@ -225,95 +201,4 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 
 	task.err <- nil
 	task.udpConn = conn
-}
-
-func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
-
-	data, _, err := nbsnet.PackEmptyNatData(nbsnet.NatDigOut)
-	if err != nil {
-		task.err <- err
-		return
-	}
-
-	for i := 0; i < TryDigHoleTimes; i++ {
-
-		logger.Debug("hole punch step2-4  dig dig:->",
-			i, conn.LocalAddr().String(), conn.RemoteAddr().String())
-
-		if _, err := conn.Write(data); err != nil {
-			logger.Error(err)
-		}
-		select {
-		case <-task.err:
-			logger.Debug("dig action finished.")
-			return
-		case <-time.After(time.Second):
-			logger.Debug("dig again")
-		}
-	}
-}
-
-func (tunnel *KATunnel) notifyCaller(msg *net_pb.NatConnect, task *ConnTask) {
-
-	lPort := strconv.Itoa(int(msg.TargetPort))
-	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
-	if err != nil {
-		logger.Warning("dial err:->", err)
-		task.err <- err
-		return
-	}
-	defer conn.Close()
-
-	ack := &net_pb.NatConnectAck{
-		SessionId: msg.SessionId,
-		TargetId:  msg.FromId,
-	}
-	data, _, err := nbsnet.PackNatData(ack, nbsnet.NatConnectACK)
-	if err != nil {
-		logger.Warning("pack data err:->", err)
-		task.err <- err
-		return
-	}
-
-	if _, err := conn.Write(data); err != nil {
-		logger.Warning("write data err:->", err)
-		task.err <- err
-		return
-	}
-
-	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
-}
-
-func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
-
-	logger.Debug("hole punch step2-5 waiting dig out response:->")
-
-	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
-		task.err <- err
-		return
-	}
-
-	buffer := make([]byte, utils.NormalReadBuffer)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		logger.Warning("reading dig result failed:->", err)
-		task.err <- err
-		return
-	}
-
-	res, err := nbsnet.UnpackNatData(buffer[:n], nil)
-	if err != nil {
-		logger.Warning("reading dig result Unmarshal failed:", err)
-		task.err <- err
-		return
-	}
-
-	if res.Typ == nbsnet.NatDigSuccess {
-		task.err <- nil
-	} else {
-		task.err <- fmt.Errorf("unknown dig response")
-	}
-
-	logger.Debug("hole punch step2-8 dig success:->", res)
-	return
 }

@@ -13,21 +13,26 @@ import (
 	"time"
 )
 
+const (
+	MsgPoolSize = 1 << 10
+)
+
 func NewNatManager(networkId string) *Manager {
 
 	denat.GetDeNatSerIns().Setup(networkId)
 
 	natObj := &Manager{
-		networkId: networkId,
-		canServe:  make(chan bool),
-		cache:     make(map[string]*HostBehindNat),
+		networkId:   networkId,
+		canServe:    make(chan bool),
+		cache:       make(map[string]*HostBehindNat),
+		task:        make(chan *MsgTask, MsgPoolSize),
+		msgHandlers: make(map[net_pb.MsgType]taskProcess),
 	}
 
-	natObj.startNatService()
+	natObj.initService()
 
-	go natObj.natServiceListening()
-
-	go natObj.cacheManager()
+	go natObj.TaskReceiver()
+	go natObj.RunLoop()
 
 	return natObj
 }
@@ -139,18 +144,15 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	localHost := conn.LocalAddr().String()
 	_, fromPort, _ := net.SplitHostPort(localHost)
 
-	Invite := &net_pb.ReverseInvite{
-		SessionId: connId,
-		PubIp:     lAddr.PubIp,
-		ToPort:    int32(toPort),
-		PeerId:    rAddr.NetworkId,
-		FromPort:  fromPort,
-	}
-	inviteData, _ := proto.Marshal(Invite)
 	req := &net_pb.NatMsg{
-		Typ:     nbsnet.NatReversDig,
-		Len:     int32(len(inviteData)),
-		PayLoad: inviteData,
+		Typ: nbsnet.NatReversInvite,
+		ReverseInvite: &net_pb.ReverseInvite{
+			SessionId: connId,
+			PubIp:     lAddr.PubIp,
+			ToPort:    int32(toPort),
+			PeerId:    rAddr.NetworkId,
+			FromPort:  fromPort,
+		},
 	}
 	reqData, _ := proto.Marshal(req)
 	if _, err := conn.Write(reqData); err != nil {
@@ -201,7 +203,7 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 		return
 	}
 
-	if res.Typ != nbsnet.NatReversDigAck {
+	if res.Typ != nbsnet.NatReversInviteAck {
 		task.udpConn = nil
 		task.err <- fmt.Errorf("didn't get the answer")
 		return
