@@ -15,8 +15,7 @@ import (
 const (
 	KeepAliveTime    = time.Second * 15
 	KeepAliveTimeOut = time.Second * 45
-	HolePunchTimeOut = 4 * time.Second
-	TryDigHoleTimes  = 3
+	HolePunchTimeOut = 2 * time.Second
 	BootStrapTimeOut = time.Second * 4
 )
 

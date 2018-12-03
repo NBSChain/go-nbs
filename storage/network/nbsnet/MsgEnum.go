@@ -10,7 +10,6 @@ const (
 	NatDigApply        = net_pb.MsgType_NatDigApply
 	NatPingPong        = net_pb.MsgType_NatPingPong
 	NatDigOut          = net_pb.MsgType_NatDigOut
-	NatDigSuccess      = net_pb.MsgType_NatDigSuccess
 	NatReversInvite    = net_pb.MsgType_NatReversInvite
 	NatReversInviteAck = net_pb.MsgType_NatReversInviteAck
 	NatPriDigSyn       = net_pb.MsgType_NatPriDigSyn

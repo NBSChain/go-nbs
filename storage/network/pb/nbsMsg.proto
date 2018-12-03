@@ -3,17 +3,17 @@ syntax = "proto3";
 package net.pb;
 
 enum MsgType {
-    Error                 = 0;
-    NatBootReg            = 1001;
-    NatKeepAlive          = 1002;
-    NatDigApply          = 1003;
-    NatPingPong           = 1004;
-    NatDigOut             = 1006;
-    NatDigSuccess         = 1007;
-    NatReversInvite          = 1008;
-    NatReversInviteAck       = 1009;
-    NatPriDigSyn          = 1010;
-    NatPriDigAck          = 1011;
+    Error               = 0;
+    NatBootReg          = 1001;
+    NatKeepAlive        = 1002;
+    NatDigApply         = 1003;
+    NatPingPong         = 1004;
+    NatDigOut           = 1006;
+
+    NatReversInvite     = 1008;
+    NatReversInviteAck  = 1009;
+    NatPriDigSyn        = 1010;
+    NatPriDigAck        = 1011;
     NatDigConfirm       = 1012;
-    NatBootAnswer            = 1013;
+    NatBootAnswer       = 1013;
 }
