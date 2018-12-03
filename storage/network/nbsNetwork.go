@@ -80,9 +80,9 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 	network.natManager = nat.NewNatManager(network.networkId)
 
 	success := false
+	port := strconv.Itoa(utils.GetConfig().NatServerPort)
 	for _, serverIp := range utils.GetConfig().NatServerIP {
 		//serverHost := denat.GetDeNatSerIns().GetValidServer()
-		port := strconv.Itoa(utils.GetConfig().NatServerPort)
 		if err := network.findWhoAmI(net.JoinHostPort(serverIp, port)); err == nil {
 			success = true
 			break
@@ -302,8 +302,6 @@ func (network *nbsNetwork) findWhoAmI(serverHost string) error {
 		return err
 	}
 	defer conn.Close()
-
-	conn.SetDeadline(time.Now().Add(time.Second * 3))
 
 	localHost, err := network.sendNatRequest(conn)
 	if err != nil {

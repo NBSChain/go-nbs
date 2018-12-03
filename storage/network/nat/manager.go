@@ -173,8 +173,8 @@ func (nat *Manager) cacheManager() {
 			}
 
 			nat.cacheLock.Unlock()
-		case <-nat.NatKATun.natChanged:
-			logger.Warning("nat server ip changed.")
+			//case <-nat.NatKATun.natChanged:
+			//	logger.Warning("nat server ip changed.")
 		}
 	}
 }
