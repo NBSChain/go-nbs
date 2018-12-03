@@ -28,7 +28,7 @@ func (tunnel *KATunnel) listening() {
 			continue
 		}
 
-		logger.Debug("server hub connection :", response, peerAddr)
+		logger.Debug("server hub connection :", peerAddr, response)
 
 		switch response.Typ {
 		case nbsnet.NatKeepAlive:

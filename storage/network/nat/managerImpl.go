@@ -90,14 +90,14 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	connId string, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
 
 	priConnTask := &ConnTask{
-		err: make(chan error),
+		udpConn: make(chan *net.UDPConn),
 	}
 	defer priConnTask.Close()
 
 	go nat.NatKATun.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
 
 	pubConnTask := &ConnTask{
-		err: make(chan error),
+		udpConn: make(chan *net.UDPConn),
 	}
 	defer pubConnTask.Close()
 	go nat.NatKATun.DigHoeInPubNet(lAddr, rAddr, connId, toPort, pubConnTask)
@@ -105,24 +105,24 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {
 		select {
-		case err := <-priConnTask.err:
-			logger.Debug("hole punch step1-2 dig direct in private network finished:->", err)
-			if err == nil {
-				return priConnTask.udpConn, nbsnet.CTypeNormal, nil
+		case conn := <-priConnTask.udpConn:
+			logger.Debug("hole punch step1-2 dig direct in private network finished:->", priConnTask.err)
+			if conn != nil {
+				return conn, nbsnet.CTypeNormal, nil
 			} else {
 				priFail = true
 				if pubFail {
-					return nil, 0, err
+					return nil, 0, priConnTask.err
 				}
 			}
-		case err := <-pubConnTask.err:
-			logger.Debug("hole punch step2-x dig in public network finished:->", err)
-			if err == nil {
-				return pubConnTask.udpConn, nbsnet.CTypeNatDuplex, nil
+		case conn := <-pubConnTask.udpConn:
+			logger.Debug("hole punch step2-x dig in public network finished:->", pubConnTask.err)
+			if conn != nil {
+				return conn, nbsnet.CTypeNatDuplex, nil
 			} else {
 				pubFail = true
 				if priFail {
-					return nil, 0, err
+					return nil, 0, pubConnTask.err
 				}
 			}
 		case <-time.After(HolePunchTimeOut / 2):
@@ -160,7 +160,7 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 
 	connChan := &ConnTask{
-		err: make(chan error),
+		udpConn: make(chan *net.UDPConn),
 	}
 
 	logger.Debug("Step1: notify applier's nat server:", req)
@@ -168,11 +168,11 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	go nat.waitInviteAnswer(localHost, connId, connChan)
 
 	select {
-	case err := <-connChan.err:
-		if err != nil {
-			return nil, err
+	case conn := <-connChan.udpConn:
+		if conn != nil {
+			return conn, nil
 		} else {
-			return connChan.udpConn, nil
+			return nil, connChan.err
 		}
 	case <-time.After(HolePunchTimeOut):
 		return nil, fmt.Errorf("time out")
@@ -183,7 +183,8 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 
 	lisConn, err := shareport.ListenUDP("udp4", host)
 	if err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 	defer lisConn.Close()
@@ -193,29 +194,32 @@ func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	res := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer[:n], res); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	if res.Typ != nbsnet.NatReversInviteAck {
-		task.udpConn = nil
-		task.err <- fmt.Errorf("didn't get the answer")
+		task.err = fmt.Errorf("didn't get the answer")
+		task.udpConn <- nil
 		return
 	}
 
 	conn, err := shareport.DialUDP("udp4", host, peerAddr.String())
 	if err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
-	task.udpConn = conn
-	task.err <- err
+	task.udpConn <- conn
+	task.err = err
 
 	logger.Debug("Step5: get answer and make a connection:->", host, peerAddr.String())
 }

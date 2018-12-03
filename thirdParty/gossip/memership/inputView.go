@@ -20,7 +20,6 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 
 	payLoad := beat.Payload
 	if payLoad == nil {
-		logger.Debug("gossip heart beat response:->", beat, addr)
 		return
 	}
 
@@ -34,7 +33,7 @@ func (node *MemManager) handleKeepAlive(beat *pb.HeartBeat, addr *net.UDPAddr) {
 
 func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) {
 
-	logger.Debug("get gossip heart beat with payload:", msg)
+	logger.Debug("heart beat with payload:", msg)
 
 	switch msg.MsgType {
 	case nbsnet.GspRegContact:

@@ -21,9 +21,9 @@ const (
 )
 
 type ConnTask struct {
-	err         chan error
+	err         error
 	locPort     string
-	udpConn     *net.UDPConn
+	udpConn     chan *net.UDPConn
 	portCapConn *net.UDPConn
 }
 
@@ -39,10 +39,6 @@ type KATunnel struct {
 }
 
 func (task *ConnTask) Close() {
-
-	if task.err != nil {
-		close(task.err)
-	}
 	if task.portCapConn != nil {
 		_ = task.portCapConn.Close()
 	}
@@ -154,12 +150,13 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		Port: toPort,
 	})
 	if err != nil {
-		logger.Warning("Step 2-1:can't dial by private network.", err)
-		task.err <- err
+		logger.Warning("Step 1-1:can't dial by private network.", err)
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
-	logger.Debug("hole punch step1-1 start in private network:->",
+	logger.Debug("hole punch step1-2 start in private network:->",
 		conn.LocalAddr().String(), conn.RemoteAddr().String())
 
 	holeMsg := &net_pb.NatMsg{
@@ -168,16 +165,18 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	}
 	data, _ := proto.Marshal(holeMsg)
 	if _, err := conn.Write(data); err != nil {
-		logger.Error("Step 2-2:private network dig dig failed:->", err)
-		task.err <- err
+		logger.Error("Step 1-3:private network dig dig failed:->", err)
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
-	logger.Info("Step 2-4:->dig in private network:->", conStr)
+	logger.Info("Step 1-4:->dig in private network:->", conStr)
 
 	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
@@ -185,20 +184,23 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	_, err = conn.Read(buffer)
 	if err != nil {
 		logger.Error("Step 2-3:private network reading dig result failed:->", err, conStr)
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 	resMsg := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer, resMsg); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	if resMsg.Typ != nbsnet.NatPriDigAck || resMsg.Seq != holeMsg.Seq+1 {
-		task.err <- fmt.Errorf("wrong ack package")
+		task.err = fmt.Errorf("wrong ack package")
+		task.udpConn <- nil
 		return
 	}
 
-	task.err <- nil
-	task.udpConn = conn
+	task.err = nil
+	task.udpConn <- conn
 }

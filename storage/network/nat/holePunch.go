@@ -17,7 +17,8 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 	if err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
@@ -34,7 +35,8 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
@@ -57,12 +59,12 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 func (tunnel *KATunnel) digOut(req *net_pb.DigApply) {
 
-	digTask := &ConnTask{
-		err: make(chan error),
+	task := &ConnTask{
+		udpConn: make(chan *net.UDPConn),
 	}
-	defer digTask.Close()
+	defer task.Close()
 
-	go tunnel.notifyCaller(req, digTask)
+	go tunnel.notifyCaller(req, task)
 
 	lPort := strconv.Itoa(int(req.TargetPort))
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, req.Public)
@@ -71,13 +73,13 @@ func (tunnel *KATunnel) digOut(req *net_pb.DigApply) {
 	}
 	defer conn.Close()
 
-	go tunnel.waitDigOutRes(digTask, conn)
+	go tunnel.waitDigOutRes(task, conn)
 
-	go tunnel.digDig(conn, digTask)
+	go tunnel.digDig(conn, task)
 
 	select {
-	case err := <-digTask.err:
-		logger.Info("dig out finished:->", err)
+	case <-task.udpConn:
+		logger.Info("dig out finished:->", task.err)
 	case <-time.After(HolePunchTimeOut):
 		logger.Warning("dig out time out")
 	}
@@ -96,7 +98,8 @@ func (tunnel *KATunnel) makeAHole(ack *net_pb.DigConfirm) {
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
 	if err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
@@ -105,12 +108,13 @@ func (tunnel *KATunnel) makeAHole(ack *net_pb.DigConfirm) {
 	}
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
-	task.udpConn = conn
-	task.err <- nil
+	task.udpConn <- conn
+	task.err = nil
 
 	logger.Debug("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
@@ -133,8 +137,8 @@ func (tunnel *KATunnel) digDig(conn *net.UDPConn, task *ConnTask) {
 			logger.Error(err)
 		}
 		select {
-		case <-task.err:
-			logger.Debug("dig action finished.")
+		case <-task.udpConn:
+			logger.Debug("dig action finished:->", task.err)
 			return
 		case <-time.After(time.Second):
 			logger.Debug("dig again")
@@ -148,7 +152,8 @@ func (tunnel *KATunnel) notifyCaller(msg *net_pb.DigApply, task *ConnTask) {
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
 	if err != nil {
 		logger.Warning("dial err:->", err)
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 	defer conn.Close()
@@ -164,13 +169,15 @@ func (tunnel *KATunnel) notifyCaller(msg *net_pb.DigApply, task *ConnTask) {
 	data, err := proto.Marshal(confirmMsg)
 	if err != nil {
 		logger.Warning("pack data err:->", err)
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	if _, err := conn.Write(data); err != nil {
 		logger.Warning("write data err:->", err)
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
@@ -182,28 +189,33 @@ func (tunnel *KATunnel) waitDigOutRes(task *ConnTask, conn *net.UDPConn) {
 	logger.Debug("hole punch step2-5 waiting dig out response:->")
 
 	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut)); err != nil {
-		task.err <- err
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, err := conn.Read(buffer)
 	if err != nil {
-		logger.Warning("reading dig result failed:->", err)
-		task.err <- err
+		logger.Warning("waitDigOutRes read failed:->", err)
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 	res := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer[:n], res); err != nil {
-		logger.Warning("reading dig result Unmarshal failed:", err)
-		task.err <- err
+		logger.Warning("waitDigOutRes Unmarshal failed:", err)
+		task.err = err
+		task.udpConn <- nil
 		return
 	}
 
 	if res.Typ == nbsnet.NatDigSuccess {
-		task.err <- nil
+		task.err = nil
+		task.udpConn <- nil
 	} else {
-		task.err <- fmt.Errorf("unknown dig response")
+		task.err = fmt.Errorf("unknown dig response")
+		task.udpConn <- nil
 	}
 
 	logger.Debug("hole punch step2-8 dig success:->", res)
