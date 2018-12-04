@@ -12,7 +12,7 @@ import (
 )
 
 func (node *MemManager) firstSubOnline(task *innerTask) error {
-	req, ok := task.param.(pb.InitSub)
+	req, ok := task.param.(*pb.InitSub)
 	if !ok {
 		return fmt.Errorf("not enough param")
 	}
