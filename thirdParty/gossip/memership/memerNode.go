@@ -103,7 +103,7 @@ func (node *MemManager) receivingCmd() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
-		n, peerAddr, err := node.serviceConn.ReadFromUDP(buffer)
+		n, peerAddr, err := node.serviceConn.ReceiveFromUDP(buffer)
 		if err != nil {
 			logger.Warning("reading contract application err:", err)
 			continue
