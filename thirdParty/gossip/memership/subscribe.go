@@ -40,7 +40,7 @@ func (node *MemManager) registerMySelf() error {
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut)); err != nil {
-			logger.Errorf("set conn time out err:->", err)
+			logger.Errorf("set ctrlConn time out err:->", err)
 			goto CloseConn
 		}
 

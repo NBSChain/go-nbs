@@ -3,12 +3,57 @@ syntax = "proto3";
 package pb;
 
 import "github.com/NBSChain/go-nbs/storage/network/pb/nbsMsg.proto";
-import "initSub.proto";
+
+message BasicHost{
+    bool   canServer    = 1;
+    string natServer    = 2;
+    string natIP        = 3;
+    int32  natPort      = 4;
+    string priIP        = 5;
+    string pubIp        = 6;
+}
+
+message InitSub {
+    int64 seq       = 1;
+    string nodeId   = 2;
+    BasicHost addr  = 3;
+}
+
+message InitSubACK {
+    int64 seq            = 1;
+    string supplierID    = 2;
+}
+
+message ReqContact {
+    int64 seq           = 1;
+    int32 TTL           = 2;
+    string applierID    = 3;
+    BasicHost applier   = 4;
+}
+
+message ReqContactACK {
+    int64 seq           = 1;
+    string supplierID   = 2;
+    BasicHost supplier  = 3;
+}
 
 message HeartBeat {
     string  sender  = 1;
     int64   seqNo   = 2;
     bytes   payload = 3;
+}
+
+message TransSubReq {
+    string from         = 1;
+    string applierID    = 2;
+    int64 seqNo         = 3;
+    BasicHost addr      = 4;
+}
+
+message SubReqACK {
+    int64 seq           = 1;
+    string supplierID   = 2;
+    BasicHost supplier  = 3;
 }
 
 message gossip {
@@ -18,4 +63,6 @@ message gossip {
     ReqContact ReqContact       = 4;
     ReqContactACK ReqContactACK = 5;
     HeartBeat heartBeat         = 6;
+    TransSubReq TransSubReq     = 7;
+    SubReqACK SubReqACK         = 8;
 }

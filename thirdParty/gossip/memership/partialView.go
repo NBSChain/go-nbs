@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+//TODO:: make sure this random is ok
 func (node *MemManager) choseRandomInPartialView() *peerNodeItem {
 	count := len(node.partialView)
 	j := 0
@@ -25,7 +26,7 @@ func (node *MemManager) choseRandomInPartialView() *peerNodeItem {
 	return nil
 }
 
-func (node *MemManager) keepAlive() {
+func (node *MemManager) sendHeartBeat() {
 
 	keepAlive := &pb.Gossip{
 		MsgType: nbsnet.GspHeartBeat,
@@ -45,10 +46,10 @@ func (node *MemManager) keepAlive() {
 			continue
 		}
 
-		if _, err := item.conn.Write(data); err != nil {
+		if _, err := item.ctrlConn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.conn.Close(); err != nil {
+			if err := item.ctrlConn.Close(); err != nil {
 				logger.Warning(err)
 			}
 			continue
@@ -56,11 +57,11 @@ func (node *MemManager) keepAlive() {
 
 		item.updateTime = now
 
-		logger.Debug("gossip heart beat empty payload:->", nodeId, item.conn.String())
+		logger.Debug("send empty heart beat :->", nodeId, item.ctrlConn.String())
 	}
 }
 
-func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
+func (node *MemManager) sendHBWithPayLoad(nodeId string, payLoad []byte) error {
 
 	keepAlive := &pb.Gossip{
 		MsgType: nbsnet.GspHeartBeat,
@@ -80,10 +81,10 @@ func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 			return fmt.Errorf("can't find the target peer node")
 		}
 
-		if _, err := item.conn.Write(data); err != nil {
+		if _, err := item.ctrlConn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.conn.Close(); err != nil {
+			if err := item.ctrlConn.Close(); err != nil {
 				logger.Warning(err)
 			}
 			return fmt.Errorf("can't find the target peer node:->nodeId:%s,err:%s", nodeId, err.Error())
@@ -91,16 +92,16 @@ func (node *MemManager) keepAliveWithData(nodeId string, payLoad []byte) error {
 
 		item.updateTime = time.Now()
 
-		logger.Debug("send gossip heart beat with payload :->", nodeId, item.addr)
+		logger.Debug("payload heart beat :->", nodeId, item.addr)
 		return nil
 	}
 
 	//TIPS::broadcast
 	for nodeId, item := range node.partialView {
-		if _, err := item.conn.Write(data); err != nil {
+		if _, err := item.ctrlConn.Write(data); err != nil {
 			logger.Warning("node in partial view is expired:->", nodeId, err)
 			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.conn.Close(); err != nil {
+			if err := item.ctrlConn.Close(); err != nil {
 				logger.Warning(err)
 			}
 			continue

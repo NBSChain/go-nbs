@@ -1,6 +1,7 @@
 package memership
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
@@ -8,6 +9,7 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"math/big"
 	"net"
 	"time"
 )
@@ -15,13 +17,14 @@ import (
 const (
 	MemShipHeartBeat = time.Second * 10 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
+	MaxForwardTimes  = 10
 )
 
 var (
 	HandlerNotFound = fmt.Errorf("no suc gossip task handler")
 )
 
-type newSub struct {
+type subOnline struct {
 	nodeId string
 	seq    int64
 	addr   *pb.BasicHost
@@ -29,10 +32,11 @@ type newSub struct {
 
 type peerNodeItem struct {
 	nodeId      string
+	encounterNo int
 	probability float64
 	addr        *nbsnet.NbsUdpAddr
 	updateTime  time.Time
-	conn        *nbsnet.NbsUdpConn
+	ctrlConn    *nbsnet.NbsUdpConn
 }
 
 type innerTask struct {
@@ -68,8 +72,9 @@ func NewMemberNode(peerId string) *MemManager {
 
 	node.taskRouter[nbsnet.GspInitSub] = node.firstSub
 	node.taskRouter[nbsnet.GspContactAck] = node.subToContract
-	node.taskRouter[nbsnet.GspHeartBeat] = node.heartBeat
+	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
 	node.taskRouter[nbsnet.GspInitSubACK] = node.firstSubOnline
+	node.taskRouter[nbsnet.GspForwardSub] = node.getForwardedRequest
 
 	return node
 }
@@ -125,7 +130,7 @@ func (node *MemManager) receivingCmd() {
 			continue
 		}
 
-		logger.Debug("gossip server:->", message, peerAddr)
+		logger.Debug("gossip server:->", peerAddr, message)
 
 		node.taskQueue <- &innerTask{
 			msg:  message,
@@ -149,7 +154,7 @@ func (node *MemManager) RunLoop() {
 			}
 
 		case <-time.After(MemShipHeartBeat):
-			node.keepAlive()
+			node.sendHeartBeat()
 		}
 	}
 }
@@ -164,4 +169,36 @@ func (node *MemManager) updateProbability(view map[string]*peerNodeItem) {
 	for _, item := range view {
 		item.probability = item.probability / summerOut
 	}
+}
+
+func (node *MemManager) getForwardedRequest(task *innerTask) error {
+
+	prob := float64(1) / float64(1+len(node.partialView))
+
+	random, _ := rand.Int(rand.Reader, big.NewInt(100))
+
+	//TODO:: make sure this probability is fine.
+	if random.Int64() > int64(prob*100) {
+		return nil
+	}
+
+	req := task.msg.TransSubReq
+	sub := &subOnline{
+		nodeId: req.ApplierID,
+		seq:    req.SeqNo,
+		addr:   req.Addr,
+	}
+
+	item, ok := node.partialView[req.ApplierID]
+	if ok {
+
+		return node.forwardSub(item, sub)
+	}
+
+	return node.acceptSubAsNode(sub)
+}
+
+func (node *MemManager) acceptSubAsNode(sub *subOnline) error {
+
+	return nil
 }

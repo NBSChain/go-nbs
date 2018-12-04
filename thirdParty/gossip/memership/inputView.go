@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (node *MemManager) heartBeat(task *innerTask) error {
+func (node *MemManager) getHeartBeat(task *innerTask) error {
 	beat := task.msg.HeartBeat
 	addr := task.addr
 	item, ok := node.inputView[beat.Sender]
@@ -36,12 +36,12 @@ func (node *MemManager) heartBeat(task *innerTask) error {
 
 func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) error {
 
-	logger.Debug("heart beat with payload:", msg)
+	logger.Debug("get HB with payload:", msg)
 
 	switch msg.MsgType {
 	case nbsnet.GspRegContact:
 		req := msg.ReqContact
-		sub := &newSub{
+		sub := &subOnline{
 			nodeId: req.ApplierID,
 			seq:    req.Seq,
 			addr:   req.Applier,

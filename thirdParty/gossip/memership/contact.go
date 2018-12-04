@@ -17,7 +17,7 @@ func (node *MemManager) firstSubOnline(task *innerTask) error {
 		return fmt.Errorf("not enough param")
 	}
 
-	sub := &newSub{
+	sub := &subOnline{
 		nodeId: req.NodeId,
 		seq:    req.Seq,
 		addr:   req.Addr,
@@ -29,7 +29,7 @@ func (node *MemManager) firstSubOnline(task *innerTask) error {
 	return nil
 }
 
-func (node *MemManager) actAsContact(sub *newSub) {
+func (node *MemManager) actAsContact(sub *subOnline) {
 
 	count := len(node.partialView)
 	if count == 0 {
@@ -47,7 +47,7 @@ func (node *MemManager) actAsContact(sub *newSub) {
 	}
 }
 
-func (node *MemManager) indirectTheSubRequest(sub *newSub, counter int) {
+func (node *MemManager) indirectTheSubRequest(sub *subOnline, counter int) {
 
 	if counter == 0 {
 		node.actAsContact(sub)
@@ -68,8 +68,9 @@ func (node *MemManager) indirectTheSubRequest(sub *newSub, counter int) {
 
 	var forwardTime int
 	for _, view := range node.partialView {
-		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
 
+		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
+		//TODO:: make sure this probability is fine.
 		if pro.Int64() > int64(view.probability*100) {
 			continue
 		}
@@ -88,10 +89,10 @@ func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb
 
 	data, _ := proto.Marshal(gossip)
 
-	return node.keepAliveWithData(peerNode.nodeId, data)
+	return node.sendHBWithPayLoad(peerNode.nodeId, data)
 }
 
-func (node *MemManager) acceptSub(sub *newSub) {
+func (node *MemManager) acceptSub(sub *subOnline) {
 	logger.Debug("accept the subscriber:->", sub.nodeId, sub.addr.String())
 
 	item, ok := node.partialView[sub.nodeId]
@@ -111,9 +112,9 @@ func (node *MemManager) acceptSub(sub *newSub) {
 	}
 
 	item = &peerNodeItem{
-		nodeId: sub.nodeId,
-		addr:   addr,
-		conn:   conn,
+		nodeId:   sub.nodeId,
+		addr:     addr,
+		ctrlConn: conn,
 	}
 
 	node.partialView[sub.nodeId] = item
@@ -123,8 +124,28 @@ func (node *MemManager) acceptSub(sub *newSub) {
 	node.updateProbability(node.partialView)
 }
 
-func (node *MemManager) forwardSub(item *peerNodeItem, sub *newSub) {
-	//TODO::
+func (node *MemManager) forwardSub(item *peerNodeItem, sub *subOnline) error {
+
+	if item.encounterNo++; item.encounterNo > MaxForwardTimes {
+		return nil
+	}
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspForwardSub,
+		TransSubReq: &pb.TransSubReq{
+			From:      node.nodeID,
+			ApplierID: sub.nodeId,
+			SeqNo:     sub.seq,
+			Addr:      sub.addr,
+		},
+	}
+
+	data, _ := proto.Marshal(msg)
+	if _, err := item.ctrlConn.Write(data); err != nil {
+		logger.Warning("forward sub request err:->", err)
+		return err
+	}
+	logger.Debug("decide to forward the sub request:->", msg)
+	return nil
 }
 
 func (node *MemManager) notifySubscriber(Seq int64, addr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
