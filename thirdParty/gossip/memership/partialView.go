@@ -41,7 +41,7 @@ func (node *MemManager) keepAlive() {
 
 	for nodeId, item := range node.partialView {
 
-		if now.Sub(item.updateTime) < MemberShipKeepAlive {
+		if now.Sub(item.updateTime) < MemShipHeartBeat {
 			continue
 		}
 

@@ -70,7 +70,7 @@ func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspInitSub,
-		InitMsg: &pb.InitSub{
+		InitSub: &pb.InitSub{
 			Seq:    time.Now().Unix(),
 			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr),
@@ -105,7 +105,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return fmt.Errorf("failed to send init sub request")
 	}
 
-	if msg.InitACK.SupplierID == node.nodeID {
+	if msg.InitSubACK.SupplierID == node.nodeID {
 		return fmt.Errorf("it's yourself")
 	}
 
@@ -118,12 +118,12 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *
 *****************************************************************/
 func (node *MemManager) firstSub(task *innerTask) error {
-	request := task.msg.InitMsg
+	request := task.msg.InitSub
 	peerAddr := task.addr
 
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspInitSubACK,
-		InitACK: &pb.InitSubACK{
+		InitSubACK: &pb.InitSubACK{
 			Seq:        request.Seq,
 			SupplierID: node.nodeID,
 		},
@@ -149,7 +149,7 @@ func (node *MemManager) firstSub(task *innerTask) error {
 }
 
 func (node *MemManager) subToContract(task *innerTask) error {
-	ack := task.msg.ContactRes
+	ack := task.msg.ReqContactACK
 	addr := task.addr
 	logger.Debug("gossip sub start:", ack, addr)
 

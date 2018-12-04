@@ -40,7 +40,7 @@ func (node *MemManager) ctrlMsg(msg *pb.Gossip, addr *net.UDPAddr) error {
 
 	switch msg.MsgType {
 	case nbsnet.GspRegContact:
-		req := msg.ContactReq
+		req := msg.ReqContact
 		sub := &newSub{
 			nodeId: req.ApplierID,
 			seq:    req.Seq,

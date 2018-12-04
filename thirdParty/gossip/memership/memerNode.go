@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	MemberShipKeepAlive = time.Second * 10 //TODO::?? heart beat time interval.
-	MaxInnerTaskSize    = 1 << 10
+	MemShipHeartBeat = time.Second * 10 //TODO::?? heart beat time interval.
+	MaxInnerTaskSize = 1 << 10
 )
 
 var (
@@ -148,7 +148,7 @@ func (node *MemManager) RunLoop() {
 				logger.Error("gossip run loop err:->", err)
 			}
 
-		case <-time.After(MemberShipKeepAlive):
+		case <-time.After(MemShipHeartBeat):
 			node.keepAlive()
 		}
 	}

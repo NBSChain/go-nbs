@@ -13,9 +13,9 @@ message HeartBeat {
 
 message gossip {
     net.pb.MsgType msgType      = 1;
-    InitSub initMsg             = 2;
-    InitSubACK initACK          = 3;
-    ReqContact contactReq       = 4;
-    ReqContactACK contactRes    = 5;
+    InitSub InitSub             = 2;
+    InitSubACK InitSubACK       = 3;
+    ReqContact ReqContact       = 4;
+    ReqContactACK ReqContactACK = 5;
     HeartBeat heartBeat         = 6;
 }
