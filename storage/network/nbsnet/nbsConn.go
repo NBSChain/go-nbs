@@ -112,11 +112,12 @@ func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
 			return 0, nil, err
 		}
 		msg := &net_pb.NatMsg{}
-		if err := proto.Unmarshal(b[:n], msg); err != nil {
-			return n, peerAddr, err
+		if err2 := proto.Unmarshal(b[:n], msg); err2 != nil {
+			return n, peerAddr, nil
 		}
+
 		if msg.Typ != NatPriDigSyn {
-			return n, peerAddr, err
+			return n, peerAddr, nil
 		}
 		res := &net_pb.NatMsg{
 			Typ: NatPriDigAck,

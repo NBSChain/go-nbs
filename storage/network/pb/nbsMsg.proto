@@ -9,7 +9,6 @@ enum MsgType {
     NatDigApply         = 1003;
     NatPingPong         = 1004;
     NatDigOut           = 1006;
-
     NatReversInvite     = 1008;
     NatReversInviteAck  = 1009;
     NatPriDigSyn        = 1010;

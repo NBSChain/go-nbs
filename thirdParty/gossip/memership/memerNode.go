@@ -105,7 +105,7 @@ func (node *MemManager) receivingCmd() {
 
 		n, peerAddr, err := node.serviceConn.ReceiveFromUDP(buffer)
 		if err != nil {
-			logger.Warning("reading contract application err:", err)
+			logger.Warning("reading contact application err:", err)
 			continue
 		}
 
