@@ -137,8 +137,9 @@ func (node *MemManager) firstSub(task *innerTask) error {
 	}
 
 	node.taskQueue <- &innerTask{
-		msg:  message,
-		addr: peerAddr,
+		msg:   message,
+		addr:  peerAddr,
+		param: request,
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package memership
 
 import (
 	"crypto/rand"
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
@@ -11,9 +12,17 @@ import (
 )
 
 func (node *MemManager) firstSubOnline(task *innerTask) error {
-	sub := &newSub{
-		//nodeId:task.msg.InitACK.
+	req, ok := task.param.(pb.InitSub)
+	if !ok {
+		return fmt.Errorf("not enough param")
 	}
+
+	sub := &newSub{
+		nodeId: req.NodeId,
+		seq:    req.Seq,
+		addr:   req.Addr,
+	}
+
 	counter := 2 * len(node.partialView)
 
 	node.indirectTheSubRequest(sub, counter)

@@ -36,8 +36,9 @@ type peerNodeItem struct {
 }
 
 type innerTask struct {
-	msg  *pb.Gossip
-	addr *net.UDPAddr
+	msg   *pb.Gossip
+	addr  *net.UDPAddr
+	param interface{}
 }
 
 type worker func(*innerTask) error
