@@ -1,24 +1,21 @@
 syntax = "proto3";
 
-option java_multiple_files = true;
-option java_package = "com.nbs.gossip.pb";
-option java_outer_classname = "GossipMessage";
-
 package pb;
 
+import "github.com/NBSChain/go-nbs/storage/network/pb/nbsMsg.proto";
 import "initSub.proto";
 
-message HeartBeat{
+message HeartBeat {
     string  sender  = 1;
     int64   seqNo   = 2;
     bytes   payload = 3;
 }
 
 message gossip {
-    int32 msgType               = 1;
-    InitSub initMsg             = 10;
-    InitSubACK initACK          = 11;
-    ReqContact contactReq       = 12;
-    ReqContactACK contactRes    = 13;
-    HeartBeat heartBeat         = 14;
+    net.pb.MsgType msgType = 1;
+    InitSub initMsg = 2;
+    InitSubACK initACK = 3;
+    ReqContact contactReq = 4;
+    ReqContactACK contactRes = 5;
+    HeartBeat heartBeat = 6;
 }

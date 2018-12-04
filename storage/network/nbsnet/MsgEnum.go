@@ -16,12 +16,11 @@ const (
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
-
-	GspInitSub    = 2001
-	GspInitSubACK = 2002
-	GspRegContact = 2003
-	GspContactAck = 2004
-	GspForwardSub = 2005
-	GspSubAck     = 2006
-	GspHeartBeat  = 2007
+	GspInitSub         = net_pb.MsgType_GspInitSub
+	GspInitSubACK      = net_pb.MsgType_GspInitSubACK
+	GspRegContact      = net_pb.MsgType_GspRegContact
+	GspContactAck      = net_pb.MsgType_GspContactAck
+	GspForwardSub      = net_pb.MsgType_GspForwardSub
+	GspSubAck          = net_pb.MsgType_GspSubAck
+	GspHeartBeat       = net_pb.MsgType_GspHeartBeat
 )

@@ -16,4 +16,11 @@ enum MsgType {
     NatPriDigAck        = 1011;
     NatDigConfirm       = 1012;
     NatBootAnswer       = 1013;
+    GspInitSub = 2001;
+    GspInitSubACK = 2002;
+    GspRegContact = 2003;
+    GspContactAck = 2004;
+    GspForwardSub = 2005;
+    GspSubAck = 2006;
+    GspHeartBeat = 2007;
 }
