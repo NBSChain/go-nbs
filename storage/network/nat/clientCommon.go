@@ -182,7 +182,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	buffer := make([]byte, utils.NormalReadBuffer)
 	_, err = conn.Read(buffer)
 	if err != nil {
-		logger.Error("Step 1-3:private network reading dig result failed:->", err, conStr)
+		logger.Error("Step 1-5:private network reading dig result failed:->", err, conStr)
 		task.err = err
 		task.udpConn <- nil
 		return
