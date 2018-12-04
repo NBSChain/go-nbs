@@ -51,6 +51,7 @@ func (nat *Manager) initService() {
 	nat.msgHandlers[nbsnet.NatReversInvite] = nat.forwardInvite
 	nat.msgHandlers[nbsnet.NatDigApply] = nat.forwardDigApply
 	nat.msgHandlers[nbsnet.NatDigConfirm] = nat.forwardDigConfirm
+	nat.msgHandlers[nbsnet.NatPingPong] = nat.pong
 }
 
 func (nat *Manager) MsgConsumer() {

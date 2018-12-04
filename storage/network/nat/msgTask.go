@@ -128,3 +128,11 @@ func (nat *Manager) forwardDigConfirm(task *MsgTask) (*net_pb.NatMsg, *net.UDPAd
 
 	return task.request, item.pubAddr, nil
 }
+
+func (nat *Manager) pong(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
+
+	nat.canServe <- true
+
+	logger.Debug("I can serve as in public network.")
+	return nil, nil, nil
+}

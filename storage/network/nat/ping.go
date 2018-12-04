@@ -9,14 +9,6 @@ import (
 	"time"
 )
 
-func (nat *Manager) pong(ping *net_pb.PingPong, peerAddr *net.UDPAddr) error {
-
-	nat.canServe <- true
-
-	logger.Debug("I can serve as in public network.")
-	return nil
-}
-
 func (nat *Manager) ping(peerAddr *net.UDPAddr, reqNodeId string) {
 
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{

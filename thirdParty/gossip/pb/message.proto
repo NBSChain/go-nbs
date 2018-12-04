@@ -12,10 +12,10 @@ message HeartBeat {
 }
 
 message gossip {
-    net.pb.MsgType msgType = 1;
-    InitSub initMsg = 2;
-    InitSubACK initACK = 3;
-    ReqContact contactReq = 4;
-    ReqContactACK contactRes = 5;
-    HeartBeat heartBeat = 6;
+    net.pb.MsgType msgType      = 1;
+    InitSub initMsg             = 2;
+    InitSubACK initACK          = 3;
+    ReqContact contactReq       = 4;
+    ReqContactACK contactRes    = 5;
+    HeartBeat heartBeat         = 6;
 }
