@@ -69,7 +69,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[nbsnet.GspInitSub] = node.firstSub
 	node.taskRouter[nbsnet.GspContactAck] = node.subToContract
 	node.taskRouter[nbsnet.GspHeartBeat] = node.heartBeat
-	node.taskRouter[nbsnet.GspInitSubACK] = node.firstSub
+	node.taskRouter[nbsnet.GspInitSubACK] = node.firstSubOnline
 
 	return node
 }

@@ -39,7 +39,10 @@ func (node *MemManager) registerMySelf() error {
 			goto CloseConn
 		}
 
-		conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut))
+		if err := conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut)); err != nil {
+			logger.Errorf("set conn time out err:->", err)
+			goto CloseConn
+		}
 
 		if err := node.acquireProxy(conn); err != nil {
 			logger.Error("send init sub request failed:", err)
