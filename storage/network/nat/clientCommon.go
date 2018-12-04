@@ -177,7 +177,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	}
 
 	buffer := make([]byte, utils.NormalReadBuffer)
-	_, err = conn.Read(buffer)
+	n, err := conn.Read(buffer)
 	if err != nil {
 		logger.Error("Step 1-5:private network reading dig result err:->", err)
 		task.err = err
@@ -185,7 +185,7 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		return
 	}
 	resMsg := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer, resMsg); err != nil {
+	if err := proto.Unmarshal(buffer[:n], resMsg); err != nil {
 		logger.Info("Step 1-4:->dig in private network Unmarshal err:->", err)
 		task.err = err
 		task.udpConn <- nil
