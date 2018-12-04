@@ -106,7 +106,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	for i := 2; i > 0; i-- {
 		select {
 		case conn := <-priConnTask.udpConn:
-			logger.Debug("hole punch step1-2 dig direct in private network finished:->", priConnTask.err)
+			logger.Debug("hole punch step1-8 dig direct in private network finished:->", priConnTask.err)
 			if conn != nil {
 				return conn, nbsnet.CTypeNormal, nil
 			} else {

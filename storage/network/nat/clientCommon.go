@@ -154,9 +154,9 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		task.udpConn <- nil
 		return
 	}
+	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
 
-	logger.Debug("hole punch step1-2 start in private network:->",
-		conn.LocalAddr().String(), conn.RemoteAddr().String())
+	logger.Debug("hole punch step1-2 start in private network:->", conStr)
 
 	holeMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatPriDigSyn,
@@ -170,9 +170,6 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		return
 	}
 
-	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
-	logger.Info("Step 1-4:->dig in private network:->", conStr)
-
 	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
 		task.err = err
 		task.udpConn <- nil
@@ -182,13 +179,14 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 	buffer := make([]byte, utils.NormalReadBuffer)
 	_, err = conn.Read(buffer)
 	if err != nil {
-		logger.Error("Step 1-5:private network reading dig result failed:->", err, conStr)
+		logger.Error("Step 1-5:private network reading dig result err:->", err)
 		task.err = err
 		task.udpConn <- nil
 		return
 	}
 	resMsg := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(buffer, resMsg); err != nil {
+		logger.Info("Step 1-4:->dig in private network Unmarshal err:->", err)
 		task.err = err
 		task.udpConn <- nil
 		return
