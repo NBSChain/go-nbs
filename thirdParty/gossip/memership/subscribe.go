@@ -114,7 +114,9 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDPAddr) {
+func (node *MemManager) firstSub(task *innerTask) error {
+	request := task.msg.InitMsg
+	peerAddr := task.addr
 
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspInitSubACK,
@@ -127,35 +129,30 @@ func (node *MemManager) confirmAndPrepare(request *pb.InitSub, peerAddr *net.UDP
 	msgData, _ := proto.Marshal(message)
 	if _, err := node.serviceConn.WriteToUDP(msgData, peerAddr); err != nil {
 		logger.Warning("failed to send init ack msg:", err)
-		return
+		return err
 	}
 
 	if node.nodeID == request.NodeId {
-		return
+		return nil
 	}
 
-	task := innerTask{
-		tType: ProxyInitSubRequest,
-		param: make([]interface{}, 1),
+	node.taskQueue <- &innerTask{
+		msg:  message,
+		addr: peerAddr,
 	}
 
-	task.param[0] = &newSub{
-		nodeId: request.NodeId,
-		seq:    request.Seq,
-		addr:   request.Addr,
-	}
-
-	node.taskSignal <- task
+	return nil
 }
 
-func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) {
-
+func (node *MemManager) subToContract(task *innerTask) error {
+	ack := task.msg.ContactRes
+	addr := task.addr
 	logger.Debug("gossip sub start:", ack, addr)
 
 	_, ok := node.inputView[ack.SupplierID]
 	if ok {
 		logger.Info("duplicated sub confirm")
-		return
+		return fmt.Errorf("duplicated sub confirm")
 	}
 
 	item := &peerNodeItem{
@@ -165,4 +162,6 @@ func (node *MemManager) subToContract(ack *pb.ReqContactACK, addr *net.UDPAddr) 
 
 	node.inputView[ack.SupplierID] = item
 	item.probability = 1 / float64(len(node.inputView))
+
+	return nil
 }

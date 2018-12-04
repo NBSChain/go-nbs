@@ -105,7 +105,7 @@ func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
 		return conn.RealConn.ReadFromUDP(b)
 	case CTypeNatDuplex:
 		return conn.RealConn.ReadFromUDP(b)
-	case CTypeNatListen:
+	case CTypeNatListen: //TODO::I don't think this is the final resolution.
 	GOON:
 		n, peerAddr, err := conn.RealConn.ReadFromUDP(b)
 		if err != nil {
@@ -140,24 +140,6 @@ func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
 *			private functions
 *
 *************************************************************************/
-//TODO::I don't think this is the final resolution.
-func (conn *NbsUdpConn) preHandleMsg(msg *net_pb.NatMsg, addr *net.UDPAddr) bool {
-
-	if msg.Typ == NatPriDigSyn {
-		res := &net_pb.NatMsg{
-			Typ: NatPriDigAck,
-			Seq: msg.Seq + 1,
-		}
-		b, _ := proto.Marshal(res)
-		if _, err := conn.RealConn.WriteTo(b, addr); err != nil {
-			logger.Warning("write back nat message err:->", err)
-		}
-		return true
-	}
-
-	return false
-}
-
 func (conn *NbsUdpConn) String() string {
 	return "[" + conn.RealConn.LocalAddr().String() + "]-->[" +
 		conn.RealConn.RemoteAddr().String() + "]"

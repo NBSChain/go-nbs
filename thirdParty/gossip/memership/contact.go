@@ -10,11 +10,14 @@ import (
 	"math/big"
 )
 
-func (node *MemManager) findProperContactNode(sub *newSub) {
-
+func (node *MemManager) firstSubOnline(task *innerTask) error {
+	sub := &newSub{
+		//nodeId:task.msg.InitACK.
+	}
 	counter := 2 * len(node.partialView)
 
 	node.indirectTheSubRequest(sub, counter)
+	return nil
 }
 
 func (node *MemManager) actAsContact(sub *newSub) {

@@ -1,8 +1,10 @@
 package memership
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -10,14 +12,13 @@ import (
 	"time"
 )
 
-type TaskType int
-
 const (
 	MemberShipKeepAlive = time.Second * 10 //TODO::?? heart beat time interval.
+	MaxInnerTaskSize    = 1 << 10
 )
 
-const (
-	ProxyInitSubRequest TaskType = iota + 1
+var (
+	HandlerNotFound = fmt.Errorf("no suc gossip task handler")
 )
 
 type newSub struct {
@@ -35,17 +36,19 @@ type peerNodeItem struct {
 }
 
 type innerTask struct {
-	tType TaskType
-	err   chan error
-	param []interface{}
+	msg  *pb.Gossip
+	addr *net.UDPAddr
 }
+
+type worker func(*innerTask) error
 
 type MemManager struct {
 	nodeID      string
 	serviceConn *nbsnet.NbsUdpConn
 	inputView   map[string]*peerNodeItem
 	partialView map[string]*peerNodeItem
-	taskSignal  chan innerTask
+	taskQueue   chan *innerTask
+	taskRouter  map[net_pb.MsgType]worker
 }
 
 var (
@@ -56,10 +59,16 @@ func NewMemberNode(peerId string) *MemManager {
 
 	node := &MemManager{
 		nodeID:      peerId,
-		taskSignal:  make(chan innerTask),
+		taskQueue:   make(chan *innerTask, MaxInnerTaskSize),
 		inputView:   make(map[string]*peerNodeItem),
 		partialView: make(map[string]*peerNodeItem),
+		taskRouter:  make(map[net_pb.MsgType]worker),
 	}
+
+	node.taskRouter[nbsnet.GspInitSub] = node.firstSub
+	node.taskRouter[nbsnet.GspContactAck] = node.subToContract
+	node.taskRouter[nbsnet.GspHeartBeat] = node.heartBeat
+	node.taskRouter[nbsnet.GspInitSubACK] = node.firstSub
 
 	return node
 }
@@ -72,7 +81,7 @@ func (node *MemManager) InitNode() error {
 
 	go node.receivingCmd()
 
-	go node.taskDispatcher()
+	go node.RunLoop()
 
 	if err := node.registerMySelf(); err != nil {
 		logger.Warning(err)
@@ -117,34 +126,27 @@ func (node *MemManager) receivingCmd() {
 
 		logger.Debug("gossip server:->", message, peerAddr)
 
-		switch message.MsgType {
-		case nbsnet.GspInitSub:
-			node.confirmAndPrepare(message.InitMsg, peerAddr)
-		case nbsnet.GspContactAck:
-			node.subToContract(message.ContactRes, peerAddr)
-		case nbsnet.GspHeartBeat:
-			node.handleKeepAlive(message.HeartBeat, peerAddr)
-
-		default:
-			continue
+		node.taskQueue <- &innerTask{
+			msg:  message,
+			addr: peerAddr,
 		}
 	}
 }
 
-func (node *MemManager) taskWorker(task innerTask) {
-
-	switch task.tType {
-	case ProxyInitSubRequest:
-		node.findProperContactNode(task.param[0].(*newSub))
-	}
-}
-
-func (node *MemManager) taskDispatcher() {
+func (node *MemManager) RunLoop() {
 
 	for {
 		select {
-		case task := <-node.taskSignal:
-			go node.taskWorker(task)
+		case task := <-node.taskQueue:
+			msgType := task.msg.MsgType
+			handler, ok := node.taskRouter[msgType]
+			if !ok {
+				logger.Error("gossip msg handler err:->", HandlerNotFound)
+			}
+			if err := handler(task); err != nil {
+				logger.Error("gossip run loop err:->", err)
+			}
+
 		case <-time.After(MemberShipKeepAlive):
 			node.keepAlive()
 		}
