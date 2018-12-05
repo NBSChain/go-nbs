@@ -6,6 +6,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
 	"math/big"
 	"net"
@@ -22,6 +23,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 		MsgType:   nbsnet.GspIntroduce,
 		Subscribe: sub,
 	}
+	msg.MsgId = crypto.MD5SS(msg.String())
 	data, _ := proto.Marshal(msg)
 
 	forwardTime := 0
@@ -158,6 +160,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 				MsgType:   nbsnet.GspIntroduce,
 				Subscribe: sub,
 			}
+			msg.MsgId = crypto.MD5SS(msg.String())
 			return item.send(msg)
 		}
 	}

@@ -165,6 +165,17 @@ func (node *MemManager) subToContract(task *msgTask) error {
 	return nil
 }
 
+func (node *MemManager) subAccepted(task *msgTask) error {
+	ack := task.msg.SubConfirm
+	_, ok := node.inputView[ack.FromId]
+	if ok {
+		return fmt.Errorf("duplicated sub accepted")
+	}
+
+	newInViewNode(ack.FromId, task.addr, node.inputView)
+	return nil
+}
+
 func (node *MemManager) Resub() {
 
 }

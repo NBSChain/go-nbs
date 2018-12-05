@@ -34,10 +34,11 @@ message HeartBeat {
 
 message gossip {
     net.pb.MsgType  MsgType     = 1;
-    Subscribe       Subscribe   = 2;
-    SynAck          SubAck      = 3;
-    VoteContact     VoteContact = 4;
-    Subscribe       VoteResult  = 5;
-    HeartBeat       HeartBeat   = 6;
-    SynAck          SubConfirm  = 7;
+    string          MsgId       = 2;
+    Subscribe       Subscribe   = 3;
+    SynAck          SubAck      = 4;
+    VoteContact     VoteContact = 5;
+    Subscribe       VoteResult  = 6;
+    HeartBeat       HeartBeat   = 7;
+    SynAck          SubConfirm  = 8;
 }

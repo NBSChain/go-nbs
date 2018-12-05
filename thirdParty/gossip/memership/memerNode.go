@@ -21,6 +21,8 @@ const (
 	DefaultSubExpire = time.Hour
 	SubscribeTimeOut = time.Second * 2
 	IsolatedTime     = MemShipHeartBeat * 3
+	MSGTrashCollect  = time.Minute * 10
+	MaxItemPerRound  = 1 << 10
 )
 
 var (
@@ -35,6 +37,11 @@ type msgTask struct {
 
 type worker func(*msgTask) error
 
+type msgCounter struct {
+	counter int
+	time    time.Time
+}
+
 type MemManager struct {
 	nodeID      string
 	updateTime  time.Time
@@ -43,6 +50,7 @@ type MemManager struct {
 	inputView   map[string]*viewNode
 	partialView map[string]*viewNode
 	taskRouter  map[net_pb.MsgType]worker
+	msgCounter  map[string]*msgCounter
 }
 
 var (
@@ -57,6 +65,7 @@ func NewMemberNode(peerId string) *MemManager {
 		inputView:   make(map[string]*viewNode),
 		partialView: make(map[string]*viewNode),
 		taskRouter:  make(map[net_pb.MsgType]worker),
+		msgCounter:  make(map[string]*msgCounter),
 	}
 
 	node.taskRouter[nbsnet.GspSub] = node.firstInitSub
@@ -64,6 +73,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[nbsnet.GspVoteResult] = node.subToContract
 	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
 	node.taskRouter[nbsnet.GspIntroduce] = node.getForwardSub
+	node.taskRouter[nbsnet.GspWelcome] = node.subAccepted
 
 	return node
 }
@@ -145,6 +155,19 @@ func (node *MemManager) RunLoop() {
 
 		case <-time.After(MemShipHeartBeat):
 			node.sendHeartBeat()
+
+		case <-time.After(MSGTrashCollect):
+			no := 0
+			now := time.Now()
+			for id, c := range node.msgCounter {
+				if now.Sub(c.time) > MSGTrashCollect {
+					delete(node.msgCounter, id)
+				}
+				if no++; no > MaxItemPerRound {
+					break
+				}
+
+			}
 		}
 	}
 }
@@ -182,10 +205,26 @@ func (node *MemManager) sendHeartBeat() {
 }
 
 func (node *MemManager) getForwardSub(task *msgTask) error {
-	req := task.msg.Subscribe
+	msgId := task.msg.MsgId
+	c, ok := node.msgCounter[msgId]
 
+	if !ok {
+		c := &msgCounter{
+			counter: 0,
+			time:    time.Now(),
+		}
+		node.msgCounter[msgId] = c
+	}
+
+	if c.counter++; c.counter > MaxForwardTimes {
+		logger.Error("forward too many times:->", task.msg)
+		return nil
+	}
+
+	req := task.msg.Subscribe
 	prob := float64(1) / float64(1+len(node.partialView))
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
+
 	//TODO:: make sure this probability is fine.
 	if random.Int64() < int64(prob*100) {
 		return node.asSubAdapter(req)
