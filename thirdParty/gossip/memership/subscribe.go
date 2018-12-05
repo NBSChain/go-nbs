@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-const (
-	InitSubscribeTimeOut = time.Second * 3
-)
-
 /*****************************************************************
 *
 *	member client functions about init subscribe request.
@@ -39,8 +35,8 @@ func (node *MemManager) RegisterMySelf() error {
 			goto CloseConn
 		}
 
-		if err := conn.SetDeadline(time.Now().Add(InitSubscribeTimeOut)); err != nil {
-			logger.Errorf("set ctrlConn time out err:->", err)
+		if err := conn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
+			logger.Errorf("set outConn time out err:->", err)
 			goto CloseConn
 		}
 
@@ -69,11 +65,10 @@ func (node *MemManager) RegisterMySelf() error {
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
 	msg := &pb.Gossip{
-		MsgType: nbsnet.GspInitSub,
-		InitSub: &pb.InitSub{
-			Seq:    time.Now().Unix(),
-			NodeId: node.nodeID,
-			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr),
+		MsgType: nbsnet.GspSub,
+		Subscribe: &pb.Subscribe{
+			Duration: int64(DefaultSubExpire),
+			Addr:     nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -101,15 +96,15 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return err
 	}
 
-	if msg.MsgType != nbsnet.GspInitSubACK {
+	if msg.MsgType != nbsnet.GspSubACK {
 		return fmt.Errorf("failed to send init sub request")
 	}
 
-	if msg.InitSubACK.SupplierID == node.nodeID {
+	if msg.SubAck.FromId == node.nodeID {
 		return fmt.Errorf("it's yourself")
 	}
 
-	logger.Info("we will find right contact for you :->", conn.String())
+	logger.Info("He will proxy our sub:->", conn.String())
 
 	return nil
 }
@@ -119,15 +114,15 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) firstInitSub(task *innerTask) error {
-	request := task.msg.InitSub
+func (node *MemManager) firstInitSub(task *msgTask) error {
+
+	subReq := task.msg.Subscribe
 	peerAddr := task.addr
 
 	message := &pb.Gossip{
-		MsgType: nbsnet.GspInitSubACK,
-		InitSubACK: &pb.InitSubACK{
-			Seq:        request.Seq,
-			SupplierID: node.nodeID,
+		MsgType: nbsnet.GspSubACK,
+		SubAck: &pb.SynAck{
+			FromId: node.nodeID,
 		},
 	}
 
@@ -137,40 +132,39 @@ func (node *MemManager) firstInitSub(task *innerTask) error {
 		return err
 	}
 
-	if node.nodeID == request.NodeId {
+	if node.nodeID == subReq.Addr.NetworkId {
 		logger.Info("it's yourself.")
 		return nil
 	}
 
-	node.taskQueue <- &innerTask{
-		msg: &pb.Gossip{
-			MsgType: nbsnet.GspProxySub,
-			InitSub: request,
-		},
-		addr: peerAddr,
+	counter := 2 * len(node.partialView)
+	return node.asContactProxy(subReq, counter)
+}
+
+func (node *MemManager) subToContract(task *msgTask) error {
+
+	result := task.msg.VoteResult
+	nodeId := result.Addr.NetworkId
+
+	item, ok := node.inputView[nodeId]
+	if ok {
+		logger.Info("duplicated sub confirm")
+		item.expiredTime = time.Now().Add(time.Duration(result.Duration))
+		return nil
 	}
 
+	logger.Debug("get contact node:->", result, task.addr)
+
+	item, err := newOutViewNode(result, node.partialView)
+	if err != nil {
+		logger.Error("sub to contact node:->", err)
+		return err
+	}
+
+	newInViewNode(nodeId, task.addr, node.inputView)
 	return nil
 }
 
-func (node *MemManager) subToContract(task *innerTask) error {
-	ack := task.msg.ReqContactACK
-	addr := task.addr
-	logger.Debug("gossip sub start:", ack, addr)
+func (node *MemManager) Resub() {
 
-	_, ok := node.inputView[ack.SupplierID]
-	if ok {
-		logger.Info("duplicated sub confirm")
-		return fmt.Errorf("duplicated sub confirm")
-	}
-
-	item := &peerNodeItem{
-		nodeId: ack.SupplierID,
-		addr:   nbsnet.ConvertFromGossipAddr(ack.Supplier),
-	}
-
-	node.inputView[ack.SupplierID] = item
-	item.probability = 1 / float64(len(node.inputView))
-
-	return nil
 }

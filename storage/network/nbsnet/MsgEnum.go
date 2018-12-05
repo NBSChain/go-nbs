@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	NatBootReg         = net_pb.MsgType_NatBootReg
+	NatBootReg = net_pb.MsgType_NatBootReg
+
 	NatKeepAlive       = net_pb.MsgType_NatKeepAlive
 	NatDigApply        = net_pb.MsgType_NatDigApply
 	NatPingPong        = net_pb.MsgType_NatPingPong
@@ -16,12 +17,13 @@ const (
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
-	GspInitSub         = net_pb.MsgType_GspInitSub
-	GspInitSubACK      = net_pb.MsgType_GspInitSubACK
-	GspProxySub        = net_pb.MsgType_GspProxySub
-	GspRegContact      = net_pb.MsgType_GspRegContact
-	GspContactAck      = net_pb.MsgType_GspContactAck
-	GspForwardSub      = net_pb.MsgType_GspForwardSub
-	GspSubAck          = net_pb.MsgType_GspSubAck
-	GspHeartBeat       = net_pb.MsgType_GspHeartBeat
+
+	GspSub         = net_pb.MsgType_GspSub
+	GspSubACK      = net_pb.MsgType_GspSubACK
+	GspVoteContact = net_pb.MsgType_GspVoteContact
+	GspVoteResult  = net_pb.MsgType_GspVoteResult
+
+	GspIntroduce = net_pb.MsgType_GspIntroduce
+	GspWelcome   = net_pb.MsgType_GspWelcome
+	GspHeartBeat = net_pb.MsgType_GspHeartBeat
 )

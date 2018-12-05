@@ -4,6 +4,7 @@ package net.pb;
 
 enum MsgType {
     Error               = 0;
+
     NatBootReg          = 1001;
     NatKeepAlive        = 1002;
     NatDigApply         = 1003;
@@ -15,12 +16,14 @@ enum MsgType {
     NatPriDigAck        = 1011;
     NatDigConfirm       = 1012;
     NatBootAnswer       = 1013;
-    GspInitSub          = 2001;
-    GspInitSubACK       = 2002;
-    GspProxySub         = 2003;
-    GspRegContact       = 2004;
-    GspContactAck       = 2005;
-    GspForwardSub       = 2006;
-    GspSubAck           = 2007;
-    GspHeartBeat        = 2008;
+
+
+    GspSub          = 2001;
+    GspSubACK       = 2002;
+    GspVoteContact  = 2003;
+    GspVoteResult   = 2004;
+
+    GspIntroduce    = 2006;
+    GspWelcome      = 2007;
+    GspHeartBeat    = 2008;
 }

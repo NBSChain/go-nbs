@@ -18,6 +18,9 @@ const (
 	MemShipHeartBeat = time.Second * 10 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
+	DefaultSubExpire = time.Hour
+	SubscribeTimeOut = time.Second * 2
+	IsolatedTime     = MemShipHeartBeat * 3
 )
 
 var (
@@ -25,34 +28,20 @@ var (
 	PartialViewItemNotFound = fmt.Errorf("no such item in partial view")
 )
 
-type subOnline struct {
-	nodeId string
-	seq    int64
-	addr   *pb.BasicHost
-}
-
-type peerNodeItem struct {
-	nodeId      string
-	encounterNo int
-	probability float64
-	addr        *nbsnet.NbsUdpAddr
-	updateTime  time.Time
-	ctrlConn    *nbsnet.NbsUdpConn
-}
-
-type innerTask struct {
+type msgTask struct {
 	msg  *pb.Gossip
 	addr *net.UDPAddr
 }
 
-type worker func(*innerTask) error
+type worker func(*msgTask) error
 
 type MemManager struct {
 	nodeID      string
+	updateTime  time.Time
+	taskQueue   chan *msgTask
 	serviceConn *nbsnet.NbsUdpConn
-	inputView   map[string]*peerNodeItem
-	partialView map[string]*peerNodeItem
-	taskQueue   chan *innerTask
+	inputView   map[string]*viewNode
+	partialView map[string]*viewNode
 	taskRouter  map[net_pb.MsgType]worker
 }
 
@@ -64,17 +53,17 @@ func NewMemberNode(peerId string) *MemManager {
 
 	node := &MemManager{
 		nodeID:      peerId,
-		taskQueue:   make(chan *innerTask, MaxInnerTaskSize),
-		inputView:   make(map[string]*peerNodeItem),
-		partialView: make(map[string]*peerNodeItem),
+		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
+		inputView:   make(map[string]*viewNode),
+		partialView: make(map[string]*viewNode),
 		taskRouter:  make(map[net_pb.MsgType]worker),
 	}
 
-	node.taskRouter[nbsnet.GspInitSub] = node.firstInitSub
-	node.taskRouter[nbsnet.GspProxySub] = node.proxySubReq
-	node.taskRouter[nbsnet.GspContactAck] = node.subToContract
+	node.taskRouter[nbsnet.GspSub] = node.firstInitSub
+	node.taskRouter[nbsnet.GspVoteContact] = node.getVoteApply
+	node.taskRouter[nbsnet.GspVoteResult] = node.subToContract
 	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
-	node.taskRouter[nbsnet.GspForwardSub] = node.getForwardedRequest
+	node.taskRouter[nbsnet.GspIntroduce] = node.getForwardSub
 
 	return node
 }
@@ -132,7 +121,7 @@ func (node *MemManager) receivingCmd() {
 
 		logger.Debug("gossip server:->", peerAddr, message)
 
-		node.taskQueue <- &innerTask{
+		node.taskQueue <- &msgTask{
 			msg:  message,
 			addr: peerAddr,
 		}
@@ -144,6 +133,7 @@ func (node *MemManager) RunLoop() {
 	for {
 		select {
 		case task := <-node.taskQueue:
+
 			msgType := task.msg.MsgType
 			handler, ok := node.taskRouter[msgType]
 			if !ok {
@@ -154,51 +144,55 @@ func (node *MemManager) RunLoop() {
 			}
 
 		case <-time.After(MemShipHeartBeat):
-			node.PushOut(true, "", nil)
+			node.sendHeartBeat()
 		}
 	}
 }
 
-func (node *MemManager) updateProbability(view map[string]*peerNodeItem) {
+//TODO:: make sure it's fine
 
-	var summerOut float64
-	for _, item := range view {
-		summerOut += item.probability
+func (node *MemManager) sendHeartBeat() {
+
+	now := time.Now()
+	if now.Sub(node.updateTime) > IsolatedTime {
+		node.Resub()
 	}
 
-	for _, item := range view {
-		item.probability = item.probability / summerOut
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspHeartBeat,
+		HeartBeat: &pb.HeartBeat{
+			FromID: node.nodeID,
+		},
+	}
+
+	data, _ := proto.Marshal(msg)
+	for _, item := range node.partialView {
+		if !item.needUpdate() {
+			continue
+		}
+		if err := item.sendData(data); err != nil {
+			node.removeFromView(item, node.partialView)
+		}
+
+		if now.After(item.expiredTime) {
+			node.removeFromView(item, node.partialView)
+			node.unsubItem(item) //TODO::???
+		}
 	}
 }
 
-func (node *MemManager) getForwardedRequest(task *innerTask) error {
+func (node *MemManager) getForwardSub(task *msgTask) error {
+	req := task.msg.Subscribe
 
 	prob := float64(1) / float64(1+len(node.partialView))
-
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
-
 	//TODO:: make sure this probability is fine.
-	if random.Int64() > int64(prob*100) {
-		return nil
+	if random.Int64() < int64(prob*100) {
+		return node.asSubAdapter(req)
 	}
 
-	req := task.msg.TransSubReq
-	sub := &subOnline{
-		nodeId: req.ApplierID,
-		seq:    req.SeqNo,
-		addr:   req.Addr,
+	if item := node.choseRandomInPartialView(); item != nil {
+		return item.send(task.msg)
 	}
-
-	item, ok := node.partialView[req.ApplierID]
-	if ok {
-
-		return node.forwardSub(item, sub)
-	}
-
-	return node.acceptSubAsNode(sub)
-}
-
-func (node *MemManager) acceptSubAsNode(sub *subOnline) error {
-
-	return nil
+	return node.asSubAdapter(req)
 }

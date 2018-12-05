@@ -95,7 +95,7 @@ func ExternalIP() []string {
 	return ips
 }
 
-func ConvertToGossipAddr(addr *NbsUdpAddr) *pb.BasicHost {
+func ConvertToGossipAddr(addr *NbsUdpAddr, nodeId string) *pb.BasicHost {
 	return &pb.BasicHost{
 		CanServer: addr.CanServe,
 		NatServer: addr.NatServer,
@@ -103,6 +103,7 @@ func ConvertToGossipAddr(addr *NbsUdpAddr) *pb.BasicHost {
 		NatPort:   addr.NatPort,
 		PriIP:     addr.PriIp,
 		PubIp:     addr.PubIp,
+		NetworkId: nodeId,
 	}
 }
 
@@ -114,5 +115,6 @@ func ConvertFromGossipAddr(addr *pb.BasicHost) *NbsUdpAddr {
 		NatPort:   addr.NatPort,
 		PubIp:     addr.PubIp,
 		PriIp:     addr.PriIP,
+		NetworkId: addr.NetworkId,
 	}
 }

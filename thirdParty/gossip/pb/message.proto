@@ -4,65 +4,40 @@ package pb;
 
 import "github.com/NBSChain/go-nbs/storage/network/pb/nbsMsg.proto";
 
-message BasicHost{
-    bool   canServer    = 1;
-    string natServer    = 2;
-    string natIP        = 3;
-    int32  natPort      = 4;
-    string priIP        = 5;
-    string pubIp        = 6;
+message BasicHost {
+    bool   CanServer    = 1;
+    string NatServer    = 2;
+    string NatIP        = 3;
+    int32  NatPort      = 4;
+    string PriIP        = 5;
+    string PubIp        = 6;
+    string NetworkId    = 7;
 }
 
-message InitSub {
-    int64 seq       = 1;
-    string nodeId   = 2;
-    BasicHost addr  = 3;
+message Subscribe {
+    int64 Duration  = 2;
+    BasicHost Addr  = 3;
 }
 
-message InitSubACK {
-    int64 seq            = 1;
-    string supplierID    = 2;
+message SynAck {
+    string FromId  = 2;
 }
 
-message ReqContact {
-    int64 seq           = 1;
-    int32 TTL           = 2;
-    string applierID    = 3;
-    BasicHost applier   = 4;
-}
-
-message ReqContactACK {
-    int64 seq           = 1;
-    string supplierID   = 2;
-    BasicHost supplier  = 3;
+message VoteContact {
+    int32 TTL           = 1;
+    Subscribe Subscribe = 2;
 }
 
 message HeartBeat {
-    string  sender  = 1;
-    int64   seqNo   = 2;
-    bytes   payload = 3;
-}
-
-message TransSubReq {
-    string from         = 1;
-    string applierID    = 2;
-    int64 seqNo         = 3;
-    BasicHost addr      = 4;
-}
-
-message SubReqACK {
-    int64 seq           = 1;
-    string supplierID   = 2;
-    BasicHost supplier  = 3;
+    string  FromID  = 1;
 }
 
 message gossip {
-    net.pb.MsgType msgType      = 1;
-    InitSub InitSub             = 2;
-    InitSubACK InitSubACK       = 3;
-    ReqContact ReqContact       = 4;
-    ReqContactACK ReqContactACK = 5;
-    HeartBeat heartBeat         = 6;
-    TransSubReq TransSubReq     = 7;
-    SubReqACK SubReqACK         = 8;
+    net.pb.MsgType  MsgType     = 1;
+    Subscribe       Subscribe   = 2;
+    SynAck          SubAck      = 3;
+    VoteContact     VoteContact = 4;
+    Subscribe       VoteResult  = 5;
+    HeartBeat       HeartBeat   = 6;
+    SynAck          SubConfirm  = 7;
 }

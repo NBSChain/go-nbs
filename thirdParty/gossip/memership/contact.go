@@ -3,39 +3,30 @@ package memership
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"math/big"
+	"net"
 )
 
-func (node *MemManager) proxySubReq(task *innerTask) error {
-	req := task.msg.InitSub
+func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
-	sub := &subOnline{
-		nodeId: req.NodeId,
-		seq:    req.Seq,
-		addr:   req.Addr,
+	if len(node.partialView) == 0 {
+		logger.Info("no partial view node to broadcast ")
+		return 0
 	}
 
-	counter := 2 * len(node.partialView)
-
-	return node.indirectTheSubRequest(sub, counter)
-}
-
-func (node *MemManager) actAsContact(sub *subOnline) error {
-
-	count := len(node.partialView)
-	if count == 0 {
-		return node.acceptSub(sub)
-
+	msg := &pb.Gossip{
+		MsgType:   nbsnet.GspIntroduce,
+		Subscribe: sub,
 	}
+	data, _ := proto.Marshal(msg)
 
 	forwardTime := 0
 	for _, item := range node.partialView {
-		if err := node.forwardSub(item, sub); err != nil {
+		if err := item.sendData(data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
 		}
@@ -44,146 +35,144 @@ func (node *MemManager) actAsContact(sub *subOnline) error {
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
 		item := node.choseRandomInPartialView()
-		if err := node.forwardSub(item, sub); err != nil {
+
+		if item == nil {
+			continue
+		}
+
+		if err := item.sendData(data); err != nil {
 			logger.Error("forward extra C sub as contact err :->", err)
 			continue
 		}
 		forwardTime++
 	}
-	if forwardTime == 0 {
-		return fmt.Errorf("no success forward made even if the partial view is not empty:->", count)
+
+	return forwardTime
+}
+
+func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
+
+	item, err := newOutViewNode(sub, node.partialView)
+	if err != nil {
+		logger.Error("create view node err:->", err)
+		return err
 	}
+
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspVoteResult,
+		VoteResult: &pb.Subscribe{
+			Duration: sub.Duration,
+			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+		},
+	}
+
+	if err := item.send(msg); err != nil {
+		logger.Error("send contact vote result err:->", err)
+		return err
+	}
+
+	addr, ok := item.outConn.RealConn.RemoteAddr().(*net.UDPAddr)
+	if !ok {
+		return fmt.Errorf("get connection remote addr failed")
+	}
+
+	newInViewNode(sub.Addr.NetworkId, addr, node.inputView)
 
 	return nil
 }
 
-func (node *MemManager) indirectTheSubRequest(sub *subOnline, counter int) error {
+func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
+
+	if err := node.publishVoteResult(sub); err != nil {
+		return err
+	}
+
+	node.broadCastSub(sub)
+
+	return nil
+}
+
+func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
 	if counter == 0 {
-		return node.actAsContact(sub)
+		return node.asContactServer(sub)
 	}
 
 	req := &pb.Gossip{
-		MsgType: nbsnet.GspRegContact,
-		ReqContact: &pb.ReqContact{
-			Seq:       sub.seq,
+		MsgType: nbsnet.GspVoteContact,
+		VoteContact: &pb.VoteContact{
 			TTL:       int32(counter) - 1,
-			ApplierID: sub.nodeId,
-			Applier:   sub.addr,
+			Subscribe: sub,
 		},
 	}
 
-	node.updateProbability(node.partialView)
+	if err := node.sendVoteApply(req); err != nil {
+		logger.Warning(err)
+		return node.asContactServer(sub)
+	}
+
+	return nil
+}
+
+func (node *MemManager) getVoteApply(task *msgTask) error {
+	req := task.msg.VoteContact
+	return node.asContactProxy(req.Subscribe, int(req.TTL))
+}
+
+func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		return err
+	}
 
 	var forwardTime int
-	for _, view := range node.partialView {
+	for _, item := range node.partialView {
 
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
-		//TODO:: make sure this probability is fine.
-		if pro.Int64() > int64(view.probability*100) {
+		if pro.Int64() > int64(item.probability*100) {
 			continue
 		}
 
-		if err := node.forwardContactRequest(view, req); err == nil {
-			forwardTime++
+		if err := item.sendData(data); err != nil {
+			continue
 		}
+		forwardTime++
 	}
 
 	if forwardTime == 0 {
-		return node.acceptSub(sub)
+		return fmt.Errorf("no contact node vote")
 	}
+
 	return nil
 }
 
-func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb.Gossip) error {
+func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
+	logger.Debug("accept the subscriber:->", sub)
 
-	data, _ := proto.Marshal(gossip)
+	nodeId := sub.Addr.NetworkId
 
-	return node.PushOut(false, peerNode.nodeId, data)
-}
-
-func (node *MemManager) acceptSub(sub *subOnline) error {
-	logger.Debug("accept the subscriber:->", sub.nodeId, sub.addr.String())
-
-	item, ok := node.partialView[sub.nodeId]
+	item, ok := node.partialView[nodeId]
 	if ok {
-		item := node.choseRandomInPartialView()
-		return node.forwardSub(item, sub)
-
+		if item := node.choseRandomInPartialView(); item != nil {
+			msg := &pb.Gossip{
+				MsgType:   nbsnet.GspIntroduce,
+				Subscribe: sub,
+			}
+			return item.send(msg)
+		}
 	}
 
-	addr := nbsnet.ConvertFromGossipAddr(sub.addr)
-	addr.NetworkId = sub.nodeId
-
-	conn, err := node.notifySubscriber(sub.seq, addr)
-	if nil != err {
-		logger.Error("failed to notify the subscriber:", err)
-		return err
-	}
-
-	item = &peerNodeItem{
-		nodeId:   sub.nodeId,
-		addr:     addr,
-		ctrlConn: conn,
-	}
-
-	node.partialView[sub.nodeId] = item
-	item.probability = 1 / float64(len(node.partialView))
-
-	//TODO:: ? need to update probability?
-	node.updateProbability(node.partialView)
-
-	return nil
-}
-
-func (node *MemManager) forwardSub(item *peerNodeItem, sub *subOnline) error {
-
-	if item.encounterNo++; item.encounterNo > MaxForwardTimes {
-		return nil
-	}
-	msg := &pb.Gossip{
-		MsgType: nbsnet.GspForwardSub,
-		TransSubReq: &pb.TransSubReq{
-			From:      node.nodeID,
-			ApplierID: sub.nodeId,
-			SeqNo:     sub.seq,
-			Addr:      sub.addr,
-		},
-	}
-
-	data, _ := proto.Marshal(msg)
-	if _, err := item.ctrlConn.Write(data); err != nil {
-		logger.Warning("forward sub request err:->", err)
-		return err
-	}
-	logger.Debug("decide to forward the sub request:->", msg)
-	return nil
-}
-
-func (node *MemManager) notifySubscriber(Seq int64, addr *nbsnet.NbsUdpAddr) (*nbsnet.NbsUdpConn, error) {
-
-	port := utils.GetConfig().GossipCtrlPort
-	conn, err := network.GetInstance().Connect(nil, addr, port)
+	item, err := newOutViewNode(sub, node.partialView)
 	if err != nil {
-		logger.Error("the contact failed to notify the subscriber:", err)
-		return nil, err
+		return err
 	}
 
 	msg := &pb.Gossip{
-		MsgType: nbsnet.GspContactAck,
-		ReqContactACK: &pb.ReqContactACK{
-			Seq:        Seq,
-			SupplierID: node.nodeID,
-			Supplier:   nbsnet.ConvertToGossipAddr(conn.LocalAddr()),
+		MsgType: nbsnet.GspWelcome,
+		SubConfirm: &pb.SynAck{
+			FromId: node.nodeID,
 		},
 	}
 
-	msgData, _ := proto.Marshal(msg)
-
-	if _, err := conn.Send(msgData); err != nil {
-		logger.Warning("failed to send data to notify subscriber.", err)
-		return nil, err
-	}
-
-	return conn, nil
+	return item.send(msg)
 }
