@@ -209,7 +209,7 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 	c, ok := node.msgCounter[msgId]
 
 	if !ok {
-		c := &msgCounter{
+		c = &msgCounter{
 			counter: 0,
 			time:    time.Now(),
 		}
