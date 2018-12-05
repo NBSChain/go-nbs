@@ -26,42 +26,7 @@ func (node *MemManager) choseRandomInPartialView() *peerNodeItem {
 	return nil
 }
 
-func (node *MemManager) sendHeartBeat() {
-
-	keepAlive := &pb.Gossip{
-		MsgType: nbsnet.GspHeartBeat,
-		HeartBeat: &pb.HeartBeat{
-			Sender:  node.nodeID,
-			SeqNo:   time.Now().Unix(),
-			Payload: nil,
-		},
-	}
-
-	data, _ := proto.Marshal(keepAlive)
-	now := time.Now()
-
-	for nodeId, item := range node.partialView {
-
-		if now.Sub(item.updateTime) < MemShipHeartBeat {
-			continue
-		}
-
-		if _, err := item.ctrlConn.Write(data); err != nil {
-			logger.Warning("node in partial view is expired:->", nodeId, err)
-			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.ctrlConn.Close(); err != nil {
-				logger.Warning(err)
-			}
-			continue
-		}
-
-		item.updateTime = now
-
-		logger.Debug("send empty heart beat :->", nodeId, item.ctrlConn.String())
-	}
-}
-
-func (node *MemManager) sendHBWithPayLoad(nodeId string, payLoad []byte) error {
+func (node *MemManager) PushOut(isHeartBeat bool, nodeId string, payLoad []byte) error {
 
 	keepAlive := &pb.Gossip{
 		MsgType: nbsnet.GspHeartBeat,
@@ -73,42 +38,48 @@ func (node *MemManager) sendHBWithPayLoad(nodeId string, payLoad []byte) error {
 	}
 
 	data, _ := proto.Marshal(keepAlive)
-
 	if nodeId != "" {
 		item, ok := node.partialView[nodeId]
 		if !ok {
-			logger.Error("can't find the target peer node.")
-			return fmt.Errorf("can't find the target peer node")
+			return PartialViewItemNotFound
 		}
 
-		if _, err := item.ctrlConn.Write(data); err != nil {
-			logger.Warning("node in partial view is expired:->", nodeId, err)
-			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.ctrlConn.Close(); err != nil {
-				logger.Warning(err)
-			}
-			return fmt.Errorf("can't find the target peer node:->nodeId:%s,err:%s", nodeId, err.Error())
-		}
-
-		item.updateTime = time.Now()
-
-		logger.Debug("payload heart beat :->", nodeId, item.addr)
-		return nil
+		return node.pushCtrlChan(item, data)
 	}
 
-	//TIPS::broadcast
-	for nodeId, item := range node.partialView {
-		if _, err := item.ctrlConn.Write(data); err != nil {
-			logger.Warning("node in partial view is expired:->", nodeId, err)
-			delete(node.partialView, nodeId) //TODO::make sure the timeout logic
-			if err := item.ctrlConn.Close(); err != nil {
-				logger.Warning(err)
-			}
+	now := time.Now()
+	for _, item := range node.partialView {
+
+		if isHeartBeat && now.Sub(item.updateTime) < MemShipHeartBeat {
 			continue
 		}
 
-		item.updateTime = time.Now()
+		if err := node.pushCtrlChan(item, data); err != nil {
+			logger.Warning(err)
+			continue
+		}
 	}
-	logger.Debug(" broad cast heart beat with payload :->", nodeId, len(node.partialView))
+
+	logger.Debug(" broad cast payload through control channel:->", len(node.partialView))
+
 	return nil
+}
+
+func (node *MemManager) pushCtrlChan(item *peerNodeItem, data []byte) error {
+
+	if _, err := item.ctrlConn.Write(data); err != nil {
+		node.removePartialItem(item)
+		return fmt.Errorf("push msg err:->nodeId:%s,err:%s", item.nodeId, err.Error())
+	}
+
+	item.updateTime = time.Now()
+	return nil
+}
+
+func (node *MemManager) removePartialItem(item *peerNodeItem) {
+	delete(node.partialView, item.nodeId) //TODO::make sure the timeout logic
+	if err := item.ctrlConn.Close(); err != nil {
+		logger.Warning(err)
+	}
+	logger.Warning("remove node from partial view:->", item.nodeId)
 }

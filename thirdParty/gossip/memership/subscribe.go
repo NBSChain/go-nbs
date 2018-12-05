@@ -20,7 +20,7 @@ const (
 *	member client functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) registerMySelf() error {
+func (node *MemManager) RegisterMySelf() error {
 
 	servers := utils.GetConfig().GossipBootStrapIP
 
@@ -109,6 +109,8 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return fmt.Errorf("it's yourself")
 	}
 
+	logger.Info("we will find right contact for you :->", conn.String())
+
 	return nil
 }
 
@@ -117,7 +119,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) firstSub(task *innerTask) error {
+func (node *MemManager) firstInitSub(task *innerTask) error {
 	request := task.msg.InitSub
 	peerAddr := task.addr
 
@@ -136,13 +138,16 @@ func (node *MemManager) firstSub(task *innerTask) error {
 	}
 
 	if node.nodeID == request.NodeId {
+		logger.Info("it's yourself.")
 		return nil
 	}
 
 	node.taskQueue <- &innerTask{
-		msg:   message,
-		addr:  peerAddr,
-		param: request,
+		msg: &pb.Gossip{
+			MsgType: nbsnet.GspProxySub,
+			InitSub: request,
+		},
+		addr: peerAddr,
 	}
 
 	return nil

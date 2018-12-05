@@ -21,7 +21,8 @@ const (
 )
 
 var (
-	HandlerNotFound = fmt.Errorf("no suc gossip task handler")
+	HandlerNotFound         = fmt.Errorf("no such gossip task handler")
+	PartialViewItemNotFound = fmt.Errorf("no such item in partial view")
 )
 
 type subOnline struct {
@@ -40,9 +41,8 @@ type peerNodeItem struct {
 }
 
 type innerTask struct {
-	msg   *pb.Gossip
-	addr  *net.UDPAddr
-	param interface{}
+	msg  *pb.Gossip
+	addr *net.UDPAddr
 }
 
 type worker func(*innerTask) error
@@ -70,10 +70,10 @@ func NewMemberNode(peerId string) *MemManager {
 		taskRouter:  make(map[net_pb.MsgType]worker),
 	}
 
-	node.taskRouter[nbsnet.GspInitSub] = node.firstSub
+	node.taskRouter[nbsnet.GspInitSub] = node.firstInitSub
+	node.taskRouter[nbsnet.GspProxySub] = node.proxySubReq
 	node.taskRouter[nbsnet.GspContactAck] = node.subToContract
 	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
-	node.taskRouter[nbsnet.GspInitSubACK] = node.firstSubOnline
 	node.taskRouter[nbsnet.GspForwardSub] = node.getForwardedRequest
 
 	return node
@@ -89,7 +89,7 @@ func (node *MemManager) InitNode() error {
 
 	go node.RunLoop()
 
-	if err := node.registerMySelf(); err != nil {
+	if err := node.RegisterMySelf(); err != nil {
 		logger.Warning(err)
 		return err
 	}
@@ -154,7 +154,7 @@ func (node *MemManager) RunLoop() {
 			}
 
 		case <-time.After(MemShipHeartBeat):
-			node.sendHeartBeat()
+			node.PushOut(true, "", nil)
 		}
 	}
 }

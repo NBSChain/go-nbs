@@ -11,11 +11,8 @@ import (
 	"math/big"
 )
 
-func (node *MemManager) firstSubOnline(task *innerTask) error {
-	req, ok := task.param.(*pb.InitSub)
-	if !ok {
-		return fmt.Errorf("not enough param")
-	}
+func (node *MemManager) proxySubReq(task *innerTask) error {
+	req := task.msg.InitSub
 
 	sub := &subOnline{
 		nodeId: req.NodeId,
@@ -25,33 +22,45 @@ func (node *MemManager) firstSubOnline(task *innerTask) error {
 
 	counter := 2 * len(node.partialView)
 
-	node.indirectTheSubRequest(sub, counter)
-	return nil
+	return node.indirectTheSubRequest(sub, counter)
 }
 
-func (node *MemManager) actAsContact(sub *subOnline) {
+func (node *MemManager) actAsContact(sub *subOnline) error {
 
 	count := len(node.partialView)
 	if count == 0 {
-		node.acceptSub(sub)
-		return
+		return node.acceptSub(sub)
+
 	}
 
+	forwardTime := 0
 	for _, item := range node.partialView {
-		node.forwardSub(item, sub)
+		if err := node.forwardSub(item, sub); err != nil {
+			logger.Error("forward sub as contact err :->", err)
+			continue
+		}
+		forwardTime++
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
 		item := node.choseRandomInPartialView()
-		node.forwardSub(item, sub)
+		if err := node.forwardSub(item, sub); err != nil {
+			logger.Error("forward extra C sub as contact err :->", err)
+			continue
+		}
+		forwardTime++
 	}
+	if forwardTime == 0 {
+		return fmt.Errorf("no success forward made even if the partial view is not empty:->", count)
+	}
+
+	return nil
 }
 
-func (node *MemManager) indirectTheSubRequest(sub *subOnline, counter int) {
+func (node *MemManager) indirectTheSubRequest(sub *subOnline, counter int) error {
 
 	if counter == 0 {
-		node.actAsContact(sub)
-		return
+		return node.actAsContact(sub)
 	}
 
 	req := &pb.Gossip{
@@ -81,25 +90,26 @@ func (node *MemManager) indirectTheSubRequest(sub *subOnline, counter int) {
 	}
 
 	if forwardTime == 0 {
-		node.acceptSub(sub)
+		return node.acceptSub(sub)
 	}
+	return nil
 }
 
 func (node *MemManager) forwardContactRequest(peerNode *peerNodeItem, gossip *pb.Gossip) error {
 
 	data, _ := proto.Marshal(gossip)
 
-	return node.sendHBWithPayLoad(peerNode.nodeId, data)
+	return node.PushOut(false, peerNode.nodeId, data)
 }
 
-func (node *MemManager) acceptSub(sub *subOnline) {
+func (node *MemManager) acceptSub(sub *subOnline) error {
 	logger.Debug("accept the subscriber:->", sub.nodeId, sub.addr.String())
 
 	item, ok := node.partialView[sub.nodeId]
 	if ok {
 		item := node.choseRandomInPartialView()
-		node.forwardSub(item, sub)
-		return
+		return node.forwardSub(item, sub)
+
 	}
 
 	addr := nbsnet.ConvertFromGossipAddr(sub.addr)
@@ -108,7 +118,7 @@ func (node *MemManager) acceptSub(sub *subOnline) {
 	conn, err := node.notifySubscriber(sub.seq, addr)
 	if nil != err {
 		logger.Error("failed to notify the subscriber:", err)
-		return
+		return err
 	}
 
 	item = &peerNodeItem{
@@ -122,6 +132,8 @@ func (node *MemManager) acceptSub(sub *subOnline) {
 
 	//TODO:: ? need to update probability?
 	node.updateProbability(node.partialView)
+
+	return nil
 }
 
 func (node *MemManager) forwardSub(item *peerNodeItem, sub *subOnline) error {

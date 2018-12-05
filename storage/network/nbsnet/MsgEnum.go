@@ -18,6 +18,7 @@ const (
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
 	GspInitSub         = net_pb.MsgType_GspInitSub
 	GspInitSubACK      = net_pb.MsgType_GspInitSubACK
+	GspProxySub        = net_pb.MsgType_GspProxySub
 	GspRegContact      = net_pb.MsgType_GspRegContact
 	GspContactAck      = net_pb.MsgType_GspContactAck
 	GspForwardSub      = net_pb.MsgType_GspForwardSub
