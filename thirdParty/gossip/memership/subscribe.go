@@ -165,6 +165,9 @@ func (node *MemManager) subToContract(task *msgTask) error {
 	}
 
 	newInViewNode(nodeId, task.addr, node.inputView)
+
+	node.sendHeartBeat()
+
 	return nil
 }
 

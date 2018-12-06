@@ -141,8 +141,6 @@ func (node *MemManager) receivingCmd() {
 func (node *MemManager) RunLoop() {
 
 	for {
-		logger.Debug("work work work......")
-
 		select {
 		case task := <-node.taskQueue:
 
