@@ -59,12 +59,12 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		logger.Error("create view node err:->", err)
 		return err
 	}
-
+	sub.SeqNo++
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspVoteResult,
 		VoteResult: &pb.Subscribe{
 			Duration: sub.Duration,
-			SeqNo:    sub.SeqNo + 1,
+			SeqNo:    sub.SeqNo,
 			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
 	}

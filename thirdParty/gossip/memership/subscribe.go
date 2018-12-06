@@ -120,10 +120,11 @@ func (node *MemManager) firstInitSub(task *msgTask) error {
 	subReq := task.msg.Subscribe
 	peerAddr := task.addr
 
+	subReq.SeqNo++
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspSubACK,
 		SubAck: &pb.SynAck{
-			SeqNo:  subReq.SeqNo + 1,
+			SeqNo:  subReq.SeqNo,
 			FromId: node.nodeID,
 		},
 	}
