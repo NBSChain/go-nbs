@@ -165,10 +165,15 @@ func (node *MemManager) subToContract(task *msgTask) error {
 	}
 
 	newInViewNode(nodeId, task.addr, node.inputView)
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspVoteResAck,
+		VoteAck: &pb.SynAck{
+			SeqNo:  result.SeqNo + 1,
+			FromId: node.nodeID,
+		},
+	}
 
-	node.sendHeartBeat()
-
-	return nil
+	return item.send(msg)
 }
 
 func (node *MemManager) subAccepted(task *msgTask) error {

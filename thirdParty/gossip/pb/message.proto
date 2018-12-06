@@ -43,4 +43,5 @@ message gossip {
     Subscribe       VoteResult  = 6;
     HeartBeat       HeartBeat   = 7;
     SynAck          SubConfirm  = 8;
+    SynAck VoteAck = 9;
 }

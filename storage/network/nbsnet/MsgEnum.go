@@ -22,8 +22,8 @@ const (
 	GspSubACK      = net_pb.MsgType_GspSubACK
 	GspVoteContact = net_pb.MsgType_GspVoteContact
 	GspVoteResult  = net_pb.MsgType_GspVoteResult
-
-	GspIntroduce = net_pb.MsgType_GspIntroduce
-	GspWelcome   = net_pb.MsgType_GspWelcome
-	GspHeartBeat = net_pb.MsgType_GspHeartBeat
+	GspVoteResAck  = net_pb.MsgType_GspVoteResAck
+	GspIntroduce   = net_pb.MsgType_GspIntroduce
+	GspWelcome     = net_pb.MsgType_GspWelcome
+	GspHeartBeat   = net_pb.MsgType_GspHeartBeat
 )

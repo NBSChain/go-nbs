@@ -22,7 +22,7 @@ enum MsgType {
     GspSubACK       = 2002;
     GspVoteContact  = 2003;
     GspVoteResult   = 2004;
-
+    GspVoteResAck = 2005;
     GspIntroduce    = 2006;
     GspWelcome      = 2007;
     GspHeartBeat    = 2008;

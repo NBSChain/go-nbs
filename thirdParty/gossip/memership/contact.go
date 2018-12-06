@@ -180,3 +180,10 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	return item.send(msg)
 }
+func (node *MemManager) voteAck(task *msgTask) error {
+	nodeId := task.msg.VoteAck.FromId
+	if _, ok := node.inputView[nodeId]; !ok {
+		logger.Warning("no such node in input view:->", task.msg)
+	}
+	return nil
+}

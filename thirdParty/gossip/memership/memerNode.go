@@ -26,8 +26,7 @@ const (
 )
 
 var (
-	HandlerNotFound         = fmt.Errorf("no such gossip task handler")
-	PartialViewItemNotFound = fmt.Errorf("no such item in partial view")
+	HandlerNotFound = fmt.Errorf("no such gossip task handler")
 )
 
 type msgTask struct {
@@ -74,6 +73,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
 	node.taskRouter[nbsnet.GspIntroduce] = node.getForwardSub
 	node.taskRouter[nbsnet.GspWelcome] = node.subAccepted
+	node.taskRouter[nbsnet.GspVoteResAck] = node.voteAck
 
 	return node
 }
