@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
@@ -15,14 +14,16 @@ import (
 )
 
 const (
-	MemShipHeartBeat = time.Second * 11 //TODO::?? heart beat time interval.
-	MaxInnerTaskSize = 1 << 10
-	MaxForwardTimes  = 10
-	DefaultSubExpire = time.Hour
-	SubscribeTimeOut = time.Second * 2
-	IsolatedTime     = MemShipHeartBeat * 3
-	MSGTrashCollect  = time.Minute * 10
-	MaxItemPerRound  = 1 << 10
+	SendHeartBeat     = 1
+	MsgCounterCollect = 2
+	MemShipHeartBeat  = time.Second * 11 //TODO::?? heart beat time interval.
+	MaxInnerTaskSize  = 1 << 10
+	MaxForwardTimes   = 10
+	DefaultSubExpire  = time.Hour
+	SubscribeTimeOut  = time.Second * 2
+	IsolatedTime      = MemShipHeartBeat * 3
+	MSGTrashCollect   = time.Minute * 10
+	MaxItemPerRound   = 1 << 10
 )
 
 var (
@@ -30,8 +31,10 @@ var (
 )
 
 type msgTask struct {
-	msg  *pb.Gossip
-	addr *net.UDPAddr
+	isInner  bool
+	taskType int
+	msg      *pb.Gossip
+	addr     *net.UDPAddr
 }
 
 type worker func(*msgTask) error
@@ -48,7 +51,7 @@ type MemManager struct {
 	serviceConn *nbsnet.NbsUdpConn
 	inputView   map[string]*viewNode
 	partialView map[string]*viewNode
-	taskRouter  map[net_pb.MsgType]worker
+	taskRouter  map[int]worker
 	msgCounter  map[string]*msgCounter
 }
 
@@ -63,17 +66,19 @@ func NewMemberNode(peerId string) *MemManager {
 		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
 		inputView:   make(map[string]*viewNode),
 		partialView: make(map[string]*viewNode),
-		taskRouter:  make(map[net_pb.MsgType]worker),
+		taskRouter:  make(map[int]worker),
 		msgCounter:  make(map[string]*msgCounter),
 	}
 
-	node.taskRouter[nbsnet.GspSub] = node.firstInitSub
-	node.taskRouter[nbsnet.GspVoteContact] = node.getVoteApply
-	node.taskRouter[nbsnet.GspVoteResult] = node.subToContract
-	node.taskRouter[nbsnet.GspHeartBeat] = node.getHeartBeat
-	node.taskRouter[nbsnet.GspIntroduce] = node.getForwardSub
-	node.taskRouter[nbsnet.GspWelcome] = node.subAccepted
-	node.taskRouter[nbsnet.GspVoteResAck] = node.voteAck
+	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
+	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
+	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
+	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
+	node.taskRouter[int(nbsnet.GspIntroduce)] = node.getForwardSub
+	node.taskRouter[int(nbsnet.GspWelcome)] = node.subAccepted
+	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck
+	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
+	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
 
 	return node
 }
@@ -145,9 +150,15 @@ func (node *MemManager) msgProcessor() {
 	for {
 		select {
 		case task := <-node.taskQueue:
+			var handler worker
+			var ok bool
+			if task.isInner {
+				handler, ok = node.taskRouter[task.taskType]
+			} else {
 
-			msgType := task.msg.MsgType
-			handler, ok := node.taskRouter[msgType]
+				msgType := int(task.msg.MsgType)
+				handler, ok = node.taskRouter[msgType]
+			}
 			if !ok {
 				logger.Error("gossip msg handler err:->", HandlerNotFound)
 			}
@@ -162,27 +173,35 @@ func (node *MemManager) timer() {
 	for {
 		select {
 		case <-time.After(MemShipHeartBeat):
-			node.sendHeartBeat()
+			node.taskQueue <- &msgTask{
+				isInner:  true,
+				taskType: SendHeartBeat,
+			}
 
 		case <-time.After(MSGTrashCollect):
-			no := 0
-			now := time.Now()
-			for id, c := range node.msgCounter {
-				if now.Sub(c.time) > MSGTrashCollect {
-					delete(node.msgCounter, id)
-				}
-				if no++; no > MaxItemPerRound {
-					break
-				}
-
+			node.taskQueue <- &msgTask{
+				isInner:  true,
+				taskType: MsgCounterCollect,
 			}
 		}
 	}
 }
 
-//TODO:: make sure it's fine
+func (node *MemManager) msgCounterClean(task *msgTask) error {
+	no := 0
+	now := time.Now()
+	for id, c := range node.msgCounter {
+		if now.Sub(c.time) > MSGTrashCollect {
+			delete(node.msgCounter, id)
+		}
+		if no++; no > MaxItemPerRound {
+			break
+		}
+	}
+	return nil
+}
 
-func (node *MemManager) sendHeartBeat() {
+func (node *MemManager) sendHeartBeat(task *msgTask) error {
 
 	now := time.Now()
 	if now.Sub(node.updateTime) > IsolatedTime {
@@ -210,6 +229,8 @@ func (node *MemManager) sendHeartBeat() {
 			node.unsubItem(item) //TODO::???
 		}
 	}
+
+	return nil
 }
 
 func (node *MemManager) getForwardSub(task *msgTask) error {
