@@ -18,7 +18,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 		logger.Info("no partial view node to broadcast ")
 		return 0
 	}
-
+	sub.SeqNo++
 	msg := &pb.Gossip{
 		MsgType:   nbsnet.GspIntroduce,
 		Subscribe: sub,
@@ -64,6 +64,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		MsgType: nbsnet.GspVoteResult,
 		VoteResult: &pb.Subscribe{
 			Duration: sub.Duration,
+			SeqNo:    sub.SeqNo + 1,
 			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
 	}
@@ -85,11 +86,11 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
+	node.broadCastSub(sub)
+
 	if err := node.publishVoteResult(sub); err != nil {
 		return err
 	}
-
-	node.broadCastSub(sub)
 
 	return nil
 }
@@ -99,7 +100,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	if counter == 0 {
 		return node.asContactServer(sub)
 	}
-
+	sub.SeqNo++
 	req := &pb.Gossip{
 		MsgType: nbsnet.GspVoteContact,
 		VoteContact: &pb.VoteContact{

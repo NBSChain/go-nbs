@@ -67,6 +67,7 @@ func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
+			SeqNo:    1,
 			Duration: int64(DefaultSubExpire),
 			Addr:     nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},
@@ -122,6 +123,7 @@ func (node *MemManager) firstInitSub(task *msgTask) error {
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspSubACK,
 		SubAck: &pb.SynAck{
+			SeqNo:  subReq.SeqNo + 1,
 			FromId: node.nodeID,
 		},
 	}
