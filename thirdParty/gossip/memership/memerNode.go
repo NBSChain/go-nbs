@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	MemShipHeartBeat = time.Second * 10 //TODO::?? heart beat time interval.
+	MemShipHeartBeat = time.Second * 11 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Hour
@@ -86,7 +86,9 @@ func (node *MemManager) InitNode() error {
 
 	go node.receivingCmd()
 
-	go node.RunLoop()
+	go node.msgProcessor()
+
+	go node.timer()
 
 	if err := node.RegisterMySelf(); err != nil {
 		logger.Warning(err)
@@ -138,7 +140,7 @@ func (node *MemManager) receivingCmd() {
 	}
 }
 
-func (node *MemManager) RunLoop() {
+func (node *MemManager) msgProcessor() {
 
 	for {
 		select {
@@ -152,7 +154,13 @@ func (node *MemManager) RunLoop() {
 			if err := handler(task); err != nil {
 				logger.Error("gossip run loop err:->", err)
 			}
+		}
+	}
+}
 
+func (node *MemManager) timer() {
+	for {
+		select {
 		case <-time.After(MemShipHeartBeat):
 			node.sendHeartBeat()
 
