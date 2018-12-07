@@ -16,6 +16,7 @@ import (
 const (
 	SendHeartBeat     = 1
 	MsgCounterCollect = 2
+	CheckItemInView   = 3
 	MemShipHeartBeat  = time.Second * 11 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
@@ -79,6 +80,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck
 	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
 	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
+	node.taskRouter[CheckItemInView] = node.CheckItemInView
 
 	return node
 }
@@ -178,6 +180,11 @@ func (node *MemManager) timer() {
 				taskType: SendHeartBeat,
 			}
 
+			node.taskQueue <- &msgTask{
+				isInner:  true,
+				taskType: CheckItemInView,
+			}
+
 		case <-time.After(MSGTrashCollect):
 			node.taskQueue <- &msgTask{
 				isInner:  true,
@@ -185,6 +192,16 @@ func (node *MemManager) timer() {
 			}
 		}
 	}
+}
+
+func (node *MemManager) CheckItemInView(task *msgTask) error {
+	now := time.Now()
+	for _, item := range node.inputView {
+		if now.Sub(item.updateTime) > IsolatedTime {
+			node.removeFromView(item, node.inputView)
+		}
+	}
+	return nil
 }
 
 func (node *MemManager) msgCounterClean(task *msgTask) error {
@@ -221,10 +238,12 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 			continue
 		}
 		if err := item.sendData(data); err != nil {
+			logger.Warning("send data failed:->", err)
 			node.removeFromView(item, node.partialView)
 		}
 
 		if now.After(item.expiredTime) {
+			logger.Warning("subscribe expired:->", item.expiredTime, now)
 			node.removeFromView(item, node.partialView)
 			node.unsubItem(item) //TODO::???
 		}
@@ -245,7 +264,7 @@ func (node *MemManager) msgCache(msgId string) error {
 		node.msgCounter[msgId] = c
 	}
 
-	if c.counter++; c.counter > MaxForwardTimes {
+	if c.counter++; c.counter >= MaxForwardTimes {
 		return fmt.Errorf("msg(%s)forward too many times:->", msgId)
 	}
 
@@ -268,7 +287,7 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 		random.Int64() > int64(prob*100) {
 
 		item := node.choseRandomInPartialView()
-		logger.Debug("forward this sub to next node:->", item)
+		logger.Debug("forward this sub to next node:->", item.nodeId)
 		return item.send(task.msg)
 	}
 

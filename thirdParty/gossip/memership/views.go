@@ -12,7 +12,7 @@ func (node *MemManager) choseRandomInPartialView() *viewNode {
 	count := len(node.partialView)
 	j := 0
 	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
-
+	logger.Debug("chose random in partialView :->", random)
 	for _, item := range node.partialView {
 		if j == int(random.Int64()) {
 			return item
@@ -27,11 +27,13 @@ func (node *MemManager) removeFromView(item *viewNode, views map[string]*viewNod
 
 	delete(views, item.nodeId)
 
-	if err := item.outConn.Close(); err != nil {
-		logger.Warning(err)
+	if item.outConn != nil {
+		if err := item.outConn.Close(); err != nil {
+			logger.Warning(err)
+		}
 	}
 
-	logger.Warning("remove node from partial view:->", item.nodeId)
+	logger.Warning("remove node from view:->", item.nodeId)
 
 	updateProbability(views)
 }
