@@ -233,8 +233,8 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) getForwardSub(task *msgTask) error {
-	msgId := task.msg.MsgId
+func (node *MemManager) msgCache(msgId string) error {
+
 	c, ok := node.msgCounter[msgId]
 
 	if !ok {
@@ -246,8 +246,20 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 	}
 
 	if c.counter++; c.counter > MaxForwardTimes {
-		logger.Error("forward too many times:->", task.msg)
-		return nil
+		return fmt.Errorf("msg(%s)forward too many times:->", msgId)
+	}
+
+	return nil
+}
+
+func (node *MemManager) getForwardSub(task *msgTask) error {
+
+	if err := node.msgCache(task.msg.MsgId); err != nil {
+		return err
+	}
+
+	if node.nodeID == task.msg.Subscribe.Addr.NetworkId {
+		return fmt.Errorf("hey, it's me, no need to introduce me to myself")
 	}
 
 	req := task.msg.Subscribe
@@ -259,7 +271,7 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 		return node.asSubAdapter(req)
 	}
 
-	if item := node.choseRandomInPartialView(); item != nil {
+	if item := node.choseRandomInPartialView(task.msg.Subscribe.Addr.NetworkId); item != nil {
 		return item.send(task.msg)
 	}
 	return node.asSubAdapter(req)

@@ -28,16 +28,22 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 	forwardTime := 0
 	for _, item := range node.partialView {
+
+		if item.nodeId == sub.Addr.NetworkId {
+			logger.Debug("maybe resubscribe:->", item.nodeId)
+			continue
+		}
+
 		if err := item.sendData(data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
 		}
+
 		forwardTime++
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
-		item := node.choseRandomInPartialView()
-
+		item := node.choseRandomInPartialView(sub.Addr.NetworkId)
 		if item == nil {
 			continue
 		}
@@ -154,9 +160,9 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	nodeId := sub.Addr.NetworkId
 
-	item, ok := node.partialView[nodeId]
+	_, ok := node.partialView[nodeId]
 	if ok {
-		if item := node.choseRandomInPartialView(); item != nil {
+		if item := node.choseRandomInPartialView(nodeId); item != nil {
 			msg := &pb.Gossip{
 				MsgType:   nbsnet.GspIntroduce,
 				Subscribe: sub,
