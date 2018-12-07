@@ -266,13 +266,18 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 	prob := float64(1) / float64(1+len(node.partialView))
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
 
+	logger.Debug("get introduced req:->", random, prob)
 	//TODO:: make sure this probability is fine.
 	if random.Int64() < int64(prob*100) {
+		logger.Debug("accept the introduced node ")
 		return node.asSubAdapter(req)
 	}
 
-	if item := node.choseRandomInPartialView(task.msg.Subscribe.Addr.NetworkId); item != nil {
-		return item.send(task.msg)
+	item := node.choseRandomInPartialView(task.msg.Subscribe.Addr.NetworkId)
+	if item == nil {
+		return fmt.Errorf("failed to forward this subscribe")
 	}
-	return node.asSubAdapter(req)
+
+	logger.Debug("I don't want it, forward it:->", req)
+	return item.send(task.msg)
 }

@@ -156,8 +156,8 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 }
 
 func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
-	logger.Debug("accept the subscriber:->", sub)
 
+	logger.Debug("accept the subscriber:->", sub)
 	nodeId := sub.Addr.NetworkId
 
 	_, ok := node.partialView[nodeId]
