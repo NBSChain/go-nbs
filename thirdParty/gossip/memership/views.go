@@ -8,13 +8,13 @@ import (
 )
 
 //TODO:: make sure this random is ok
-func (node *MemManager) choseRandomInPartialView(nodeId string) *viewNode {
+func (node *MemManager) choseRandomInPartialView() *viewNode {
 	count := len(node.partialView)
 	j := 0
 	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
 
 	for _, item := range node.partialView {
-		if j == int(random.Int64()) && nodeId != item.nodeId {
+		if j == int(random.Int64()) {
 			return item
 		} else {
 			j++

@@ -27,13 +27,8 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	data, _ := proto.Marshal(msg)
 
 	forwardTime := 0
+	logger.Debug("broad cast sub to all partial views:->", len(node.partialView))
 	for _, item := range node.partialView {
-
-		if item.nodeId == sub.Addr.NetworkId {
-			logger.Debug("maybe resubscribe:->", item.nodeId)
-			continue
-		}
-
 		if err := item.sendData(data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
@@ -43,10 +38,9 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
-		item := node.choseRandomInPartialView(sub.Addr.NetworkId)
-		if item == nil {
-			continue
-		}
+		item := node.choseRandomInPartialView()
+
+		logger.Debug("random chose target:->", item.nodeId)
 
 		if err := item.sendData(data); err != nil {
 			logger.Error("forward extra C sub as contact err :->", err)
@@ -162,14 +156,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	_, ok := node.partialView[nodeId]
 	if ok {
-		if item := node.choseRandomInPartialView(nodeId); item != nil {
-			msg := &pb.Gossip{
-				MsgType:   nbsnet.GspIntroduce,
-				Subscribe: sub,
-			}
-			msg.MsgId = crypto.MD5SS(msg.String())
-			return item.send(msg)
-		}
+		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
 	}
 
 	item, err := newOutViewNode(sub, node.partialView)

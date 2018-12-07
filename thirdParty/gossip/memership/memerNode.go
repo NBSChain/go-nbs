@@ -258,26 +258,20 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 		return err
 	}
 
-	if node.nodeID == task.msg.Subscribe.Addr.NetworkId {
-		return fmt.Errorf("hey, it's me, no need to introduce me to myself")
-	}
-
-	req := task.msg.Subscribe
 	prob := float64(1) / float64(1+len(node.partialView))
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
+	logger.Debug("get introduced req:->", random, prob*100)
 
-	logger.Debug("get introduced req:->", random, prob)
-	//TODO:: make sure this probability is fine.
-	if random.Int64() < int64(prob*100) {
-		logger.Debug("accept the introduced node ")
-		return node.asSubAdapter(req)
+	subId := task.msg.Subscribe.Addr.NetworkId
+	if _, ok := node.partialView[subId]; ok ||
+		subId == node.nodeID ||
+		random.Int64() > int64(prob*100) {
+
+		item := node.choseRandomInPartialView()
+		logger.Debug("forward this sub to next node:->", item)
+		return item.send(task.msg)
 	}
 
-	item := node.choseRandomInPartialView(task.msg.Subscribe.Addr.NetworkId)
-	if item == nil {
-		return fmt.Errorf("failed to forward this subscribe")
-	}
-
-	logger.Debug("I don't want it, forward it:->", req)
-	return item.send(task.msg)
+	logger.Debug("accept the sub node ")
+	return node.asSubAdapter(task.msg.Subscribe)
 }
