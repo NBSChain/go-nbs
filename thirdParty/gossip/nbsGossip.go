@@ -36,7 +36,7 @@ func newNbsGossip() *nbsGossip {
 	if peerId == "" {
 		logger.Warning("no account right now, so the message gossip can't setup")
 	} else {
-		if err := gossipObj.StartUp(peerId); err != nil {
+		if err := gossipObj.Online(peerId); err != nil {
 			logger.Error("gossip start failed:", err)
 		}
 	}
@@ -73,7 +73,7 @@ func (manager *nbsGossip) Offline() error {
 	return manager.memberManager.DestroyNode()
 }
 
-func (manager *nbsGossip) StartUp(peerId string) error {
+func (manager *nbsGossip) Online(peerId string) error {
 
 	manager.peerId = peerId
 

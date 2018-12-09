@@ -54,7 +54,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
-	item, err := node.newOutViewNode(sub)
+	item, err := node.newOutViewNode(sub.Addr, sub.Duration)
 	if err != nil {
 		logger.Error("create view node err:->", err)
 		return err
@@ -159,7 +159,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
 	}
 
-	item, err := node.newOutViewNode(sub)
+	item, err := node.newOutViewNode(sub.Addr, sub.Duration)
 	if err != nil {
 		return err
 	}
@@ -173,6 +173,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	return item.send(msg)
 }
+
 func (node *MemManager) voteAck(task *msgTask) error {
 	nodeId := task.msg.VoteAck.FromId
 	if _, ok := node.inputView[nodeId]; !ok {

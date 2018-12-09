@@ -22,7 +22,7 @@ func punchAHole() {
 
 	network.GetInstance().StartUp(nodeId)
 
-	gossip.GetGossipInstance().StartUp(nodeId)
+	gossip.GetGossipInstance().Online(nodeId)
 
 	fmt.Println("I started:->:", nodeId)
 

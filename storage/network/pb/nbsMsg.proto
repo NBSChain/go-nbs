@@ -27,6 +27,7 @@ enum MsgType {
     GspWelcome      = 2007;
     GspHeartBeat    = 2008;
     GspReplaceArc   = 2009;
-    GspRemoveIVArc  = 2010;
-    GspRemoveOVAcr  = 2011;
+    GspReplaceAck   = 2010;
+    GspRemoveIVArc  = 2011;
+    GspRemoveOVAcr  = 2012;
 }

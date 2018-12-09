@@ -23,9 +23,9 @@ type viewNode struct {
 	manager     *MemManager
 }
 
-func (node *MemManager) newOutViewNode(sub *pb.Subscribe) (*viewNode, error) {
+func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*viewNode, error) {
 
-	addr := nbsnet.ConvertFromGossipAddr(sub.Addr)
+	addr := nbsnet.ConvertFromGossipAddr(host)
 	port := utils.GetConfig().GossipCtrlPort
 
 	conn, err := network.GetInstance().Connect(nil, addr, port)
@@ -35,12 +35,12 @@ func (node *MemManager) newOutViewNode(sub *pb.Subscribe) (*viewNode, error) {
 	}
 
 	item := &viewNode{
-		nodeId:      sub.Addr.NetworkId,
+		nodeId:      host.NetworkId,
 		outConn:     conn,
 		outAddr:     addr,
 		manager:     node,
 		updateTime:  time.Now(),
-		expiredTime: time.Now().Add(time.Duration(sub.Duration)),
+		expiredTime: time.Now().Add(time.Duration(duration)),
 	}
 
 	node.partialView[item.nodeId] = item

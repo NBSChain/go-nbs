@@ -1,6 +1,7 @@
 package memership
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
@@ -29,6 +30,7 @@ const (
 
 var (
 	HandlerNotFound = fmt.Errorf("no such gossip task handler")
+	ItemNotFound    = fmt.Errorf("no such peer node in partialview")
 )
 
 type msgTask struct {
@@ -46,6 +48,8 @@ type msgCounter struct {
 }
 
 type MemManager struct {
+	ctx         context.Context
+	close       context.CancelFunc
 	nodeID      string
 	updateTime  time.Time
 	taskQueue   chan *msgTask
@@ -62,8 +66,12 @@ var (
 
 func NewMemberNode(peerId string) *MemManager {
 
+	ctx, cal := context.WithCancel(context.Background())
+
 	node := &MemManager{
 		nodeID:      peerId,
+		ctx:         ctx,
+		close:       cal,
 		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
 		inputView:   make(map[string]*viewNode),
 		partialView: make(map[string]*viewNode),
@@ -81,7 +89,10 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
 	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
 	node.taskRouter[CheckItemInView] = node.checkItemInView
-	node.taskRouter[int(nbsnet.GspReplaceArc)] = node.replacePeers
+	node.taskRouter[int(nbsnet.GspReplaceArc)] = node.replaceForUnsubPeer
+	node.taskRouter[int(nbsnet.GspReplaceAck)] = node.acceptAsReplacedPeer
+	node.taskRouter[int(nbsnet.GspRemoveIVArc)] = node.removeUnsubPeerFromOut
+	node.taskRouter[int(nbsnet.GspRemoveOVAcr)] = node.removeUnsubPeerFromIn
 
 	return node
 }
@@ -130,7 +141,7 @@ func (node *MemManager) receivingCmd() {
 		n, peerAddr, err := node.serviceConn.ReceiveFromUDP(buffer)
 		if err != nil {
 			logger.Warning("reading contact application err:", err)
-			continue
+			break
 		}
 
 		message := &pb.Gossip{}
@@ -168,6 +179,8 @@ func (node *MemManager) msgProcessor() {
 			if err := handler(task); err != nil {
 				logger.Error("gossip run loop err:->", err)
 			}
+		case <-node.ctx.Done():
+			logger.Info("gossip offline")
 		}
 	}
 }
@@ -191,6 +204,8 @@ func (node *MemManager) timer() {
 				isInner:  true,
 				taskType: MsgCounterCollect,
 			}
+		case <-node.ctx.Done():
+			logger.Info("gossip offline")
 		}
 	}
 }
@@ -294,54 +309,4 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 
 	logger.Debug("accept the sub node ")
 	return node.asSubAdapter(task.msg.Subscribe)
-}
-
-func (node *MemManager) DestroyNode() error {
-
-	return nil
-}
-
-func (node *MemManager) replaceMeByMyOutView() {
-
-	lenIn := len(node.inputView)
-	lenOut := len(node.partialView)
-
-	tempOut := make([]string, len(node.partialView))
-	for nodeId := range node.partialView {
-		tempOut = append(tempOut, nodeId)
-	}
-
-	tempIn := make([]string, len(node.inputView))
-	for nodeId := range node.inputView {
-		tempIn = append(tempIn, nodeId)
-	}
-
-	for i := lenIn - utils.AdditionalCopies - 1; i >= 0 && lenOut > 0; i-- {
-		j := i % lenOut
-		outId := tempOut[j]
-		outItem := node.partialView[outId]
-
-		msg := &pb.Gossip{
-			MsgType: nbsnet.GspReplaceArc,
-			ArcReplace: &pb.ArcReplace{
-				FromId: node.nodeID,
-				ToId:   outId,
-				Addr:   nbsnet.ConvertToGossipAddr(outItem.outAddr, outItem.nodeId),
-			},
-		}
-
-		inId := tempIn[i]
-		inItem := node.inputView[inId]
-
-		data, _ := proto.Marshal(msg)
-		if _, err := node.serviceConn.WriteToUDP(data, inItem.inAddr); err != nil {
-			logger.Warning("")
-			continue
-		}
-	}
-
-}
-
-func (node *MemManager) replacePeers(task *msgTask) error {
-	return nil
 }

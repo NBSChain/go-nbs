@@ -158,7 +158,7 @@ func (node *MemManager) subToContract(task *msgTask) error {
 
 	logger.Debug("get contact node:->", result, task.addr)
 
-	item, err := node.newOutViewNode(result)
+	item, err := node.newOutViewNode(result.Addr, result.Duration)
 	if err != nil {
 		logger.Error("sub to contact node:->", err)
 		return err

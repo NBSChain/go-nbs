@@ -21,8 +21,8 @@ message Subscribe {
 }
 
 message SynAck {
-    int64 SeqNo = 1;
-    string FromId = 2;
+    int64 SeqNo     = 1;
+    string FromId   = 2;
 }
 
 message VoteContact {
@@ -55,4 +55,5 @@ message gossip {
     SynAck          VoteAck     = 9;
     ArcReplace      ArcReplace  = 10;
     ArcDrop         ArcDrop     = 11;
+    Subscribe       ReplaceAck  = 12;
 }

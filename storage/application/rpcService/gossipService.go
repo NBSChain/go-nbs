@@ -16,7 +16,7 @@ func (service *gossipService) StartService(ctx context.Context, request *pb.Star
 		return nil, account.ENoAvailableAccount
 	}
 
-	if err := gossip.GetGossipInstance().StartUp(peerId); err != nil {
+	if err := gossip.GetGossipInstance().Online(peerId); err != nil {
 		return nil, err
 	}
 

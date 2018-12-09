@@ -1,7 +1,7 @@
 package gossip
 
 type BasicProtocol interface {
-	StartUp(peerId string) error
+	Online(peerId string) error
 
 	Offline() error
 
