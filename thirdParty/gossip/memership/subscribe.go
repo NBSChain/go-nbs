@@ -158,13 +158,13 @@ func (node *MemManager) subToContract(task *msgTask) error {
 
 	logger.Debug("get contact node:->", result, task.addr)
 
-	item, err := newOutViewNode(result, node.partialView)
+	item, err := node.newOutViewNode(result)
 	if err != nil {
 		logger.Error("sub to contact node:->", err)
 		return err
 	}
 
-	newInViewNode(nodeId, task.addr, node.inputView)
+	node.newInViewNode(nodeId, task.addr)
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspVoteResAck,
 		VoteAck: &pb.SynAck{
@@ -183,7 +183,7 @@ func (node *MemManager) subAccepted(task *msgTask) error {
 		return fmt.Errorf("duplicated sub accepted")
 	}
 
-	newInViewNode(ack.FromId, task.addr, node.inputView)
+	node.newInViewNode(ack.FromId, task.addr)
 	return nil
 }
 

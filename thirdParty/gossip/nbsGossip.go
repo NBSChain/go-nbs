@@ -69,6 +69,10 @@ func (manager *nbsGossip) Unsubscribe(channel string) error {
 	return nil
 }
 
+func (manager *nbsGossip) Offline() error {
+	return manager.memberManager.DestroyNode()
+}
+
 func (manager *nbsGossip) StartUp(peerId string) error {
 
 	manager.peerId = peerId

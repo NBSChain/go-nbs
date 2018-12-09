@@ -54,7 +54,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
-	item, err := newOutViewNode(sub, node.partialView)
+	item, err := node.newOutViewNode(sub)
 	if err != nil {
 		logger.Error("create view node err:->", err)
 		return err
@@ -79,7 +79,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		return fmt.Errorf("get connection remote addr failed")
 	}
 
-	newInViewNode(sub.Addr.NetworkId, addr, node.inputView)
+	node.newInViewNode(sub.Addr.NetworkId, addr)
 
 	return nil
 }
@@ -159,7 +159,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
 	}
 
-	item, err := newOutViewNode(sub, node.partialView)
+	item, err := node.newOutViewNode(sub)
 	if err != nil {
 		return err
 	}

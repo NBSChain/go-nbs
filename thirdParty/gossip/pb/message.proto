@@ -34,6 +34,15 @@ message HeartBeat {
     string  FromID  = 1;
 }
 
+message ArcReplace{
+    string FromId   = 1;
+    string ToId     = 2;
+    BasicHost Addr  = 3;
+}
+message ArcDrop{
+    string nodeId   = 1;
+}
+
 message gossip {
     net.pb.MsgType  MsgType     = 1;
     string          MsgId       = 2;
@@ -43,5 +52,7 @@ message gossip {
     Subscribe       VoteResult  = 6;
     HeartBeat       HeartBeat   = 7;
     SynAck          SubConfirm  = 8;
-    SynAck VoteAck = 9;
+    SynAck          VoteAck     = 9;
+    ArcReplace      ArcReplace  = 10;
+    ArcDrop         ArcDrop     = 11;
 }

@@ -19,9 +19,11 @@ type viewNode struct {
 	updateTime  time.Time
 	expiredTime time.Time
 	outConn     *nbsnet.NbsUdpConn
+	outAddr     *nbsnet.NbsUdpAddr
+	manager     *MemManager
 }
 
-func newOutViewNode(sub *pb.Subscribe, views map[string]*viewNode) (*viewNode, error) {
+func (node *MemManager) newOutViewNode(sub *pb.Subscribe) (*viewNode, error) {
 
 	addr := nbsnet.ConvertFromGossipAddr(sub.Addr)
 	port := utils.GetConfig().GossipCtrlPort
@@ -35,28 +37,33 @@ func newOutViewNode(sub *pb.Subscribe, views map[string]*viewNode) (*viewNode, e
 	item := &viewNode{
 		nodeId:      sub.Addr.NetworkId,
 		outConn:     conn,
+		outAddr:     addr,
+		manager:     node,
 		updateTime:  time.Now(),
 		expiredTime: time.Now().Add(time.Duration(sub.Duration)),
 	}
 
-	views[item.nodeId] = item
-	item.probability = 1 / float64(len(views))
-	updateProbability(views)
+	node.partialView[item.nodeId] = item
+	item.probability = 1 / float64(len(node.partialView))
+	updateProbability(node.partialView)
+
+	go item.waitingWork()
 
 	return item, nil
 }
 
-func newInViewNode(nodeId string, addr *net.UDPAddr, views map[string]*viewNode) *viewNode {
+func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *viewNode {
 
 	view := &viewNode{
 		nodeId:     nodeId,
 		inAddr:     addr,
+		manager:    node,
 		updateTime: time.Now(),
 	}
 
-	views[nodeId] = view
-	view.probability = 1 / float64(len(views))
-	updateProbability(views)
+	node.inputView[nodeId] = view
+	view.probability = 1 / float64(len(node.inputView))
+	updateProbability(node.inputView)
 
 	return view
 }
@@ -107,10 +114,25 @@ func (item *viewNode) send(pb proto.Message) error {
 }
 
 func (item *viewNode) waitingWork() {
+
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		if _, err := item.outConn.Read(buffer); err != nil {
+		n, err := item.outConn.Read(buffer)
+		if err != nil {
 			logger.Warning("node in view read err:->", err)
+			continue
 		}
+		msg := &pb.Gossip{}
+		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
+			logger.Warning("unmarshal err:->", err)
+			continue
+		}
+
+		addr := item.outConn.RealConn.RemoteAddr()
+		task := &msgTask{
+			msg:  msg,
+			addr: addr.(*net.UDPAddr),
+		}
+		item.manager.taskQueue <- task
 	}
 }

@@ -80,7 +80,8 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck
 	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
 	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
-	node.taskRouter[CheckItemInView] = node.CheckItemInView
+	node.taskRouter[CheckItemInView] = node.checkItemInView
+	node.taskRouter[int(nbsnet.GspReplaceArc)] = node.replacePeers
 
 	return node
 }
@@ -194,7 +195,7 @@ func (node *MemManager) timer() {
 	}
 }
 
-func (node *MemManager) CheckItemInView(task *msgTask) error {
+func (node *MemManager) checkItemInView(task *msgTask) error {
 	now := time.Now()
 	for _, item := range node.inputView {
 		if now.Sub(item.updateTime) > IsolatedTime {
@@ -293,4 +294,54 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 
 	logger.Debug("accept the sub node ")
 	return node.asSubAdapter(task.msg.Subscribe)
+}
+
+func (node *MemManager) DestroyNode() error {
+
+	return nil
+}
+
+func (node *MemManager) replaceMeByMyOutView() {
+
+	lenIn := len(node.inputView)
+	lenOut := len(node.partialView)
+
+	tempOut := make([]string, len(node.partialView))
+	for nodeId := range node.partialView {
+		tempOut = append(tempOut, nodeId)
+	}
+
+	tempIn := make([]string, len(node.inputView))
+	for nodeId := range node.inputView {
+		tempIn = append(tempIn, nodeId)
+	}
+
+	for i := lenIn - utils.AdditionalCopies - 1; i >= 0 && lenOut > 0; i-- {
+		j := i % lenOut
+		outId := tempOut[j]
+		outItem := node.partialView[outId]
+
+		msg := &pb.Gossip{
+			MsgType: nbsnet.GspReplaceArc,
+			ArcReplace: &pb.ArcReplace{
+				FromId: node.nodeID,
+				ToId:   outId,
+				Addr:   nbsnet.ConvertToGossipAddr(outItem.outAddr, outItem.nodeId),
+			},
+		}
+
+		inId := tempIn[i]
+		inItem := node.inputView[inId]
+
+		data, _ := proto.Marshal(msg)
+		if _, err := node.serviceConn.WriteToUDP(data, inItem.inAddr); err != nil {
+			logger.Warning("")
+			continue
+		}
+	}
+
+}
+
+func (node *MemManager) replacePeers(task *msgTask) error {
+	return nil
 }

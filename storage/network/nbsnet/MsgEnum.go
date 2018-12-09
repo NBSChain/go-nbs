@@ -26,4 +26,7 @@ const (
 	GspIntroduce   = net_pb.MsgType_GspIntroduce
 	GspWelcome     = net_pb.MsgType_GspWelcome
 	GspHeartBeat   = net_pb.MsgType_GspHeartBeat
+	GspReplaceArc  = net_pb.MsgType_GspReplaceArc
+	GspRemoveIVArc = net_pb.MsgType_GspRemoveIVArc
+	GspRemoveOVAcr = net_pb.MsgType_GspRemoveOVAcr
 )
