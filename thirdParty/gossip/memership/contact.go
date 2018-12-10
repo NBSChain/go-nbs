@@ -97,7 +97,12 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
-	node.subNo++
+	if node.subNo++; node.subNo >= ProbUpdateInter {
+		node.taskQueue <- &msgTask{
+			isInner:  true,
+			taskType: UpdateProbability,
+		}
+	}
 
 	if counter == 0 {
 		return node.asContactServer(sub)

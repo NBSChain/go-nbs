@@ -82,6 +82,7 @@ func NewMemberNode(peerId string) *MemManager {
 	}
 
 	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
+	node.taskRouter[int(nbsnet.GspResubscribe)] = node.firstInitSub
 	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
 	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
 	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
@@ -179,7 +180,9 @@ func (node *MemManager) msgProcessor() {
 			}
 			if !ok {
 				logger.Error("gossip msg handler err:->", HandlerNotFound)
+				continue
 			}
+
 			if err := handler(task); err != nil {
 				logger.Error("gossip run loop err:->", err)
 			}
@@ -202,13 +205,6 @@ func (node *MemManager) timer() {
 			node.taskQueue <- &msgTask{
 				isInner:  true,
 				taskType: CheckItemInView,
-			}
-
-			if node.subNo >= ProbUpdateInter {
-				node.taskQueue <- &msgTask{
-					isInner:  true,
-					taskType: UpdateProbability,
-				}
 			}
 
 		case <-time.After(MSGTrashCollect):
