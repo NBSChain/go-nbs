@@ -169,6 +169,10 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
 	}
 
+	if node.nodeID == nodeId {
+		return fmt.Errorf("hey it's yourself")
+	}
+
 	item, err := node.newOutViewNode(sub.Addr, sub.Duration)
 	if err != nil {
 		return err
