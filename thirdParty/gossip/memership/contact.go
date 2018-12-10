@@ -130,11 +130,13 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 	if err != nil {
 		return err
 	}
+	node.normalizeWeight(node.partialView)
 
 	var forwardTime int
 	for _, item := range node.partialView {
 
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
+		logger.Debug("vote apply pro and itemPro:->", pro, item.probability)
 		if pro.Int64() > int64(item.probability*100) {
 			continue
 		}

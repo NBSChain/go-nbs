@@ -3,6 +3,9 @@ package memership
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
+	"github.com/golang/protobuf/proto"
 	"math/big"
 	"time"
 )
@@ -68,5 +71,55 @@ func (node *MemManager) updateMyOutProb(task *msgTask) error {
 
 	item.probability = wei.Weight
 
+	return nil
+}
+
+func (node *MemManager) normalizeWeight(views map[string]*viewNode) {
+	var summerOut float64
+	for _, item := range views {
+		summerOut += item.probability
+	}
+
+	for _, item := range views {
+		item.probability = item.probability / summerOut
+	}
+}
+
+func (node *MemManager) updateProbability(task *msgTask) error {
+
+	node.normalizeWeight(node.partialView)
+
+	for _, item := range node.partialView {
+		msg := &pb.Gossip{
+			MsgType: nbsnet.GspUpdateOVWei,
+			OVWeight: &pb.WeightUpdate{
+				NodeId: node.nodeID,
+				Weight: item.probability,
+			},
+		}
+
+		if err := item.send(msg); err != nil {
+			logger.Warning("send weight update to partial view item err:->", err, item.nodeId)
+		}
+	}
+
+	node.normalizeWeight(node.inputView)
+
+	for _, item := range node.inputView {
+		msg := &pb.Gossip{
+			MsgType: nbsnet.GspUpdateIVWei,
+			IVWeight: &pb.WeightUpdate{
+				NodeId: node.nodeID,
+				Weight: item.probability,
+			},
+		}
+
+		data, _ := proto.Marshal(msg)
+		if _, err := node.serviceConn.WriteToUDP(data, item.inAddr); err != nil {
+			logger.Warning("send weight update to input view item err:->", err, item.nodeId)
+		}
+	}
+
+	node.subNo = 0
 	return nil
 }
