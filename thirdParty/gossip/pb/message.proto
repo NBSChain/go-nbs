@@ -34,13 +34,18 @@ message HeartBeat {
     string  FromID  = 1;
 }
 
-message ArcReplace{
+message ArcReplace {
     string FromId   = 1;
     string ToId     = 2;
     BasicHost Addr  = 3;
 }
-message ArcDrop{
+message ArcDrop {
     string nodeId   = 1;
+}
+
+message WeightUpdate {
+    string nodeId = 1;
+    double weight = 2;
 }
 
 message gossip {
@@ -56,4 +61,6 @@ message gossip {
     ArcReplace      ArcReplace  = 10;
     ArcDrop         ArcDrop     = 11;
     Subscribe       ReplaceAck  = 12;
+    WeightUpdate OVWeight = 13;
+    WeightUpdate IVWeight = 14;
 }

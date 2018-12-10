@@ -45,8 +45,6 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*vie
 
 	node.partialView[item.nodeId] = item
 	item.probability = 1 / float64(len(node.partialView))
-	updateProbability(node.partialView)
-
 	go item.waitingWork()
 
 	return item, nil
@@ -63,22 +61,7 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *viewNod
 
 	node.inputView[nodeId] = view
 	view.probability = 1 / float64(len(node.inputView))
-	updateProbability(node.inputView)
-
 	return view
-}
-
-//TODO:: broadcast probability???
-func updateProbability(view map[string]*viewNode) {
-
-	var summerOut float64
-	for _, item := range view {
-		summerOut += item.probability
-	}
-
-	for _, item := range view {
-		item.probability = item.probability / summerOut
-	}
 }
 
 func (item *viewNode) needUpdate() bool {
@@ -120,7 +103,7 @@ func (item *viewNode) waitingWork() {
 		n, err := item.outConn.Read(buffer)
 		if err != nil {
 			logger.Warning("node in view read err:->", err)
-			continue
+			break
 		}
 		msg := &pb.Gossip{}
 		if err := proto.Unmarshal(buffer[:n], msg); err != nil {

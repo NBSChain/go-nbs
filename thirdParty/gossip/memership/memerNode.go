@@ -18,6 +18,7 @@ const (
 	SendHeartBeat     = 1
 	MsgCounterCollect = 2
 	CheckItemInView   = 3
+	UpdateProbability = 4
 	MemShipHeartBeat  = time.Second * 11 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
@@ -26,11 +27,12 @@ const (
 	IsolatedTime      = MemShipHeartBeat * 3
 	MSGTrashCollect   = time.Minute * 10
 	MaxItemPerRound   = 1 << 10
+	ProbUpdateInter   = 10
 )
 
 var (
 	HandlerNotFound = fmt.Errorf("no such gossip task handler")
-	ItemNotFound    = fmt.Errorf("no such peer node in partialview")
+	ItemNotFound    = fmt.Errorf("no such peer node in my view")
 )
 
 type msgTask struct {
@@ -51,6 +53,7 @@ type MemManager struct {
 	ctx         context.Context
 	close       context.CancelFunc
 	nodeID      string
+	subNo       int
 	taskQueue   chan *msgTask
 	serviceConn *nbsnet.NbsUdpConn
 	inputView   map[string]*viewNode
@@ -92,7 +95,9 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspReplaceAck)] = node.acceptAsReplacedPeer
 	node.taskRouter[int(nbsnet.GspRemoveIVArc)] = node.removeUnsubPeerFromOut
 	node.taskRouter[int(nbsnet.GspRemoveOVAcr)] = node.removeUnsubPeerFromIn
-
+	node.taskRouter[UpdateProbability] = node.updateProbability
+	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
+	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
 	return node
 }
 
@@ -197,6 +202,13 @@ func (node *MemManager) timer() {
 			node.taskQueue <- &msgTask{
 				isInner:  true,
 				taskType: CheckItemInView,
+			}
+
+			if node.subNo >= ProbUpdateInter {
+				node.taskQueue <- &msgTask{
+					isInner:  true,
+					taskType: UpdateProbability,
+				}
 			}
 
 		case <-time.After(MSGTrashCollect):
@@ -312,4 +324,52 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 
 	logger.Debug("accept the sub node ")
 	return node.asSubAdapter(task.msg.Subscribe)
+}
+
+func (node *MemManager) updateProbability(task *msgTask) error {
+
+	var summerOut, summerIn float64
+	for _, item := range node.partialView {
+		summerOut += item.probability
+	}
+
+	for _, item := range node.partialView {
+		item.probability = item.probability / summerOut
+		msg := &pb.Gossip{
+			MsgType: nbsnet.GspUpdateOVWei,
+			OVWeight: &pb.WeightUpdate{
+				NodeId: node.nodeID,
+				Weight: item.probability,
+			},
+		}
+
+		if err := item.send(msg); err != nil {
+			logger.Warning("send weight update to partial view item err:->", err, item.nodeId)
+		}
+	}
+
+	for _, item := range node.inputView {
+		summerIn += item.probability
+	}
+
+	for _, item := range node.inputView {
+		item.probability = item.probability / summerIn
+
+		msg := &pb.Gossip{
+			MsgType: nbsnet.GspUpdateIVWei,
+			IVWeight: &pb.WeightUpdate{
+				NodeId: node.nodeID,
+				Weight: item.probability,
+			},
+		}
+
+		data, _ := proto.Marshal(msg)
+		if _, err := node.serviceConn.WriteToUDP(data, item.inAddr); err != nil {
+			logger.Warning("send weight update to input view item err:->", err, item.nodeId)
+		}
+	}
+
+	node.subNo = 0
+
+	return nil
 }

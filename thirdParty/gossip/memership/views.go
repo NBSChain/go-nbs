@@ -32,10 +32,7 @@ func (node *MemManager) removeFromView(item *viewNode, views map[string]*viewNod
 			logger.Warning(err)
 		}
 	}
-
 	logger.Warning("remove node from view:->", item.nodeId)
-
-	updateProbability(views)
 }
 
 func (node *MemManager) getHeartBeat(task *msgTask) error {
@@ -47,5 +44,29 @@ func (node *MemManager) getHeartBeat(task *msgTask) error {
 		return err
 	}
 	item.updateTime = time.Now()
+	return nil
+}
+
+func (node *MemManager) updateMyInProb(task *msgTask) error {
+
+	wei := task.msg.OVWeight
+	item, ok := node.inputView[wei.NodeId]
+	if !ok {
+		return ItemNotFound
+	}
+
+	item.probability = wei.Weight
+	return nil
+}
+
+func (node *MemManager) updateMyOutProb(task *msgTask) error {
+	wei := task.msg.IVWeight
+	item, ok := node.partialView[wei.NodeId]
+	if !ok {
+		return ItemNotFound
+	}
+
+	item.probability = wei.Weight
+
 	return nil
 }
