@@ -187,6 +187,20 @@ func (node *MemManager) subAccepted(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) Resub() {
+func (node *MemManager) Resub() error {
+	if len(node.partialView) == 0 {
+		return node.RegisterMySelf()
+	}
 
+	item := node.choseRandomInPartialView()
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspResubscribe,
+		Subscribe: &pb.Subscribe{
+			SeqNo:    1,
+			Duration: int64(DefaultSubExpire),
+			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+		},
+	}
+
+	return item.send(msg)
 }

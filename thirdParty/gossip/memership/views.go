@@ -38,10 +38,6 @@ func (node *MemManager) removeFromView(item *viewNode, views map[string]*viewNod
 	updateProbability(views)
 }
 
-func (node *MemManager) unsubItem(item *viewNode) {
-
-}
-
 func (node *MemManager) getHeartBeat(task *msgTask) error {
 	beat := task.msg.HeartBeat
 	item, ok := node.inputView[beat.FromID]
@@ -51,6 +47,5 @@ func (node *MemManager) getHeartBeat(task *msgTask) error {
 		return err
 	}
 	item.updateTime = time.Now()
-	node.updateTime = time.Now()
 	return nil
 }

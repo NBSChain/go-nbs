@@ -51,7 +51,6 @@ type MemManager struct {
 	ctx         context.Context
 	close       context.CancelFunc
 	nodeID      string
-	updateTime  time.Time
 	taskQueue   chan *msgTask
 	serviceConn *nbsnet.NbsUdpConn
 	inputView   map[string]*viewNode
@@ -181,6 +180,7 @@ func (node *MemManager) msgProcessor() {
 			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
+			return
 		}
 	}
 }
@@ -212,11 +212,17 @@ func (node *MemManager) timer() {
 
 func (node *MemManager) checkItemInView(task *msgTask) error {
 	now := time.Now()
+
 	for _, item := range node.inputView {
 		if now.Sub(item.updateTime) > IsolatedTime {
 			node.removeFromView(item, node.inputView)
 		}
 	}
+
+	if len(node.inputView) == 0 {
+		return node.Resub()
+	}
+
 	return nil
 }
 
@@ -237,9 +243,6 @@ func (node *MemManager) msgCounterClean(task *msgTask) error {
 func (node *MemManager) sendHeartBeat(task *msgTask) error {
 
 	now := time.Now()
-	if now.Sub(node.updateTime) > IsolatedTime {
-		node.Resub()
-	}
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspHeartBeat,
@@ -261,7 +264,6 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 		if now.After(item.expiredTime) {
 			logger.Warning("subscribe expired:->", item.expiredTime, now)
 			node.removeFromView(item, node.partialView)
-			node.unsubItem(item) //TODO::???
 		}
 	}
 
@@ -298,9 +300,10 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 	logger.Debug("get introduced req:->", random, prob*100)
 
 	subId := task.msg.Subscribe.Addr.NetworkId
-	if _, ok := node.partialView[subId]; ok ||
-		subId == node.nodeID ||
-		random.Int64() > int64(prob*100) {
+	_, ok := node.partialView[subId]
+
+	if (ok || subId == node.nodeID || random.Int64() > int64(prob*100)) &&
+		len(node.partialView) > 0 {
 
 		item := node.choseRandomInPartialView()
 		logger.Debug("forward this sub to next node:->", item.nodeId)

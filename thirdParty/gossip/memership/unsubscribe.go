@@ -9,6 +9,13 @@ import (
 )
 
 func (node *MemManager) DestroyNode() error {
+	node.close()
+
+	if err := node.serviceConn.Close(); err != nil {
+		logger.Warning("gossip offline err:->", err)
+		return err
+	}
+
 	lenIn := len(node.inputView)
 	lenOut := len(node.partialView)
 
@@ -26,16 +33,11 @@ func (node *MemManager) DestroyNode() error {
 	node.removeMeFromOutView(lenIn, tempIn)
 	node.removeMeFromInView()
 
-	//close(node.taskQueue)
 	node.inputView = make(map[string]*viewNode)
 	node.partialView = make(map[string]*viewNode)
 	node.msgCounter = make(map[string]*msgCounter)
-	if err := node.serviceConn.Close(); err != nil {
-		logger.Warning("gossip offline err:->", err)
-		return err
-	}
 
-	node.close()
+	close(node.taskQueue)
 
 	return nil
 }
