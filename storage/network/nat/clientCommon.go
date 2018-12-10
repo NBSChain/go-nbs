@@ -198,6 +198,11 @@ func (tunnel *KATunnel) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task
 		return
 	}
 
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		task.err = err
+		task.udpConn <- nil
+	}
+
 	task.err = nil
 	task.udpConn <- conn
 }
