@@ -194,7 +194,7 @@ func (node *MemManager) msgProcessor() {
 			}
 
 			if err := handler(task); err != nil {
-				logger.Error("gossip run loop err:->", err, task.msg.MsgType, task.taskType)
+				logger.Error("gossip run loop err:->", err, task)
 			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
