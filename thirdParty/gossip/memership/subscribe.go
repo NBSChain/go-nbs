@@ -201,6 +201,6 @@ func (node *MemManager) Resub() error {
 			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
 	}
-
+	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
 	return item.send(msg)
 }
