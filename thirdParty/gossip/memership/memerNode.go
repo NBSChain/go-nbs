@@ -83,6 +83,7 @@ func NewMemberNode(peerId string) *MemManager {
 
 	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
 	node.taskRouter[int(nbsnet.GspResubscribe)] = node.firstInitSub
+	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubResult
 	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
 	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
 	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
@@ -99,6 +100,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[UpdateProbability] = node.updateProbability
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
+
 	return node
 }
 

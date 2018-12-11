@@ -204,3 +204,7 @@ func (node *MemManager) Resub() error {
 	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
 	return item.send(msg)
 }
+func (node *MemManager) reSubResult(task *msgTask) error {
+	logger.Debug("he will take our resub task:->", task.addr.String())
+	return nil
+}
