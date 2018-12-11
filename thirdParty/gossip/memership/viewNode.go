@@ -130,15 +130,15 @@ func (item *ViewNode) String() string {
 		inAddr = item.inAddr.String()
 	}
 	if item.outAddr != nil {
-		inAddr = item.outAddr.String()
+		outAddr = item.outAddr.String()
 	}
 
 	return fmt.Sprintf("------------%s------------\n"+
 		"|probability:%20.2f|\n"+
-		"|inAddr:20%s|\n"+
-		"|updateTime:20%s|\n"+
-		"|expiredTime:20%s|\n"+
-		"|outAddr:20%s|\n"+
+		"|inAddr:%20s|\n"+
+		"|updateTime:%20s|\n"+
+		"|expiredTime:%20s|\n"+
+		"|outAddr:%20s|\n"+
 		"------------------------\n",
 		item.nodeId,
 		item.probability,
