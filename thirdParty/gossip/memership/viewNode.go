@@ -133,13 +133,13 @@ func (item *ViewNode) String() string {
 		outAddr = item.outAddr.String()
 	}
 
-	return fmt.Sprintf("------------%s------------\n"+
+	return fmt.Sprintf("------------------------%s------------------------\n"+
 		"|probability:%20.2f|\n"+
 		"|inAddr:%20s|\n"+
 		"|updateTime:%20s|\n"+
 		"|expiredTime:%20s|\n"+
 		"|outAddr:%20s|\n"+
-		"------------------------\n",
+		"------------------------------------------------------------\n",
 		item.nodeId,
 		item.probability,
 		inAddr,

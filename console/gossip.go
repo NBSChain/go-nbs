@@ -91,8 +91,8 @@ func gossipShowView(cmd *cobra.Command, args []string) {
 		logger.Info("get view content err:->", err)
 	}
 
-	fmt.Println("=============in view==========")
+	fmt.Println("===========================================in========================================")
 	fmt.Println(response.InputView)
-	fmt.Println("=============out view==========")
+	fmt.Println("===========================================out========================================")
 	fmt.Println(response.OutputView)
 }

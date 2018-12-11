@@ -22,8 +22,17 @@ type NbsUdpAddr struct {
 }
 
 func (addr *NbsUdpAddr) String() string {
-	return fmt.Sprintf("networkId=%s canServer=%t NatServer=%s NatIp=%s"+
-		" NatPort=%d PubIp=%s PubPort=%d PriIp=%s PriPort=%d",
+	return fmt.Sprintf("************Nbs addr*****************\n"+
+		"\tnetworkId:%20s\n"+
+		"\tcanServer:%20t\n"+
+		"\tNatServer:%20s\n"+
+		"\tNatIp:%20s\n"+
+		"\tNatPort:%20d\n "+
+		"\tPubIp:%20s\n"+
+		"\tPubPort:%20d\n"+
+		"\tPriIp:%20s\n"+
+		"\tPriPort:%20d\n"+
+		"**************************************\n",
 		addr.NetworkId, addr.CanServe, addr.NatServer,
 		addr.NatIp, addr.NatPort, addr.PubIp,
 		addr.PubPort, addr.PriIp, addr.PriPort)
