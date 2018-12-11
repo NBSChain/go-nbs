@@ -56,8 +56,8 @@ type MemManager struct {
 	subNo       int
 	taskQueue   chan *msgTask
 	serviceConn *nbsnet.NbsUdpConn
-	inputView   map[string]*viewNode
-	partialView map[string]*viewNode
+	InputView   map[string]*ViewNode
+	PartialView map[string]*ViewNode
 	taskRouter  map[int]worker
 	msgCounter  map[string]*msgCounter
 }
@@ -75,8 +75,8 @@ func NewMemberNode(peerId string) *MemManager {
 		ctx:         ctx,
 		close:       cal,
 		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
-		inputView:   make(map[string]*viewNode),
-		partialView: make(map[string]*viewNode),
+		InputView:   make(map[string]*ViewNode),
+		PartialView: make(map[string]*ViewNode),
 		taskRouter:  make(map[int]worker),
 		msgCounter:  make(map[string]*msgCounter),
 	}
@@ -163,6 +163,13 @@ func (node *MemManager) receivingCmd() {
 			msg:  message,
 			addr: peerAddr,
 		}
+
+		select {
+		case <-node.ctx.Done():
+			logger.Debug("mem manager finished")
+			break
+		default:
+		}
 	}
 }
 
@@ -216,6 +223,7 @@ func (node *MemManager) timer() {
 			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
+			return
 		}
 	}
 }
@@ -223,13 +231,13 @@ func (node *MemManager) timer() {
 func (node *MemManager) checkItemInView(task *msgTask) error {
 	now := time.Now()
 
-	for _, item := range node.inputView {
+	for _, item := range node.InputView {
 		if now.Sub(item.updateTime) > IsolatedTime {
-			node.removeFromView(item, node.inputView)
+			node.removeFromView(item, node.InputView)
 		}
 	}
 
-	if len(node.inputView) == 0 {
+	if len(node.InputView) == 0 {
 		return node.Resub()
 	}
 
@@ -262,18 +270,18 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 	}
 
 	data, _ := proto.Marshal(msg)
-	for _, item := range node.partialView {
+	for _, item := range node.PartialView {
 		if !item.needUpdate() {
 			continue
 		}
 		if err := item.sendData(data); err != nil {
 			logger.Warning("send data failed:->", err)
-			node.removeFromView(item, node.partialView)
+			node.removeFromView(item, node.PartialView)
 		}
 
 		if now.After(item.expiredTime) {
 			logger.Warning("subscribe expired:->", item.expiredTime, now)
-			node.removeFromView(item, node.partialView)
+			node.removeFromView(item, node.PartialView)
 		}
 	}
 
@@ -305,15 +313,15 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 		return err
 	}
 
-	prob := float64(1) / float64(1+len(node.partialView))
+	prob := float64(1) / float64(1+len(node.PartialView))
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
 	logger.Debug("get introduced req:->", random, prob*100)
 
 	subId := task.msg.Subscribe.Addr.NetworkId
-	_, ok := node.partialView[subId]
+	_, ok := node.PartialView[subId]
 
 	if (ok || subId == node.nodeID || random.Int64() > int64(prob*100)) &&
-		len(node.partialView) > 0 {
+		len(node.PartialView) > 0 {
 
 		item := node.choseRandomInPartialView()
 		logger.Debug("forward this sub to next node:->", item.nodeId)
