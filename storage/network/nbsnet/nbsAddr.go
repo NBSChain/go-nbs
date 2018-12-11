@@ -1,6 +1,7 @@
 package nbsnet
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"net"
@@ -18,6 +19,14 @@ type NbsUdpAddr struct {
 	PubPort   int32
 	PriIp     string
 	PriPort   int32
+}
+
+func (addr *NbsUdpAddr) String() string {
+	return fmt.Sprintf("networkId=%s canServer=%t NatServer=%s NatIp=%s"+
+		" NatPort=%d PubIp=%s PubPort=%d PriIp=%s PriPort=%d",
+		addr.NetworkId, addr.CanServe, addr.NatServer,
+		addr.NatIp, addr.NatPort, addr.PubIp,
+		addr.PubPort, addr.PriIp, addr.PriPort)
 }
 
 func CanServe(natType net_pb.NatType) bool {

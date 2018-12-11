@@ -1,9 +1,13 @@
 package gossip
 
+import "github.com/NBSChain/go-nbs/thirdParty/gossip/memership"
+
 type BasicProtocol interface {
 	Online(peerId string) error
 
 	Offline() error
+
+	IsOnline() bool
 
 	Publish(channel string, message []byte) error
 
@@ -14,4 +18,8 @@ type BasicProtocol interface {
 	AllPeers(channel string, depth int) ([]string, []string)
 
 	AllMyTopics() []string
+
+	ShowInputViews() ([]*memership.ViewNode, error)
+
+	ShowOutputViews() ([]*memership.ViewNode, error)
 }

@@ -1,6 +1,7 @@
 package memership
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
@@ -12,7 +13,7 @@ import (
 
 //TODO:: same msg forward times
 
-type viewNode struct {
+type ViewNode struct {
 	nodeId      string
 	probability float64
 	inAddr      *net.UDPAddr
@@ -23,7 +24,7 @@ type viewNode struct {
 	manager     *MemManager
 }
 
-func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*viewNode, error) {
+func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*ViewNode, error) {
 
 	addr := nbsnet.ConvertFromGossipAddr(host)
 	port := utils.GetConfig().GossipCtrlPort
@@ -34,7 +35,7 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*vie
 		return nil, err
 	}
 
-	item := &viewNode{
+	item := &ViewNode{
 		nodeId:      host.NetworkId,
 		outConn:     conn,
 		outAddr:     addr,
@@ -43,32 +44,32 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*vie
 		expiredTime: time.Now().Add(time.Duration(duration)),
 	}
 
-	node.partialView[item.nodeId] = item
-	item.probability = 1 / float64(len(node.partialView))
+	node.PartialView[item.nodeId] = item
+	item.probability = 1 / float64(len(node.PartialView))
 	go item.waitingWork()
 
 	return item, nil
 }
 
-func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *viewNode {
+func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNode {
 
-	view := &viewNode{
+	view := &ViewNode{
 		nodeId:     nodeId,
 		inAddr:     addr,
 		manager:    node,
 		updateTime: time.Now(),
 	}
 
-	node.inputView[nodeId] = view
-	view.probability = 1 / float64(len(node.inputView))
+	node.InputView[nodeId] = view
+	view.probability = 1 / float64(len(node.InputView))
 	return view
 }
 
-func (item *viewNode) needUpdate() bool {
+func (item *ViewNode) needUpdate() bool {
 	return time.Now().Sub(item.updateTime) >= MemShipHeartBeat
 }
 
-func (item *viewNode) sendData(data []byte) error {
+func (item *ViewNode) sendData(data []byte) error {
 
 	if _, err := item.outConn.Write(data); err != nil {
 		return err
@@ -79,7 +80,7 @@ func (item *viewNode) sendData(data []byte) error {
 	return nil
 }
 
-func (item *viewNode) send(pb proto.Message) error {
+func (item *ViewNode) send(pb proto.Message) error {
 
 	data, err := proto.Marshal(pb)
 
@@ -96,7 +97,7 @@ func (item *viewNode) send(pb proto.Message) error {
 	return nil
 }
 
-func (item *viewNode) waitingWork() {
+func (item *ViewNode) waitingWork() {
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
@@ -118,4 +119,24 @@ func (item *viewNode) waitingWork() {
 		}
 		item.manager.taskQueue <- task
 	}
+}
+
+func (item *ViewNode) String() string {
+
+	format := utils.GetConfig().SysTimeFormat
+
+	return fmt.Sprintf("------------%s------------\n"+
+		"|probability:%20.2f|\n"+
+		"|inAddr:20%s|\n"+
+		"|updateTime:20%s|\n"+
+		"|expiredTime:20%s|\n"+
+		"|outAddr:20%s|\n"+
+		"------------------------\n",
+		item.nodeId,
+		item.probability,
+		item.inAddr.String(),
+		item.updateTime.Format(format),
+		item.expiredTime.Format(format),
+		item.outAddr.String(),
+	)
 }

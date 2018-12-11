@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/memership"
 	"github.com/NBSChain/go-nbs/utils"
@@ -8,9 +9,10 @@ import (
 )
 
 var (
-	instance *nbsGossip
-	once     sync.Once
-	logger   = utils.GetLogInstance()
+	instance        *nbsGossip
+	once            sync.Once
+	logger          = utils.GetLogInstance()
+	ServiceNotValid = fmt.Errorf("gossip service is not on right now")
 )
 
 type nbsGossip struct {
@@ -70,10 +72,22 @@ func (manager *nbsGossip) Unsubscribe(channel string) error {
 }
 
 func (manager *nbsGossip) Offline() error {
-	return manager.memberManager.DestroyNode()
+
+	if manager.memberManager == nil {
+		return fmt.Errorf("gossip is done already")
+	}
+
+	if err := manager.memberManager.DestroyNode(); err != nil {
+		return err
+	}
+	manager.memberManager = nil
+	return nil
 }
 
 func (manager *nbsGossip) Online(peerId string) error {
+	if manager.memberManager != nil {
+		return fmt.Errorf("gossip is already running")
+	}
 
 	manager.peerId = peerId
 
@@ -86,4 +100,32 @@ func (manager *nbsGossip) Online(peerId string) error {
 	logger.Info("gossip service start up......")
 
 	return nil
+}
+
+func (manager *nbsGossip) IsOnline() bool {
+	return manager.memberManager != nil
+}
+
+func (manager *nbsGossip) ShowInputViews() ([]*memership.ViewNode, error) {
+
+	if manager.memberManager == nil {
+		return nil, ServiceNotValid
+	}
+
+	views := make([]*memership.ViewNode, len(manager.memberManager.InputView))
+	for _, item := range manager.memberManager.InputView {
+		views = append(views, item)
+	}
+	return views, nil
+}
+
+func (manager *nbsGossip) ShowOutputViews() ([]*memership.ViewNode, error) {
+	if manager.memberManager == nil {
+		return nil, ServiceNotValid
+	}
+	views := make([]*memership.ViewNode, len(manager.memberManager.PartialView))
+	for _, item := range manager.memberManager.PartialView {
+		views = append(views, item)
+	}
+	return views, nil
 }

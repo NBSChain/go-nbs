@@ -9,6 +9,8 @@ import (
 func init() {
 	rootCmd.AddCommand(gossipCmd)
 	gossipCmd.AddCommand(gossipStartCmd)
+	gossipCmd.AddCommand(gossipStopCmd)
+	gossipCmd.AddCommand(gossipViewCmd)
 }
 
 var gossipCmd = &cobra.Command{
@@ -24,6 +26,19 @@ var gossipStartCmd = &cobra.Command{
 	Short: "start the gossip service.",
 	Long:  `start the gossip service.`,
 	Run:   gossipStart,
+}
+var gossipStopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "stop the gossip service.",
+	Long:  `stop the gossip service.`,
+	Run:   gossipStop,
+}
+
+var gossipViewCmd = &cobra.Command{
+	Use:   "showViews",
+	Short: "show the nodes in partial view and input view.",
+	Long:  `show the nodes in partial view and input view.`,
+	Run:   gossipShowView,
 }
 
 func gossipAction(cmd *cobra.Command, args []string) {
@@ -41,6 +56,37 @@ func gossipStart(cmd *cobra.Command, args []string) {
 	}
 
 	response, err := client.StartService(conn.ctx, request)
+
+	logger.Info(response, err)
+}
+
+func gossipStop(cmd *cobra.Command, args []string) {
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewGossipTaskClient(conn.c)
+
+	request := &pb.StopRequest{
+		Cmd: "", //TODO:: Need to check password?
+	}
+
+	response, err := client.StopService(conn.ctx, request)
+
+	logger.Info(response, err)
+}
+
+func gossipShowView(cmd *cobra.Command, args []string) {
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewGossipTaskClient(conn.c)
+
+	request := &pb.ShowGossipView{
+		Cmd: "", //TODO:: Need to check password?
+	}
+
+	response, err := client.ShowViews(conn.ctx, request)
 
 	logger.Info(response, err)
 }

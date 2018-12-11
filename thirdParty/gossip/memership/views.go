@@ -11,12 +11,12 @@ import (
 )
 
 //TODO:: make sure this random is ok
-func (node *MemManager) choseRandomInPartialView() *viewNode {
-	count := len(node.partialView)
+func (node *MemManager) choseRandomInPartialView() *ViewNode {
+	count := len(node.PartialView)
 	j := 0
 	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
-	logger.Debug("chose random in partialView :->", random)
-	for _, item := range node.partialView {
+	logger.Debug("chose random in PartialView :->", random)
+	for _, item := range node.PartialView {
 		if j == int(random.Int64()) {
 			return item
 		} else {
@@ -26,7 +26,7 @@ func (node *MemManager) choseRandomInPartialView() *viewNode {
 	return nil
 }
 
-func (node *MemManager) removeFromView(item *viewNode, views map[string]*viewNode) {
+func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
 
 	delete(views, item.nodeId)
 
@@ -40,7 +40,7 @@ func (node *MemManager) removeFromView(item *viewNode, views map[string]*viewNod
 
 func (node *MemManager) getHeartBeat(task *msgTask) error {
 	beat := task.msg.HeartBeat
-	item, ok := node.inputView[beat.FromID]
+	item, ok := node.InputView[beat.FromID]
 	if !ok {
 		err := fmt.Errorf("no such input view item:->%s", beat.FromID)
 		logger.Warning(err)
@@ -53,7 +53,7 @@ func (node *MemManager) getHeartBeat(task *msgTask) error {
 func (node *MemManager) updateMyInProb(task *msgTask) error {
 
 	wei := task.msg.OVWeight
-	item, ok := node.inputView[wei.NodeId]
+	item, ok := node.InputView[wei.NodeId]
 	if !ok {
 		return ItemNotFound
 	}
@@ -64,7 +64,7 @@ func (node *MemManager) updateMyInProb(task *msgTask) error {
 
 func (node *MemManager) updateMyOutProb(task *msgTask) error {
 	wei := task.msg.IVWeight
-	item, ok := node.partialView[wei.NodeId]
+	item, ok := node.PartialView[wei.NodeId]
 	if !ok {
 		return ItemNotFound
 	}
@@ -74,7 +74,7 @@ func (node *MemManager) updateMyOutProb(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) normalizeWeight(views map[string]*viewNode) {
+func (node *MemManager) normalizeWeight(views map[string]*ViewNode) {
 	var summerOut float64
 	for _, item := range views {
 		summerOut += item.probability
@@ -87,9 +87,9 @@ func (node *MemManager) normalizeWeight(views map[string]*viewNode) {
 
 func (node *MemManager) updateProbability(task *msgTask) error {
 
-	node.normalizeWeight(node.partialView)
+	node.normalizeWeight(node.PartialView)
 
-	for _, item := range node.partialView {
+	for _, item := range node.PartialView {
 		msg := &pb.Gossip{
 			MsgType: nbsnet.GspUpdateOVWei,
 			OVWeight: &pb.WeightUpdate{
@@ -103,9 +103,9 @@ func (node *MemManager) updateProbability(task *msgTask) error {
 		}
 	}
 
-	node.normalizeWeight(node.inputView)
+	node.normalizeWeight(node.InputView)
 
-	for _, item := range node.inputView {
+	for _, item := range node.InputView {
 		msg := &pb.Gossip{
 			MsgType: nbsnet.GspUpdateIVWei,
 			IVWeight: &pb.WeightUpdate{

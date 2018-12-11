@@ -14,7 +14,7 @@ import (
 
 func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
-	if len(node.partialView) == 0 {
+	if len(node.PartialView) == 0 {
 		logger.Info("no partial view node to broadcast ")
 		return 0
 	}
@@ -27,8 +27,8 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	data, _ := proto.Marshal(msg)
 
 	forwardTime := 0
-	logger.Debug("broad cast sub to all partial views:->", len(node.partialView))
-	for _, item := range node.partialView {
+	logger.Debug("broad cast sub to all partial views:->", len(node.PartialView))
+	for _, item := range node.PartialView {
 		if err := item.sendData(data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
@@ -135,10 +135,10 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 	if err != nil {
 		return err
 	}
-	node.normalizeWeight(node.partialView)
+	node.normalizeWeight(node.PartialView)
 
 	var forwardTime int
-	for _, item := range node.partialView {
+	for _, item := range node.PartialView {
 
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
 		logger.Debug("vote apply pro and itemPro:->", pro, item.probability)
@@ -164,7 +164,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 	logger.Debug("accept the subscriber:->", sub)
 	nodeId := sub.Addr.NetworkId
 
-	_, ok := node.partialView[nodeId]
+	_, ok := node.PartialView[nodeId]
 	if ok {
 		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
 	}
@@ -190,7 +190,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 func (node *MemManager) voteAck(task *msgTask) error {
 	nodeId := task.msg.VoteAck.FromId
-	if _, ok := node.inputView[nodeId]; !ok {
+	if _, ok := node.InputView[nodeId]; !ok {
 		logger.Warning("no such node in input view:->", task.msg)
 	}
 	return nil

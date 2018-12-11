@@ -140,7 +140,7 @@ func (node *MemManager) firstInitSub(task *msgTask) error {
 		return nil
 	}
 
-	counter := 2 * len(node.partialView)
+	counter := 2 * len(node.PartialView)
 	return node.asContactProxy(subReq, counter)
 }
 
@@ -149,7 +149,7 @@ func (node *MemManager) subToContract(task *msgTask) error {
 	result := task.msg.VoteResult
 	nodeId := result.Addr.NetworkId
 
-	item, ok := node.inputView[nodeId]
+	item, ok := node.InputView[nodeId]
 	if ok {
 		logger.Info("duplicated sub confirm")
 		item.expiredTime = time.Now().Add(time.Duration(result.Duration))
@@ -178,7 +178,7 @@ func (node *MemManager) subToContract(task *msgTask) error {
 
 func (node *MemManager) subAccepted(task *msgTask) error {
 	ack := task.msg.SubConfirm
-	_, ok := node.inputView[ack.FromId]
+	_, ok := node.InputView[ack.FromId]
 	if ok {
 		return fmt.Errorf("duplicated sub accepted")
 	}
@@ -188,7 +188,7 @@ func (node *MemManager) subAccepted(task *msgTask) error {
 }
 
 func (node *MemManager) Resub() error {
-	if len(node.partialView) == 0 {
+	if len(node.PartialView) == 0 {
 		return node.RegisterMySelf()
 	}
 

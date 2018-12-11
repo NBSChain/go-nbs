@@ -100,27 +100,202 @@ func (m *StartResponse) GetResult() string {
 	return ""
 }
 
+type StopRequest struct {
+	Cmd                  string   `protobuf:"bytes,1,opt,name=cmd,proto3" json:"cmd,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *StopRequest) Reset()         { *m = StopRequest{} }
+func (m *StopRequest) String() string { return proto.CompactTextString(m) }
+func (*StopRequest) ProtoMessage()    {}
+func (*StopRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2ab5a21919ebadf9, []int{2}
+}
+
+func (m *StopRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StopRequest.Unmarshal(m, b)
+}
+func (m *StopRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StopRequest.Marshal(b, m, deterministic)
+}
+func (m *StopRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StopRequest.Merge(m, src)
+}
+func (m *StopRequest) XXX_Size() int {
+	return xxx_messageInfo_StopRequest.Size(m)
+}
+func (m *StopRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StopRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StopRequest proto.InternalMessageInfo
+
+func (m *StopRequest) GetCmd() string {
+	if m != nil {
+		return m.Cmd
+	}
+	return ""
+}
+
+type StopResponse struct {
+	Result               string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *StopResponse) Reset()         { *m = StopResponse{} }
+func (m *StopResponse) String() string { return proto.CompactTextString(m) }
+func (*StopResponse) ProtoMessage()    {}
+func (*StopResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2ab5a21919ebadf9, []int{3}
+}
+
+func (m *StopResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StopResponse.Unmarshal(m, b)
+}
+func (m *StopResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StopResponse.Marshal(b, m, deterministic)
+}
+func (m *StopResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StopResponse.Merge(m, src)
+}
+func (m *StopResponse) XXX_Size() int {
+	return xxx_messageInfo_StopResponse.Size(m)
+}
+func (m *StopResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_StopResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StopResponse proto.InternalMessageInfo
+
+func (m *StopResponse) GetResult() string {
+	if m != nil {
+		return m.Result
+	}
+	return ""
+}
+
+type ShowGossipView struct {
+	Cmd                  string   `protobuf:"bytes,1,opt,name=cmd,proto3" json:"cmd,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ShowGossipView) Reset()         { *m = ShowGossipView{} }
+func (m *ShowGossipView) String() string { return proto.CompactTextString(m) }
+func (*ShowGossipView) ProtoMessage()    {}
+func (*ShowGossipView) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2ab5a21919ebadf9, []int{4}
+}
+
+func (m *ShowGossipView) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ShowGossipView.Unmarshal(m, b)
+}
+func (m *ShowGossipView) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ShowGossipView.Marshal(b, m, deterministic)
+}
+func (m *ShowGossipView) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ShowGossipView.Merge(m, src)
+}
+func (m *ShowGossipView) XXX_Size() int {
+	return xxx_messageInfo_ShowGossipView.Size(m)
+}
+func (m *ShowGossipView) XXX_DiscardUnknown() {
+	xxx_messageInfo_ShowGossipView.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ShowGossipView proto.InternalMessageInfo
+
+func (m *ShowGossipView) GetCmd() string {
+	if m != nil {
+		return m.Cmd
+	}
+	return ""
+}
+
+type AllNodeInView struct {
+	InputView            []string `protobuf:"bytes,1,rep,name=inputView,proto3" json:"inputView,omitempty"`
+	OutputView           []string `protobuf:"bytes,2,rep,name=outputView,proto3" json:"outputView,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *AllNodeInView) Reset()         { *m = AllNodeInView{} }
+func (m *AllNodeInView) String() string { return proto.CompactTextString(m) }
+func (*AllNodeInView) ProtoMessage()    {}
+func (*AllNodeInView) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2ab5a21919ebadf9, []int{5}
+}
+
+func (m *AllNodeInView) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AllNodeInView.Unmarshal(m, b)
+}
+func (m *AllNodeInView) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AllNodeInView.Marshal(b, m, deterministic)
+}
+func (m *AllNodeInView) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AllNodeInView.Merge(m, src)
+}
+func (m *AllNodeInView) XXX_Size() int {
+	return xxx_messageInfo_AllNodeInView.Size(m)
+}
+func (m *AllNodeInView) XXX_DiscardUnknown() {
+	xxx_messageInfo_AllNodeInView.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AllNodeInView proto.InternalMessageInfo
+
+func (m *AllNodeInView) GetInputView() []string {
+	if m != nil {
+		return m.InputView
+	}
+	return nil
+}
+
+func (m *AllNodeInView) GetOutputView() []string {
+	if m != nil {
+		return m.OutputView
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*StartRequest)(nil), "pb.StartRequest")
 	proto.RegisterType((*StartResponse)(nil), "pb.StartResponse")
+	proto.RegisterType((*StopRequest)(nil), "pb.StopRequest")
+	proto.RegisterType((*StopResponse)(nil), "pb.StopResponse")
+	proto.RegisterType((*ShowGossipView)(nil), "pb.ShowGossipView")
+	proto.RegisterType((*AllNodeInView)(nil), "pb.AllNodeInView")
 }
 
 func init() { proto.RegisterFile("rpcGossipMessage.proto", fileDescriptor_2ab5a21919ebadf9) }
 
 var fileDescriptor_2ab5a21919ebadf9 = []byte{
-	// 185 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2b, 0x2a, 0x48, 0x76,
-	0xcf, 0x2f, 0x2e, 0xce, 0x2c, 0xf0, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0xd5, 0x2b, 0x28, 0xca,
-	0x2f, 0xc9, 0x17, 0x62, 0x2a, 0x48, 0x52, 0x52, 0xe0, 0xe2, 0x09, 0x2e, 0x49, 0x2c, 0x2a, 0x09,
-	0x4a, 0x2d, 0x2c, 0x4d, 0x2d, 0x2e, 0x11, 0x12, 0xe0, 0x62, 0x4e, 0xce, 0x4d, 0x91, 0x60, 0x54,
-	0x60, 0xd4, 0xe0, 0x0c, 0x02, 0x31, 0x95, 0xd4, 0xb9, 0x78, 0xa1, 0x2a, 0x8a, 0x0b, 0xf2, 0xf3,
-	0x8a, 0x53, 0x85, 0xc4, 0xb8, 0xd8, 0x8a, 0x52, 0x8b, 0x4b, 0x73, 0x4a, 0xa0, 0xaa, 0xa0, 0x3c,
-	0x23, 0x67, 0x2e, 0x2e, 0x88, 0x2d, 0x21, 0x89, 0xc5, 0xd9, 0x42, 0xa6, 0x5c, 0x3c, 0xc5, 0x20,
-	0x6d, 0xc1, 0xa9, 0x45, 0x65, 0x99, 0xc9, 0xa9, 0x42, 0x02, 0x7a, 0x05, 0x49, 0x7a, 0xc8, 0x56,
-	0x49, 0x09, 0x22, 0x89, 0x40, 0x8c, 0x56, 0x62, 0x70, 0xd2, 0xe0, 0x12, 0x4a, 0xce, 0xcf, 0xd5,
-	0xcb, 0x4b, 0x2a, 0xd6, 0x4b, 0xce, 0xcf, 0x2b, 0xce, 0xcf, 0x49, 0xd5, 0x2b, 0x48, 0x72, 0x12,
-	0x08, 0x42, 0xf3, 0x41, 0x00, 0x63, 0x12, 0x1b, 0xd8, 0x13, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff,
-	0xff, 0xcd, 0x39, 0xc7, 0x6b, 0xde, 0x00, 0x00, 0x00,
+	// 296 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x91, 0xcf, 0x4e, 0xc2, 0x40,
+	0x10, 0xc6, 0x29, 0x24, 0x24, 0x1d, 0x40, 0xeb, 0x1e, 0x08, 0x21, 0x46, 0xc9, 0x1e, 0x94, 0xd3,
+	0x1e, 0x50, 0x1f, 0x40, 0x2e, 0xc6, 0x03, 0xc6, 0xb4, 0xc6, 0x7b, 0x5b, 0x26, 0xd2, 0x58, 0x3a,
+	0x6b, 0x67, 0x6b, 0x9f, 0xca, 0x77, 0x34, 0xdb, 0x16, 0x28, 0x46, 0xe3, 0x6d, 0xf7, 0x9b, 0xdf,
+	0xfc, 0xf9, 0x66, 0x60, 0x9c, 0xeb, 0xf8, 0x81, 0x98, 0x13, 0xbd, 0x42, 0xe6, 0xf0, 0x0d, 0x95,
+	0xce, 0xc9, 0x90, 0xe8, 0xea, 0x48, 0xce, 0x60, 0x18, 0x98, 0x30, 0x37, 0x3e, 0x7e, 0x14, 0xc8,
+	0x46, 0x78, 0xd0, 0x8b, 0xb7, 0xeb, 0x89, 0x33, 0x73, 0xe6, 0xae, 0x6f, 0x9f, 0xf2, 0x1a, 0x46,
+	0x0d, 0xc1, 0x9a, 0x32, 0x46, 0x31, 0x86, 0x7e, 0x8e, 0x5c, 0xa4, 0xa6, 0xa1, 0x9a, 0x9f, 0xbc,
+	0x84, 0x41, 0x60, 0x48, 0xff, 0x5d, 0xe9, 0xca, 0xf6, 0xb2, 0xc0, 0x3f, 0x85, 0x24, 0x9c, 0x04,
+	0x1b, 0x2a, 0xeb, 0x91, 0x5f, 0x13, 0x2c, 0x7f, 0xa9, 0xb5, 0x82, 0xd1, 0x7d, 0x9a, 0x3e, 0xd1,
+	0x1a, 0x1f, 0xb3, 0x0a, 0x39, 0x07, 0x37, 0xc9, 0x74, 0x61, 0xec, 0x67, 0xe2, 0xcc, 0x7a, 0x73,
+	0xd7, 0x3f, 0x08, 0xe2, 0x02, 0x80, 0x0a, 0xb3, 0x0b, 0x77, 0xab, 0x70, 0x4b, 0x59, 0x7c, 0x39,
+	0x00, 0x75, 0xbf, 0x97, 0x90, 0xdf, 0xc5, 0x1d, 0x0c, 0xd9, 0x7a, 0x0e, 0x30, 0xff, 0x4c, 0x62,
+	0x14, 0x9e, 0xd2, 0x91, 0x6a, 0xef, 0x69, 0x7a, 0xd6, 0x52, 0x6a, 0x3b, 0xb2, 0x23, 0x16, 0x30,
+	0x60, 0x43, 0x7a, 0x97, 0x75, 0x5a, 0x33, 0xfb, 0x95, 0x4c, 0xbd, 0x83, 0xb0, 0xcf, 0xb9, 0x05,
+	0x97, 0x37, 0x54, 0xda, 0x29, 0x58, 0x88, 0x0a, 0x38, 0xf2, 0x5e, 0x77, 0x3a, 0xf2, 0x2a, 0x3b,
+	0xcb, 0x39, 0x88, 0x98, 0xb6, 0x2a, 0x8b, 0x58, 0xc5, 0x94, 0x31, 0xa5, 0xa8, 0x74, 0xb4, 0xf4,
+	0xfc, 0x1f, 0x87, 0x7e, 0x76, 0xa2, 0x7e, 0x75, 0xeb, 0x9b, 0xef, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0x1f, 0x2c, 0x73, 0x12, 0x05, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -136,6 +311,8 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type GossipTaskClient interface {
 	StartService(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
+	StopService(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
+	ShowViews(ctx context.Context, in *ShowGossipView, opts ...grpc.CallOption) (*AllNodeInView, error)
 }
 
 type gossipTaskClient struct {
@@ -155,9 +332,29 @@ func (c *gossipTaskClient) StartService(ctx context.Context, in *StartRequest, o
 	return out, nil
 }
 
+func (c *gossipTaskClient) StopService(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
+	out := new(StopResponse)
+	err := c.cc.Invoke(ctx, "/pb.GossipTask/stopService", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gossipTaskClient) ShowViews(ctx context.Context, in *ShowGossipView, opts ...grpc.CallOption) (*AllNodeInView, error) {
+	out := new(AllNodeInView)
+	err := c.cc.Invoke(ctx, "/pb.GossipTask/showViews", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GossipTaskServer is the server API for GossipTask service.
 type GossipTaskServer interface {
 	StartService(context.Context, *StartRequest) (*StartResponse, error)
+	StopService(context.Context, *StopRequest) (*StopResponse, error)
+	ShowViews(context.Context, *ShowGossipView) (*AllNodeInView, error)
 }
 
 func RegisterGossipTaskServer(s *grpc.Server, srv GossipTaskServer) {
@@ -182,6 +379,42 @@ func _GossipTask_StartService_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GossipTask_StopService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GossipTaskServer).StopService(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.GossipTask/StopService",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GossipTaskServer).StopService(ctx, req.(*StopRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GossipTask_ShowViews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShowGossipView)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GossipTaskServer).ShowViews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.GossipTask/ShowViews",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GossipTaskServer).ShowViews(ctx, req.(*ShowGossipView))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _GossipTask_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.GossipTask",
 	HandlerType: (*GossipTaskServer)(nil),
@@ -189,6 +422,14 @@ var _GossipTask_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "startService",
 			Handler:    _GossipTask_StartService_Handler,
+		},
+		{
+			MethodName: "stopService",
+			Handler:    _GossipTask_StopService_Handler,
+		},
+		{
+			MethodName: "showViews",
+			Handler:    _GossipTask_ShowViews_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

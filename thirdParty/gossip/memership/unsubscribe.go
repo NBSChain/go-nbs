@@ -9,23 +9,16 @@ import (
 )
 
 func (node *MemManager) DestroyNode() error {
-	node.close()
+	lenIn := len(node.InputView)
+	lenOut := len(node.PartialView)
 
-	if err := node.serviceConn.Close(); err != nil {
-		logger.Warning("gossip offline err:->", err)
-		return err
-	}
-
-	lenIn := len(node.inputView)
-	lenOut := len(node.partialView)
-
-	tempOut := make([]string, len(node.partialView))
-	for nodeId := range node.partialView {
+	tempOut := make([]string, len(node.PartialView))
+	for nodeId := range node.PartialView {
 		tempOut = append(tempOut, nodeId)
 	}
 
-	tempIn := make([]string, len(node.inputView))
-	for nodeId := range node.inputView {
+	tempIn := make([]string, len(node.InputView))
+	for nodeId := range node.InputView {
 		tempIn = append(tempIn, nodeId)
 	}
 
@@ -33,9 +26,12 @@ func (node *MemManager) DestroyNode() error {
 	node.removeMeFromOutView(lenIn, tempIn)
 	node.removeMeFromInView()
 
-	node.inputView = make(map[string]*viewNode)
-	node.partialView = make(map[string]*viewNode)
-	node.msgCounter = make(map[string]*msgCounter)
+	node.close()
+
+	if err := node.serviceConn.Close(); err != nil {
+		logger.Warning("gossip offline err:->", err)
+		return err
+	}
 
 	close(node.taskQueue)
 
@@ -47,7 +43,7 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 	for i := lenIn - utils.AdditionalCopies - 1 - 1; i >= 0 && lenOut > 0; i-- {
 		j := i % lenOut
 		outId := tempOut[j]
-		outItem := node.partialView[outId]
+		outItem := node.PartialView[outId]
 
 		msg := &pb.Gossip{
 			MsgType: nbsnet.GspReplaceArc,
@@ -59,7 +55,7 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 		}
 
 		inId := tempIn[i]
-		inItem := node.inputView[inId]
+		inItem := node.InputView[inId]
 
 		data, _ := proto.Marshal(msg)
 		if _, err := node.serviceConn.WriteToUDP(data, inItem.inAddr); err != nil {
@@ -72,14 +68,14 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 func (node *MemManager) replaceForUnsubPeer(task *msgTask) error {
 	replace := task.msg.ArcReplace
 
-	item, ok := node.partialView[replace.FromId]
+	item, ok := node.PartialView[replace.FromId]
 	if !ok {
 		return ItemNotFound
 	}
 
-	node.removeFromView(item, node.partialView)
+	node.removeFromView(item, node.PartialView)
 
-	if _, ok := node.partialView[replace.ToId]; ok {
+	if _, ok := node.PartialView[replace.ToId]; ok {
 		return fmt.Errorf("no need to make a new item, I have got it")
 	}
 
@@ -108,7 +104,7 @@ func (node *MemManager) acceptAsReplacedPeer(task *msgTask) error {
 	ack := task.msg.ReplaceAck
 	nodeId := ack.Addr.NetworkId
 
-	_, ok := node.inputView[nodeId]
+	_, ok := node.InputView[nodeId]
 	if !ok {
 		return fmt.Errorf("no need to replace, I have got it")
 	}
@@ -133,7 +129,7 @@ func (node *MemManager) removeMeFromOutView(lenIn int, tempIn []string) {
 	for i := lenIn - utils.AdditionalCopies - 1; i < lenIn && i >= 0; i++ {
 
 		inId := tempIn[i]
-		inItem := node.inputView[inId]
+		inItem := node.InputView[inId]
 
 		if _, err := node.serviceConn.WriteToUDP(data, inItem.inAddr); err != nil {
 			logger.Warning("")
@@ -150,7 +146,7 @@ func (node *MemManager) removeMeFromInView() {
 		},
 	}
 
-	for _, item := range node.partialView {
+	for _, item := range node.PartialView {
 		if err := item.send(msg); err != nil {
 			logger.Warning("notify remove me err:->", err)
 		}
@@ -161,12 +157,12 @@ func (node *MemManager) removeUnsubPeerFromOut(task *msgTask) error {
 
 	rm := task.msg.ArcDrop
 	nodeId := rm.NodeId
-	item, ok := node.partialView[nodeId]
+	item, ok := node.PartialView[nodeId]
 	if !ok {
 		return ItemNotFound
 	}
 
-	node.removeFromView(item, node.partialView)
+	node.removeFromView(item, node.PartialView)
 
 	return nil
 }
@@ -175,12 +171,12 @@ func (node *MemManager) removeUnsubPeerFromIn(task *msgTask) error {
 
 	rm := task.msg.ArcDrop
 	nodeId := rm.NodeId
-	item, ok := node.inputView[nodeId]
+	item, ok := node.InputView[nodeId]
 	if !ok {
 		return ItemNotFound
 	}
 
-	node.removeFromView(item, node.inputView)
+	node.removeFromView(item, node.InputView)
 
 	return nil
 }
