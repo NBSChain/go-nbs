@@ -92,10 +92,10 @@ func (manager *nbsGossip) Online(peerId string) error {
 	manager.peerId = peerId
 
 	memberNode := memership.NewMemberNode(peerId)
+	manager.memberManager = memberNode
 	if err := memberNode.InitNode(); err != nil {
 		return err
 	}
-	manager.memberManager = memberNode
 
 	logger.Info("gossip service start up......")
 
@@ -112,7 +112,7 @@ func (manager *nbsGossip) ShowInputViews() ([]*memership.ViewNode, error) {
 		return nil, ServiceNotValid
 	}
 
-	views := make([]*memership.ViewNode, len(manager.memberManager.InputView))
+	var views []*memership.ViewNode
 	for _, item := range manager.memberManager.InputView {
 		views = append(views, item)
 	}
@@ -123,7 +123,7 @@ func (manager *nbsGossip) ShowOutputViews() ([]*memership.ViewNode, error) {
 	if manager.memberManager == nil {
 		return nil, ServiceNotValid
 	}
-	views := make([]*memership.ViewNode, len(manager.memberManager.PartialView))
+	var views []*memership.ViewNode
 	for _, item := range manager.memberManager.PartialView {
 		views = append(views, item)
 	}

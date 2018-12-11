@@ -47,8 +47,8 @@ func (service *gossipService) ShowViews(ctx context.Context, request *pb.ShowGos
 		return nil, err
 	}
 
-	inViews := make([]string, len(ins))
-	ouViews := make([]string, len(outs))
+	var inViews, ouViews []string
+
 	for _, in := range ins {
 		inViews = append(inViews, in.String())
 	}

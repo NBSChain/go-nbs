@@ -125,6 +125,14 @@ func (item *ViewNode) String() string {
 
 	format := utils.GetConfig().SysTimeFormat
 
+	var inAddr, outAddr string
+	if item.inAddr != nil {
+		inAddr = item.inAddr.String()
+	}
+	if item.outAddr != nil {
+		inAddr = item.outAddr.String()
+	}
+
 	return fmt.Sprintf("------------%s------------\n"+
 		"|probability:%20.2f|\n"+
 		"|inAddr:20%s|\n"+
@@ -134,9 +142,9 @@ func (item *ViewNode) String() string {
 		"------------------------\n",
 		item.nodeId,
 		item.probability,
-		item.inAddr.String(),
+		inAddr,
 		item.updateTime.Format(format),
 		item.expiredTime.Format(format),
-		item.outAddr.String(),
+		outAddr,
 	)
 }

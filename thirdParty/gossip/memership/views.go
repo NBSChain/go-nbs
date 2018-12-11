@@ -39,6 +39,9 @@ func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNod
 }
 
 func (node *MemManager) getHeartBeat(task *msgTask) error {
+
+	node.updateTime = time.Now()
+
 	beat := task.msg.HeartBeat
 	item, ok := node.InputView[beat.FromID]
 	if !ok {

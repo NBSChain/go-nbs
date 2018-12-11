@@ -54,6 +54,7 @@ type MemManager struct {
 	close       context.CancelFunc
 	nodeID      string
 	subNo       int
+	updateTime  time.Time
 	taskQueue   chan *msgTask
 	serviceConn *nbsnet.NbsUdpConn
 	InputView   map[string]*ViewNode
@@ -74,6 +75,7 @@ func NewMemberNode(peerId string) *MemManager {
 		nodeID:      peerId,
 		ctx:         ctx,
 		close:       cal,
+		updateTime:  time.Now(),
 		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
 		InputView:   make(map[string]*ViewNode),
 		PartialView: make(map[string]*ViewNode),
@@ -83,7 +85,6 @@ func NewMemberNode(peerId string) *MemManager {
 
 	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
 	node.taskRouter[int(nbsnet.GspResubscribe)] = node.firstInitSub
-	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubResult
 	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
 	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
 	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
@@ -193,7 +194,7 @@ func (node *MemManager) msgProcessor() {
 			}
 
 			if err := handler(task); err != nil {
-				logger.Error("gossip run loop err:->", err)
+				logger.Error("gossip run loop err:->", err, task.msg.MsgType, task.taskType)
 			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
@@ -237,7 +238,7 @@ func (node *MemManager) checkItemInView(task *msgTask) error {
 		}
 	}
 
-	if len(node.InputView) == 0 {
+	if len(node.InputView) == 0 && now.Sub(node.updateTime) > IsolatedTime {
 		return node.Resub()
 	}
 

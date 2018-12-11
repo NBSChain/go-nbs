@@ -24,6 +24,8 @@ func (node *MemManager) RegisterMySelf() error {
 
 	for _, serverIp := range servers {
 
+		logger.Debug("start to find gossip server:->", serverIp)
+
 		conn, err := network.GetInstance().DialUDP("udp4",
 			nil, &net.UDPAddr{
 				IP:   net.ParseIP(serverIp),
@@ -31,22 +33,22 @@ func (node *MemManager) RegisterMySelf() error {
 			})
 
 		if err != nil {
-			logger.Error("dial to contract boot server failed:", err)
+			logger.Warning("dial to contract boot server failed:->", err)
 			goto CloseConn
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
-			logger.Errorf("set outConn time out err:->", err)
+			logger.Warning("set outConn time out err:->", err)
 			goto CloseConn
 		}
 
 		if err := node.acquireProxy(conn); err != nil {
-			logger.Error("send init sub request failed:", err)
+			logger.Warning("send init sub request failed:", err)
 			goto CloseConn
 		}
 
 		if err := node.checkProxyValidation(conn); err == nil {
-			logger.Debug("find gossip contact server success.", serverIp)
+			logger.Info("find gossip contact server success.", serverIp)
 			success = true
 			break
 		}
@@ -94,6 +96,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 
 	msg := &pb.Gossip{}
 	if err := proto.Unmarshal(buffer[:hasRead], msg); err != nil {
+		logger.Debug("it's not sub ack:->", err)
 		return err
 	}
 
@@ -203,8 +206,4 @@ func (node *MemManager) Resub() error {
 	}
 	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
 	return item.send(msg)
-}
-func (node *MemManager) reSubResult(task *msgTask) error {
-	logger.Debug("he will take our resub task:->", task.addr.String())
-	return nil
 }

@@ -67,7 +67,7 @@ func gossipStop(cmd *cobra.Command, args []string) {
 	client := pb.NewGossipTaskClient(conn.c)
 
 	request := &pb.StopRequest{
-		Cmd: "", //TODO:: Need to check password?
+		Cmd: "",
 	}
 
 	response, err := client.StopService(conn.ctx, request)
@@ -83,10 +83,16 @@ func gossipShowView(cmd *cobra.Command, args []string) {
 	client := pb.NewGossipTaskClient(conn.c)
 
 	request := &pb.ShowGossipView{
-		Cmd: "", //TODO:: Need to check password?
+		Cmd: "",
 	}
 
 	response, err := client.ShowViews(conn.ctx, request)
+	if err != nil {
+		logger.Info("get view content err:->", err)
+	}
 
-	logger.Info(response, err)
+	fmt.Println("=============in view==========")
+	fmt.Println(response.InputView)
+	fmt.Println("=============out view==========")
+	fmt.Println(response.OutputView)
 }
