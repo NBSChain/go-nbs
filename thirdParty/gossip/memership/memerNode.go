@@ -275,7 +275,12 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 
 	data, _ := proto.Marshal(msg)
 	for _, item := range node.PartialView {
-		if now.Sub(item.updateTime) >= MemShipHeartBeat {
+		if now.After(item.expiredTime) {
+			logger.Warning("subscribe expired:->", item.expiredTime, now)
+			node.removeFromView(item, node.PartialView)
+		}
+
+		if now.Sub(item.updateTime) < MemShipHeartBeat {
 			continue
 		}
 
@@ -284,10 +289,6 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 			node.removeFromView(item, node.PartialView)
 		}
 
-		if now.After(item.expiredTime) {
-			logger.Warning("subscribe expired:->", item.expiredTime, now)
-			node.removeFromView(item, node.PartialView)
-		}
 	}
 
 	return nil
