@@ -90,6 +90,8 @@ func (item *ViewNode) send(pb proto.Message) error {
 		return err
 	}
 
+	item.Lock()
+	defer item.Unlock()
 	item.updateTime = time.Now()
 
 	return nil
