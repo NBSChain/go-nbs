@@ -123,17 +123,19 @@ func (item *ViewNode) waitingWork() {
 
 func (item *ViewNode) String() string {
 
+	itemCpy := *item
+
 	format := utils.GetConfig().SysTimeFormat
 
 	var inAddr, outAddr string
-	if item.inAddr != nil {
-		inAddr = item.inAddr.String()
+	if itemCpy.inAddr != nil {
+		inAddr = itemCpy.inAddr.String()
 	}
-	if item.outAddr != nil {
-		outAddr = item.outAddr.String()
+	if itemCpy.outAddr != nil {
+		outAddr = itemCpy.outAddr.String()
 	}
-	item.RLock()
-	defer item.RUnlock()
+	itemCpy.RLock()
+	defer itemCpy.RUnlock()
 
 	return fmt.Sprintf("------------%s------------\n"+
 		"|%-15s:%20.2f|\n"+
@@ -142,15 +144,15 @@ func (item *ViewNode) String() string {
 		"|%-15s:%20s|\n"+
 		"|%-15s:%20s|\n"+
 		"------------------------------------------------------------\n",
-		item.nodeId,
+		itemCpy.nodeId,
 		"probability",
-		item.probability,
+		itemCpy.probability,
 		"inAddr",
 		inAddr,
 		"updateTime",
-		item.updateTime.Format(format),
+		itemCpy.updateTime.Format(format),
 		"expiredTime",
-		item.expiredTime.Format(format),
+		itemCpy.expiredTime.Format(format),
 		"outAddr",
 		outAddr,
 	)
