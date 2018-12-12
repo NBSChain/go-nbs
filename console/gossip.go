@@ -10,7 +10,7 @@ func init() {
 	rootCmd.AddCommand(gossipCmd)
 	gossipCmd.AddCommand(gossipStartCmd)
 	gossipCmd.AddCommand(gossipStopCmd)
-	gossipCmd.AddCommand(gossipViewCmd)
+	gossipCmd.AddCommand(gossipDebugCmd)
 }
 
 var gossipCmd = &cobra.Command{
@@ -34,11 +34,12 @@ var gossipStopCmd = &cobra.Command{
 	Run:   gossipStop,
 }
 
-var gossipViewCmd = &cobra.Command{
-	Use:   "showViews",
-	Short: "show the nodes in partial view and input view.",
-	Long:  `show the nodes in partial view and input view.`,
-	Run:   gossipShowView,
+var gossipDebugCmd = &cobra.Command{
+	Use:   "debug",
+	Short: "gossip debug utils.",
+	Long:  `gossip debug utils.`,
+	Run:   gossipDebug,
+	Args:  cobra.MinimumNArgs(1),
 }
 
 func gossipAction(cmd *cobra.Command, args []string) {
@@ -75,24 +76,35 @@ func gossipStop(cmd *cobra.Command, args []string) {
 	logger.Info(response, err)
 }
 
-func gossipShowView(cmd *cobra.Command, args []string) {
+func gossipDebug(cmd *cobra.Command, args []string) {
 
+	logger.Debug(args)
 	conn := DialToCmdService()
 	defer conn.Close()
 
 	client := pb.NewGossipTaskClient(conn.c)
 
-	request := &pb.ShowGossipView{
-		Cmd: "",
+	request := &pb.DebugCmd{
+		Cmd: args[0],
 	}
 
-	response, err := client.ShowViews(conn.ctx, request)
+	response, err := client.Debug(conn.ctx, request)
 	if err != nil {
-		logger.Info("get view content err:->", err)
+		logger.Info("debug err:->", err)
 	}
+	processResult(args, response)
+}
+func processResult(args []string, res *pb.DebugResult) {
 
-	fmt.Println("=in==>>")
-	fmt.Println(response.InputView)
-	fmt.Println("\n\n=out==>>")
-	fmt.Println(response.OutputView)
+	switch args[0] {
+	case "showIV":
+		fmt.Println(res.InputViews.Views)
+	case "showOV":
+		fmt.Println(res.OutputViews.Views)
+	case "showAV":
+		fmt.Println("===>IN<===")
+		fmt.Println(res.InputViews.Views)
+		fmt.Println("===>Out<===")
+		fmt.Println(res.OutputViews.Views)
+	}
 }

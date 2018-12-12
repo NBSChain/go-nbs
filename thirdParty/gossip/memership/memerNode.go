@@ -122,16 +122,16 @@ func (node *MemManager) InitNode() error {
 		return err
 	}
 
+	if err := node.RegisterMySelf(); err != nil {
+		logger.Warning(err)
+		return err
+	}
+
 	go node.receivingCmd()
 
 	go node.msgProcessor()
 
 	go node.timer()
-
-	if err := node.RegisterMySelf(); err != nil {
-		logger.Warning(err)
-		return err
-	}
 
 	return nil
 }
