@@ -40,6 +40,12 @@ func (service *gossipService) Debug(ctx context.Context, request *pb.DebugCmd) (
 		return service.showViews(2)
 	case "showAV":
 		return service.showViews(3)
+	case "clearIV":
+		return service.clearViews(1)
+	case "clearOV":
+		return service.clearViews(2)
+	case "clearAV":
+		return service.clearViews(3)
 	default:
 		return nil, fmt.Errorf("unkown command")
 	}
@@ -71,5 +77,18 @@ func (service *gossipService) showViews(typ int) (msg *pb.DebugResult, err error
 		OutputViews: &pb.ViewInfos{
 			Views: outs,
 		},
+	}, nil
+}
+
+func (service *gossipService) clearViews(typ int) (msg *pb.DebugResult, err error) {
+	var noI, noO int
+	if typ == 1 || typ == 3 {
+		noI = gossip.GetGossipInstance().ClearInputViews()
+	}
+	if typ == 2 || typ == 3 {
+		noO = gossip.GetGossipInstance().ClearOutputViews()
+	}
+	return &pb.DebugResult{
+		Result: fmt.Sprintf("clear success totaly input=%d, output=%d:->", noI, noO),
 	}, nil
 }

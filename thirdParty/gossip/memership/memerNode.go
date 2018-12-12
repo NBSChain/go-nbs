@@ -21,6 +21,8 @@ const (
 	UpdateProbability = 4
 	GetInputViews     = 5
 	GetOutputViews    = 6
+	ClearOutputViews  = 7
+	ClearInputViews   = 8
 
 	MemShipHeartBeat = time.Second * 120 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
@@ -110,9 +112,14 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[UpdateProbability] = node.updateProbability
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
+	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
+
+	//TODO::refactor this debug command
 	node.taskRouter[GetOutputViews] = node.outputViewTask
 	node.taskRouter[GetInputViews] = node.inputViewTask
-	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
+	node.taskRouter[ClearOutputViews] = node.removeOV
+	node.taskRouter[ClearInputViews] = node.removeIV
+
 	return node
 }
 

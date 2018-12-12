@@ -122,3 +122,17 @@ func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
 
 	return manager.memberManager.GetViewsInfo(memership.GetOutputViews), nil
 }
+
+func (manager *nbsGossip) ClearInputViews() int {
+	if manager.memberManager == nil {
+		return 0
+	}
+	return manager.memberManager.RemoveViewsInfo(memership.ClearInputViews)
+}
+
+func (manager *nbsGossip) ClearOutputViews() int {
+	if manager.memberManager == nil {
+		return 0
+	}
+	return manager.memberManager.RemoveViewsInfo(memership.ClearOutputViews)
+}

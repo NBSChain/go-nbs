@@ -20,4 +20,8 @@ type BasicProtocol interface {
 	ShowInputViews() ([]string, error)
 
 	ShowOutputViews() ([]string, error)
+
+	ClearInputViews() int
+
+	ClearOutputViews() int
 }

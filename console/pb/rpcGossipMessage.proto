@@ -40,4 +40,5 @@ message viewInfos{
 message DebugResult {
     viewInfos inputViews    = 1;
     viewInfos outputViews   = 2;
+    string    result        = 3;
 }
