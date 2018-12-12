@@ -280,7 +280,7 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 			node.removeFromView(item, node.PartialView)
 		}
 
-		if now.Sub(item.updateTime) < MemShipHeartBeat/2 {
+		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
 			continue
 		}
 
