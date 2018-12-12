@@ -8,14 +8,12 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"sync"
 	"time"
 )
 
 //TODO:: same msg forward times
 
 type ViewNode struct {
-	sync.RWMutex
 	nodeId      string
 	probability float64
 	inAddr      *net.UDPAddr
@@ -71,8 +69,6 @@ func (item *ViewNode) sendData(data []byte) error {
 	if _, err := item.outConn.Write(data); err != nil {
 		return err
 	}
-	item.Lock()
-	defer item.Unlock()
 	item.updateTime = time.Now()
 
 	return nil
@@ -89,9 +85,6 @@ func (item *ViewNode) send(pb proto.Message) error {
 	if _, err := item.outConn.Write(data); err != nil {
 		return err
 	}
-
-	item.Lock()
-	defer item.Unlock()
 	item.updateTime = time.Now()
 
 	return nil
@@ -134,9 +127,6 @@ func (item *ViewNode) String() string {
 	if itemCpy.outAddr != nil {
 		outAddr = itemCpy.outAddr.String()
 	}
-	itemCpy.RLock()
-	defer itemCpy.RUnlock()
-
 	return fmt.Sprintf("------------%s------------\n"+
 		"|%-15s:%20.2f|\n"+
 		"|%-15s:%20s|\n"+
