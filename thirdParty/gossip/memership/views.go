@@ -127,15 +127,15 @@ func (node *MemManager) updateProbability(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) meanProb() float64 {
+func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 
-	pLen := len(node.PartialView)
+	pLen := len(views)
 	if pLen == 0 {
 		return 1.0
 	}
 
 	var summerOut float64
-	for _, item := range node.PartialView {
+	for _, item := range views {
 		summerOut += item.probability
 	}
 

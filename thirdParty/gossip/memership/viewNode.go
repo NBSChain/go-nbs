@@ -39,7 +39,7 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*Vie
 
 	item := &ViewNode{
 		nodeId:      host.NetworkId,
-		probability: node.meanProb(),
+		probability: node.meanProb(node.PartialView),
 		outConn:     conn,
 		outAddr:     addr,
 		manager:     node,
@@ -56,16 +56,16 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*Vie
 func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNode {
 
 	view := &ViewNode{
-		nodeId:     nodeId,
-		inAddr:     addr,
-		manager:    node,
-		updateTime: time.Now(),
+		nodeId:      nodeId,
+		inAddr:      addr,
+		probability: node.meanProb(node.InputView),
+		manager:     node,
+		updateTime:  time.Now(),
 	}
-
 	node.InputView[nodeId] = view
-	view.probability = 1 / float64(len(node.InputView))
 	return view
 }
+
 func (item *ViewNode) sendData(data []byte) error {
 
 	if _, err := item.outConn.Write(data); err != nil {
