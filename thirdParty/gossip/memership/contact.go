@@ -98,7 +98,7 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
 	if node.subNo++; node.subNo >= ProbUpdateInter {
-		node.taskQueue <- &msgTask{
+		node.taskQueue <- &gossipTask{
 			isInner:  true,
 			taskType: UpdateProbability,
 		}
@@ -125,7 +125,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	return nil
 }
 
-func (node *MemManager) getVoteApply(task *msgTask) error {
+func (node *MemManager) getVoteApply(task *gossipTask) error {
 	req := task.msg.VoteContact
 	return node.asContactProxy(req.Subscribe, int(req.TTL))
 }
@@ -188,7 +188,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 	return item.send(msg)
 }
 
-func (node *MemManager) voteAck(task *msgTask) error {
+func (node *MemManager) voteAck(task *gossipTask) error {
 	nodeId := task.msg.VoteAck.FromId
 	if _, ok := node.InputView[nodeId]; !ok {
 		logger.Warning("no such node in input view:->", task.msg)

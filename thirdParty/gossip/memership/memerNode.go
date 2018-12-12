@@ -36,14 +36,14 @@ var (
 	ItemNotFound    = fmt.Errorf("no such peer node in my view")
 )
 
-type msgTask struct {
+type gossipTask struct {
 	isInner  bool
 	taskType int
 	msg      *pb.Gossip
 	addr     *net.UDPAddr
 }
 
-type worker func(*msgTask) error
+type worker func(*gossipTask) error
 
 type msgCounter struct {
 	counter int
@@ -56,7 +56,7 @@ type MemManager struct {
 	nodeID      string
 	subNo       int
 	updateTime  time.Time
-	taskQueue   chan *msgTask
+	taskQueue   chan *gossipTask
 	serviceConn *nbsnet.NbsUdpConn
 	InputView   map[string]*ViewNode
 	PartialView map[string]*ViewNode
@@ -77,7 +77,7 @@ func NewMemberNode(peerId string) *MemManager {
 		ctx:         ctx,
 		close:       cal,
 		updateTime:  time.Now(),
-		taskQueue:   make(chan *msgTask, MaxInnerTaskSize),
+		taskQueue:   make(chan *gossipTask, MaxInnerTaskSize),
 		InputView:   make(map[string]*ViewNode),
 		PartialView: make(map[string]*ViewNode),
 		taskRouter:  make(map[int]worker),
@@ -161,7 +161,7 @@ func (node *MemManager) receivingCmd() {
 
 		logger.Debug("gossip server:->", peerAddr, message)
 
-		node.taskQueue <- &msgTask{
+		node.taskQueue <- &gossipTask{
 			msg:  message,
 			addr: peerAddr,
 		}
@@ -208,18 +208,18 @@ func (node *MemManager) timer() {
 	for {
 		select {
 		case <-time.After(MemShipHeartBeat):
-			node.taskQueue <- &msgTask{
+			node.taskQueue <- &gossipTask{
 				isInner:  true,
 				taskType: SendHeartBeat,
 			}
 
-			node.taskQueue <- &msgTask{
+			node.taskQueue <- &gossipTask{
 				isInner:  true,
 				taskType: CheckItemInView,
 			}
 
 		case <-time.After(MSGTrashCollect):
-			node.taskQueue <- &msgTask{
+			node.taskQueue <- &gossipTask{
 				isInner:  true,
 				taskType: MsgCounterCollect,
 			}
@@ -230,7 +230,7 @@ func (node *MemManager) timer() {
 	}
 }
 
-func (node *MemManager) checkItemInView(task *msgTask) error {
+func (node *MemManager) checkItemInView(task *gossipTask) error {
 	now := time.Now()
 
 	for _, item := range node.InputView {
@@ -248,7 +248,7 @@ func (node *MemManager) checkItemInView(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) msgCounterClean(task *msgTask) error {
+func (node *MemManager) msgCounterClean(task *gossipTask) error {
 	no := 0
 	now := time.Now()
 	for id, c := range node.msgCounter {
@@ -262,7 +262,7 @@ func (node *MemManager) msgCounterClean(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) sendHeartBeat(task *msgTask) error {
+func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 
 	now := time.Now()
 
@@ -313,7 +313,7 @@ func (node *MemManager) msgCache(msgId string) error {
 	return nil
 }
 
-func (node *MemManager) getForwardSub(task *msgTask) error {
+func (node *MemManager) getForwardSub(task *gossipTask) error {
 
 	if err := node.msgCache(task.msg.MsgId); err != nil {
 		return err

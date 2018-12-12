@@ -106,7 +106,7 @@ func (item *ViewNode) waitingWork() {
 		}
 
 		addr := item.outConn.RealConn.RemoteAddr()
-		task := &msgTask{
+		task := &gossipTask{
 			msg:  msg,
 			addr: addr.(*net.UDPAddr),
 		}
@@ -116,16 +116,14 @@ func (item *ViewNode) waitingWork() {
 
 func (item *ViewNode) String() string {
 
-	itemCpy := *item
-
 	format := utils.GetConfig().SysTimeFormat
 
 	var inAddr, outAddr string
-	if itemCpy.inAddr != nil {
-		inAddr = itemCpy.inAddr.String()
+	if item.inAddr != nil {
+		inAddr = item.inAddr.String()
 	}
-	if itemCpy.outAddr != nil {
-		outAddr = itemCpy.outAddr.String()
+	if item.outAddr != nil {
+		outAddr = item.outAddr.String()
 	}
 	return fmt.Sprintf("------------%s------------\n"+
 		"|%-15s:%20.2f|\n"+
@@ -134,15 +132,15 @@ func (item *ViewNode) String() string {
 		"|%-15s:%20s|\n"+
 		"|%-15s:%20s|\n"+
 		"------------------------------------------------------------\n",
-		itemCpy.nodeId,
+		item.nodeId,
 		"probability",
-		itemCpy.probability,
+		item.probability,
 		"inAddr",
 		inAddr,
 		"updateTime",
-		itemCpy.updateTime.Format(format),
+		item.updateTime.Format(format),
 		"expiredTime",
-		itemCpy.expiredTime.Format(format),
+		item.expiredTime.Format(format),
 		"outAddr",
 		outAddr,
 	)

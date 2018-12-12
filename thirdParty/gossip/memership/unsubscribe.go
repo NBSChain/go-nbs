@@ -65,7 +65,7 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 	}
 }
 
-func (node *MemManager) replaceForUnsubPeer(task *msgTask) error {
+func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 	replace := task.msg.ArcReplace
 
 	item, ok := node.PartialView[replace.FromId]
@@ -100,7 +100,7 @@ func (node *MemManager) replaceForUnsubPeer(task *msgTask) error {
 	return item.send(msg)
 }
 
-func (node *MemManager) acceptAsReplacedPeer(task *msgTask) error {
+func (node *MemManager) acceptAsReplacedPeer(task *gossipTask) error {
 
 	ack := task.msg.ReplaceAck
 	nodeId := ack.Addr.NetworkId
@@ -154,7 +154,7 @@ func (node *MemManager) removeMeFromInView() {
 	}
 }
 
-func (node *MemManager) removeUnsubPeerFromOut(task *msgTask) error {
+func (node *MemManager) removeUnsubPeerFromOut(task *gossipTask) error {
 
 	rm := task.msg.ArcDrop
 	nodeId := rm.NodeId
@@ -168,7 +168,7 @@ func (node *MemManager) removeUnsubPeerFromOut(task *msgTask) error {
 	return nil
 }
 
-func (node *MemManager) removeUnsubPeerFromIn(task *msgTask) error {
+func (node *MemManager) removeUnsubPeerFromIn(task *gossipTask) error {
 
 	rm := task.msg.ArcDrop
 	nodeId := rm.NodeId

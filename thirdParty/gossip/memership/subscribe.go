@@ -118,7 +118,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 *	member server functions about init subscribe request.
 *
 *****************************************************************/
-func (node *MemManager) firstInitSub(task *msgTask) error {
+func (node *MemManager) firstInitSub(task *gossipTask) error {
 
 	subReq := task.msg.Subscribe
 	peerAddr := task.addr
@@ -147,7 +147,7 @@ func (node *MemManager) firstInitSub(task *msgTask) error {
 	return node.asContactProxy(subReq, counter)
 }
 
-func (node *MemManager) subToContract(task *msgTask) error {
+func (node *MemManager) subToContract(task *gossipTask) error {
 
 	result := task.msg.VoteResult
 	nodeId := result.Addr.NetworkId
@@ -179,7 +179,7 @@ func (node *MemManager) subToContract(task *msgTask) error {
 	return item.send(msg)
 }
 
-func (node *MemManager) subAccepted(task *msgTask) error {
+func (node *MemManager) subAccepted(task *gossipTask) error {
 	ack := task.msg.SubConfirm
 	_, ok := node.InputView[ack.FromId]
 	if ok {
