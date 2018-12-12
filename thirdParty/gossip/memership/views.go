@@ -14,7 +14,7 @@ import (
 func (node *MemManager) choseRandomInPartialView() *ViewNode {
 	count := len(node.PartialView)
 	j := 0
-	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)+1))
+	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
 	logger.Debug("chose random in PartialView :->", random, count)
 	for _, item := range node.PartialView {
 		if j == int(random.Int64()) {
