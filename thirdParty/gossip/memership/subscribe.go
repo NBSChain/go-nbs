@@ -192,33 +192,24 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 
 func (node *MemManager) Resub() error {
 
-	for {
-		if len(node.PartialView) == 0 {
-			logger.Debug("register myself because of no partial view in my cache")
-			return node.RegisterMySelf()
-		}
-
-		item := node.choseRandomInPartialView()
-		conn := item.outConn
-
-		logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
-
-		if err := conn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
-			logger.Warning("set outConn time out err:->", err)
-			goto removeItem
-		}
-
-		if err := node.acquireProxy(conn); err != nil {
-			logger.Warning("send reSub request err:->", err)
-			goto removeItem
-		}
-
-		if err := node.checkProxyValidation(conn); err == nil {
-			logger.Info("find gossip contact server success.", conn.String())
-			return nil
-		}
-
-	removeItem:
-		node.removeFromView(item, node.PartialView)
+	if len(node.PartialView) == 0 {
+		logger.Debug("register myself because of no partial view in my cache")
+		return node.RegisterMySelf()
 	}
+
+	item := node.choseRandomInPartialView()
+	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
+
+	if err := node.acquireProxy(item.outConn); err != nil {
+		logger.Warning("send reSub request err:->", err)
+		node.removeFromView(item, node.PartialView)
+		return err
+	}
+
+	return nil
+}
+
+func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
+	logger.Debug("he will solve our reSub request:->", task.addr)
+	return nil
 }

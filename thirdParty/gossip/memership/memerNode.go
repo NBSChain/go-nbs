@@ -112,7 +112,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
 	node.taskRouter[GetOutputViews] = node.outputViewTask
 	node.taskRouter[GetInputViews] = node.inputViewTask
-
+	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
 	return node
 }
 
