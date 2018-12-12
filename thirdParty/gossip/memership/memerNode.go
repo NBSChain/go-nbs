@@ -239,6 +239,7 @@ func (node *MemManager) checkItemInView(task *msgTask) error {
 	}
 
 	if len(node.InputView) == 0 && now.Sub(node.updateTime) > IsolatedTime {
+		node.updateTime = time.Now()
 		return node.Resub()
 	}
 
