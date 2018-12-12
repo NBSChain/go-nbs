@@ -74,7 +74,9 @@ func (app *NbsApplication) ReloadForNewAccount() error {
 
 	app.nodeId = account.GetAccountInstance().GetPeerID()
 
-	network.GetInstance().StartUp(app.nodeId)
+	if err := network.GetInstance().StartUp(app.nodeId); err != nil {
+		return err
+	}
 
 	return nil
 }

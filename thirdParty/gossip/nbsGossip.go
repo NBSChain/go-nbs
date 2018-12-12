@@ -106,7 +106,7 @@ func (manager *nbsGossip) IsOnline() bool {
 	return manager.memberManager != nil
 }
 
-func (manager *nbsGossip) ShowInputViews() ([]*memership.ViewNode, error) {
+func (manager *nbsGossip) ShowInputViews() ([]string, error) {
 
 	if manager.memberManager == nil {
 		return nil, ServiceNotValid
@@ -115,7 +115,7 @@ func (manager *nbsGossip) ShowInputViews() ([]*memership.ViewNode, error) {
 	return manager.memberManager.GetInViewInfo(), nil
 }
 
-func (manager *nbsGossip) ShowOutputViews() ([]*memership.ViewNode, error) {
+func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
 	if manager.memberManager == nil {
 		return nil, ServiceNotValid
 	}

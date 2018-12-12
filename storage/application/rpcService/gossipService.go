@@ -47,18 +47,8 @@ func (service *gossipService) ShowViews(ctx context.Context, request *pb.ShowGos
 		return nil, err
 	}
 
-	var inViews, ouViews []string
-
-	for _, in := range ins {
-		inViews = append(inViews, in.String())
-	}
-
-	for _, out := range outs {
-		ouViews = append(ouViews, out.String())
-	}
-
 	return &pb.AllNodeInView{
-		InputView:  inViews,
-		OutputView: ouViews,
+		InputView:  ins,
+		OutputView: outs,
 	}, nil
 }

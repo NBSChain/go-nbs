@@ -143,9 +143,9 @@ func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 }
 
 func (node *MemManager) outputViewTask(task *gossipTask) error {
-	var views []*ViewNode
+	var views []string
 	for _, item := range node.PartialView {
-		views = append(views, item)
+		views = append(views, item.String())
 	}
 
 	task.result <- views
@@ -154,16 +154,16 @@ func (node *MemManager) outputViewTask(task *gossipTask) error {
 
 func (node *MemManager) inputViewTask(task *gossipTask) error {
 
-	var views []*ViewNode
+	var views []string
 	for _, item := range node.InputView {
-		views = append(views, item)
+		views = append(views, item.String())
 	}
 
 	task.result <- views
 	return nil
 }
 
-func (node *MemManager) GetInViewInfo() []*ViewNode {
+func (node *MemManager) GetInViewInfo() []string {
 
 	task := &gossipTask{
 		isInner:  true,
@@ -172,11 +172,11 @@ func (node *MemManager) GetInViewInfo() []*ViewNode {
 	}
 	node.taskQueue <- task
 
-	views := (<-task.result).([]*ViewNode)
+	views := (<-task.result).([]string)
 	return views
 }
 
-func (node *MemManager) GetOutputViewInfo() []*ViewNode {
+func (node *MemManager) GetOutputViewInfo() []string {
 
 	task := &gossipTask{
 		isInner:  true,
@@ -185,6 +185,6 @@ func (node *MemManager) GetOutputViewInfo() []*ViewNode {
 	}
 	node.taskQueue <- task
 
-	views := (<-task.result).([]*ViewNode)
+	views := (<-task.result).([]string)
 	return views
 }
