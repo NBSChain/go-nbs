@@ -141,7 +141,7 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 	for _, item := range node.PartialView {
 
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
-		logger.Debug("vote apply pro and itemPro:->", pro, item.probability)
+		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100)
 		if pro.Int64() > int64(item.probability*100) {
 			continue
 		}

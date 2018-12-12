@@ -189,7 +189,7 @@ func (node *MemManager) msgProcessor() {
 				handler, ok = node.taskRouter[msgType]
 			}
 			if !ok {
-				logger.Error("gossip msg handler err:->", HandlerNotFound)
+				logger.Error("gossip msg handler err:->", HandlerNotFound, task.msg, task.taskType)
 				continue
 			}
 
@@ -273,9 +273,10 @@ func (node *MemManager) sendHeartBeat(task *msgTask) error {
 
 	data, _ := proto.Marshal(msg)
 	for _, item := range node.PartialView {
-		if !item.needUpdate() {
+		if now.Sub(item.updateTime) >= MemShipHeartBeat {
 			continue
 		}
+
 		if err := item.sendData(data); err != nil {
 			logger.Warning("send data failed:->", err)
 			node.removeFromView(item, node.PartialView)
@@ -315,21 +316,34 @@ func (node *MemManager) getForwardSub(task *msgTask) error {
 		return err
 	}
 
+	if len(node.PartialView) == 0 {
+		logger.Debug("I have no friends right now, welcome you")
+		return node.asSubAdapter(task.msg.Subscribe)
+	}
+
+	subId := task.msg.Subscribe.Addr.NetworkId
+	if subId == node.nodeID {
+		item := node.choseRandomInPartialView()
+		logger.Debug("hey, don't introduce me to myself, forward:->", item.nodeId)
+		return item.send(task.msg)
+	}
+
+	if _, ok := node.PartialView[subId]; ok {
+		item := node.choseRandomInPartialView()
+		logger.Debug("I have got you, so forward to next node:->", item.nodeId)
+		return item.send(task.msg)
+	}
+
 	prob := float64(1) / float64(1+len(node.PartialView))
 	random, _ := rand.Int(rand.Reader, big.NewInt(100))
 	logger.Debug("get introduced req:->", random, prob*100)
 
-	subId := task.msg.Subscribe.Addr.NetworkId
-	_, ok := node.PartialView[subId]
-
-	if (ok || subId == node.nodeID || random.Int64() > int64(prob*100)) &&
-		len(node.PartialView) > 0 {
-
+	if random.Int64() > int64(prob*100) {
 		item := node.choseRandomInPartialView()
-		logger.Debug("forward this sub to next node:->", item.nodeId)
+		logger.Debug("no lucky, forward you, sorry:->", item.nodeId)
 		return item.send(task.msg)
 	}
 
-	logger.Debug("accept the sub node ")
+	logger.Debug("yeah, I am always your backup")
 	return node.asSubAdapter(task.msg.Subscribe)
 }

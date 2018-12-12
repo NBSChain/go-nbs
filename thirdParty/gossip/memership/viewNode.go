@@ -8,12 +8,14 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"sync"
 	"time"
 )
 
 //TODO:: same msg forward times
 
 type ViewNode struct {
+	sync.RWMutex
 	nodeId      string
 	probability float64
 	inAddr      *net.UDPAddr
@@ -37,6 +39,7 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*Vie
 
 	item := &ViewNode{
 		nodeId:      host.NetworkId,
+		probability: node.meanProb(),
 		outConn:     conn,
 		outAddr:     addr,
 		manager:     node,
@@ -45,7 +48,6 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, duration int64) (*Vie
 	}
 
 	node.PartialView[item.nodeId] = item
-	item.probability = 1 / float64(len(node.PartialView))
 	go item.waitingWork()
 
 	return item, nil
@@ -64,17 +66,13 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 	view.probability = 1 / float64(len(node.InputView))
 	return view
 }
-
-func (item *ViewNode) needUpdate() bool {
-	return time.Now().Sub(item.updateTime) >= MemShipHeartBeat
-}
-
 func (item *ViewNode) sendData(data []byte) error {
 
 	if _, err := item.outConn.Write(data); err != nil {
 		return err
 	}
-
+	item.Lock()
+	defer item.Unlock()
 	item.updateTime = time.Now()
 
 	return nil
@@ -132,6 +130,8 @@ func (item *ViewNode) String() string {
 	if item.outAddr != nil {
 		outAddr = item.outAddr.String()
 	}
+	item.RLock()
+	defer item.RUnlock()
 
 	return fmt.Sprintf("------------%s------------\n"+
 		"|%-15s:%20.2f|\n"+

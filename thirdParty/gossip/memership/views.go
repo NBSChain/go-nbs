@@ -14,8 +14,8 @@ import (
 func (node *MemManager) choseRandomInPartialView() *ViewNode {
 	count := len(node.PartialView)
 	j := 0
-	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))
-	logger.Debug("chose random in PartialView :->", random)
+	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)+1))
+	logger.Debug("chose random in PartialView :->", random, count)
 	for _, item := range node.PartialView {
 		if j == int(random.Int64()) {
 			return item
@@ -125,4 +125,19 @@ func (node *MemManager) updateProbability(task *msgTask) error {
 
 	node.subNo = 0
 	return nil
+}
+
+func (node *MemManager) meanProb() float64 {
+
+	pLen := len(node.PartialView)
+	if pLen == 0 {
+		return 1.0
+	}
+
+	var summerOut float64
+	for _, item := range node.PartialView {
+		summerOut += item.probability
+	}
+
+	return summerOut / float64(pLen)
 }

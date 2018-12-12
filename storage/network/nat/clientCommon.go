@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	KeepAliveTime    = time.Second * 15
-	KeepAliveTimeOut = time.Second * 45
+	KeepAliveTime    = time.Minute
+	KeepAliveTimeOut = KeepAliveTime * 3
 	HolePunchTimeOut = 2 * time.Second
-	BootStrapTimeOut = time.Second * 4
+	BootStrapTimeOut = time.Second * 2
 )
 
 type ConnTask struct {
