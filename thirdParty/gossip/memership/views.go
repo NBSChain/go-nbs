@@ -141,3 +141,50 @@ func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 
 	return summerOut / float64(pLen)
 }
+
+func (node *MemManager) outputViewTask(task *gossipTask) error {
+	var views []*ViewNode
+	for _, item := range node.PartialView {
+		views = append(views, item)
+	}
+
+	task.result <- views
+	return nil
+}
+
+func (node *MemManager) inputViewTask(task *gossipTask) error {
+
+	var views []*ViewNode
+	for _, item := range node.InputView {
+		views = append(views, item)
+	}
+
+	task.result <- views
+	return nil
+}
+
+func (node *MemManager) GetInViewInfo() []*ViewNode {
+
+	task := &gossipTask{
+		isInner:  true,
+		taskType: GetInputViews,
+		result:   make(chan interface{}),
+	}
+	node.taskQueue <- task
+
+	views := (<-task.result).([]*ViewNode)
+	return views
+}
+
+func (node *MemManager) GetOutputViewInfo() []*ViewNode {
+
+	task := &gossipTask{
+		isInner:  true,
+		taskType: GetOutputViews,
+		result:   make(chan interface{}),
+	}
+	node.taskQueue <- task
+
+	views := (<-task.result).([]*ViewNode)
+	return views
+}

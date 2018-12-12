@@ -19,6 +19,8 @@ const (
 	MsgCounterCollect = 2
 	CheckItemInView   = 3
 	UpdateProbability = 4
+	GetInputViews     = 5
+	GetOutputViews    = 6
 
 	MemShipHeartBeat = time.Second * 120 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
@@ -41,6 +43,7 @@ type gossipTask struct {
 	taskType int
 	msg      *pb.Gossip
 	addr     *net.UDPAddr
+	result   chan interface{}
 }
 
 type worker func(*gossipTask) error
@@ -102,6 +105,8 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[UpdateProbability] = node.updateProbability
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
+	node.taskRouter[GetOutputViews] = node.outputViewTask
+	node.taskRouter[GetInputViews] = node.inputViewTask
 
 	return node
 }

@@ -112,20 +112,13 @@ func (manager *nbsGossip) ShowInputViews() ([]*memership.ViewNode, error) {
 		return nil, ServiceNotValid
 	}
 
-	var views []*memership.ViewNode
-	for _, item := range manager.memberManager.InputView {
-		views = append(views, item)
-	}
-	return views, nil
+	return manager.memberManager.GetInViewInfo(), nil
 }
 
 func (manager *nbsGossip) ShowOutputViews() ([]*memership.ViewNode, error) {
 	if manager.memberManager == nil {
 		return nil, ServiceNotValid
 	}
-	var views []*memership.ViewNode
-	for _, item := range manager.memberManager.PartialView {
-		views = append(views, item)
-	}
-	return views, nil
+
+	return manager.memberManager.GetOutputViewInfo(), nil
 }
