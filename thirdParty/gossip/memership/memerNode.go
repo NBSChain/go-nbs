@@ -19,15 +19,16 @@ const (
 	MsgCounterCollect = 2
 	CheckItemInView   = 3
 	UpdateProbability = 4
-	MemShipHeartBeat  = time.Second * 120 //TODO::?? heart beat time interval.
-	MaxInnerTaskSize  = 1 << 10
-	MaxForwardTimes   = 10
-	DefaultSubExpire  = time.Hour
-	SubscribeTimeOut  = time.Second * 2
-	IsolatedTime      = MemShipHeartBeat * 3
-	MSGTrashCollect   = time.Minute * 10
-	MaxItemPerRound   = 1 << 10
-	ProbUpdateInter   = 10
+
+	MemShipHeartBeat = time.Second * 120 //TODO::?? heart beat time interval.
+	MaxInnerTaskSize = 1 << 10
+	MaxForwardTimes  = 10
+	DefaultSubExpire = time.Hour
+	SubscribeTimeOut = time.Second * 2
+	IsolatedTime     = MemShipHeartBeat * 3
+	MSGTrashCollect  = time.Minute * 10
+	MaxItemPerRound  = 1 << 10
+	ProbUpdateInter  = 10
 )
 
 var (
@@ -234,6 +235,7 @@ func (node *MemManager) checkItemInView(task *msgTask) error {
 
 	for _, item := range node.InputView {
 		if now.Sub(item.updateTime) > IsolatedTime {
+			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}
 	}
