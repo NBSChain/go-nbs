@@ -30,7 +30,6 @@ const (
 	GspReplaceAck  = net_pb.MsgType_GspReplaceAck
 	GspRemoveIVArc = net_pb.MsgType_GspRemoveIVArc
 	GspRemoveOVAcr = net_pb.MsgType_GspRemoveOVAcr
-	GspResubscribe = net_pb.MsgType_GspResubscribe
 	GspUpdateOVWei = net_pb.MsgType_GspUpdateOVWei
 	GspUpdateIVWei = net_pb.MsgType_GspUpdateIVWei
 )

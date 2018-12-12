@@ -30,7 +30,6 @@ enum MsgType {
     GspReplaceAck   = 2010;
     GspRemoveIVArc  = 2011;
     GspRemoveOVAcr  = 2012;
-    GspResubscribe = 2013;
     GspUpdateOVWei = 2014;
     GspUpdateIVWei = 2015;
 }

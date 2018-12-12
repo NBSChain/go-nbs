@@ -191,19 +191,34 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 }
 
 func (node *MemManager) Resub() error {
-	if len(node.PartialView) == 0 {
-		return node.RegisterMySelf()
-	}
 
-	item := node.choseRandomInPartialView()
-	msg := &pb.Gossip{
-		MsgType: nbsnet.GspResubscribe,
-		Subscribe: &pb.Subscribe{
-			SeqNo:    1,
-			Duration: int64(DefaultSubExpire),
-			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
-		},
+	for {
+		if len(node.PartialView) == 0 {
+			logger.Debug("register myself because of no partial view in my cache")
+			return node.RegisterMySelf()
+		}
+
+		item := node.choseRandomInPartialView()
+		conn := item.outConn
+
+		logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
+
+		if err := conn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
+			logger.Warning("set outConn time out err:->", err)
+			goto removeItem
+		}
+
+		if err := node.acquireProxy(conn); err != nil {
+			logger.Warning("send reSub request err:->", err)
+			goto removeItem
+		}
+
+		if err := node.checkProxyValidation(conn); err == nil {
+			logger.Info("find gossip contact server success.", conn.String())
+			return nil
+		}
+
+	removeItem:
+		node.removeFromView(item, node.PartialView)
 	}
-	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
-	return item.send(msg)
 }

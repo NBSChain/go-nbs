@@ -88,7 +88,6 @@ func NewMemberNode(peerId string) *MemManager {
 	}
 
 	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
-	node.taskRouter[int(nbsnet.GspResubscribe)] = node.firstInitSub
 	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
 	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
 	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
@@ -246,7 +245,6 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 	}
 
 	if len(node.InputView) == 0 && now.Sub(node.updateTime) > IsolatedTime {
-		node.updateTime = time.Now()
 		return node.Resub()
 	}
 
