@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-//TODO:: same msg forward times
-
 type ViewNode struct {
 	nodeId      string
 	probability float64
@@ -107,9 +105,10 @@ func (item *ViewNode) waitingWork() {
 
 		addr := item.outConn.RealConn.RemoteAddr()
 		task := &gossipTask{
-			msg:  msg,
-			addr: addr.(*net.UDPAddr),
+			taskType: int(msg.MsgType),
 		}
+		task.msg = msg
+		task.addr = addr.(*net.UDPAddr)
 		item.manager.taskQueue <- task
 	}
 }

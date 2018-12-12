@@ -112,7 +112,7 @@ func (manager *nbsGossip) ShowInputViews() ([]string, error) {
 		return nil, ServiceNotValid
 	}
 
-	return manager.memberManager.GetInViewInfo(), nil
+	return manager.memberManager.GetViewsInfo(memership.GetInputViews), nil
 }
 
 func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
@@ -120,5 +120,5 @@ func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
 		return nil, ServiceNotValid
 	}
 
-	return manager.memberManager.GetOutputViewInfo(), nil
+	return manager.memberManager.GetViewsInfo(memership.GetOutputViews), nil
 }

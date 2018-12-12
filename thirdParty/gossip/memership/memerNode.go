@@ -38,12 +38,18 @@ var (
 	ItemNotFound    = fmt.Errorf("no such peer node in my view")
 )
 
+type msgTask struct {
+	msg  *pb.Gossip
+	addr *net.UDPAddr
+}
+type innerTask struct {
+	params []interface{}
+	result chan interface{}
+}
 type gossipTask struct {
-	isInner  bool
 	taskType int
-	msg      *pb.Gossip
-	addr     *net.UDPAddr
-	result   chan interface{}
+	msgTask
+	innerTask
 }
 
 type worker func(*gossipTask) error
@@ -165,10 +171,12 @@ func (node *MemManager) receivingCmd() {
 
 		logger.Debug("gossip server:->", peerAddr, message)
 
-		node.taskQueue <- &gossipTask{
-			msg:  message,
-			addr: peerAddr,
+		task := &gossipTask{
+			taskType: int(message.MsgType),
 		}
+		task.msg = message
+		task.addr = peerAddr
+		node.taskQueue <- task
 
 		select {
 		case <-node.ctx.Done():
@@ -186,13 +194,7 @@ func (node *MemManager) msgProcessor() {
 		case task := <-node.taskQueue:
 			var handler worker
 			var ok bool
-			if task.isInner {
-				handler, ok = node.taskRouter[task.taskType]
-			} else {
-
-				msgType := int(task.msg.MsgType)
-				handler, ok = node.taskRouter[msgType]
-			}
+			handler, ok = node.taskRouter[task.taskType]
 			if !ok {
 				logger.Error("gossip msg handler err:->", HandlerNotFound, task.msg, task.taskType)
 				continue
@@ -213,18 +215,15 @@ func (node *MemManager) timer() {
 		select {
 		case <-time.After(MemShipHeartBeat):
 			node.taskQueue <- &gossipTask{
-				isInner:  true,
 				taskType: SendHeartBeat,
 			}
 
 			node.taskQueue <- &gossipTask{
-				isInner:  true,
 				taskType: CheckItemInView,
 			}
 
 		case <-time.After(MSGTrashCollect):
 			node.taskQueue <- &gossipTask{
-				isInner:  true,
 				taskType: MsgCounterCollect,
 			}
 		case <-node.ctx.Done():

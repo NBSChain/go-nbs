@@ -99,7 +99,6 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
 	if node.subNo++; node.subNo >= ProbUpdateInter {
 		node.taskQueue <- &gossipTask{
-			isInner:  true,
 			taskType: UpdateProbability,
 		}
 	}

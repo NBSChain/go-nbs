@@ -163,28 +163,13 @@ func (node *MemManager) inputViewTask(task *gossipTask) error {
 	return nil
 }
 
-func (node *MemManager) GetInViewInfo() []string {
+func (node *MemManager) GetViewsInfo(typ int) []string {
 
 	task := &gossipTask{
-		isInner:  true,
-		taskType: GetInputViews,
-		result:   make(chan interface{}),
+		taskType: typ,
 	}
+	task.result = make(chan interface{})
 	node.taskQueue <- task
-
-	views := (<-task.result).([]string)
-	return views
-}
-
-func (node *MemManager) GetOutputViewInfo() []string {
-
-	task := &gossipTask{
-		isInner:  true,
-		taskType: GetOutputViews,
-		result:   make(chan interface{}),
-	}
-	node.taskQueue <- task
-
 	views := (<-task.result).([]string)
 	return views
 }
