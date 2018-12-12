@@ -19,7 +19,7 @@ const (
 	MsgCounterCollect = 2
 	CheckItemInView   = 3
 	UpdateProbability = 4
-	MemShipHeartBeat  = time.Second * 11 //TODO::?? heart beat time interval.
+	MemShipHeartBeat  = time.Second * 120 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
 	DefaultSubExpire  = time.Hour
