@@ -3,7 +3,6 @@ syntax = "proto3";
 package pb;
 
 import "github.com/NBSChain/go-nbs/storage/network/pb/nbsMsg.proto";
-import "google/protobuf/timestamp.proto";
 
 message BasicHost {
     bool   CanServer    = 1;
@@ -17,9 +16,9 @@ message BasicHost {
 
 message Subscribe {
     int64 SeqNo = 1;
-    google.protobuf.Timestamp Expire = 2;
-    string nodeId = 4;
-    BasicHost Addr  = 3;
+    int64 Expire = 2;
+    string nodeId = 3;
+    BasicHost Addr = 4;
 }
 
 message SynAck {

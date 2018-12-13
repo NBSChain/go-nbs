@@ -44,7 +44,7 @@ pbs:
 	protoc -I=$(bitswap) 		--go_out=plugins=grpc:${bitswap} 		${bitswap}/*.proto
 	protoc -I=$(network) 		--go_out=plugins=grpc:${network} 		${network}/*.proto
 	protoc -I=$(account) 		--go_out=plugins=grpc:${account} 		${account}/*.proto
-	protoc -I/usr/local/include -I=${gossip} -I=$(INCLUDE)/src   --go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
+	protoc -I=${gossip} -I=$(INCLUDE)/src   --go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
 
 clean:
 	rm -rf $(INCLUDE)/bin/nbs

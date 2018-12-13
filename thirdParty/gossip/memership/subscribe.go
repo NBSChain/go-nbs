@@ -7,7 +7,6 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"net"
 	"time"
 )
@@ -67,12 +66,11 @@ func (node *MemManager) RegisterMySelf() error {
 
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
-	exp, _ := ptypes.TimestampProto(time.Now().Add(DefaultSubExpire))
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
 			SeqNo:  1,
-			Expire: exp,
+			Expire: time.Now().Add(DefaultSubExpire).Unix(),
 			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},
@@ -154,7 +152,7 @@ func (node *MemManager) subToContract(task *gossipTask) error {
 
 	result := task.msg.VoteResult
 	nodeId := result.NodeId
-	expire, _ := ptypes.Timestamp(result.Expire)
+	expire := time.Unix(result.Expire, 0)
 	item, ok := node.InputView[nodeId]
 	if ok {
 		logger.Info("duplicated sub confirm")

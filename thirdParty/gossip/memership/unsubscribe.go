@@ -6,7 +6,6 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"time"
 )
 
@@ -83,7 +82,6 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 	}
 
 	expT := time.Now().Add(DefaultSubExpire)
-	exp, _ := ptypes.TimestampProto(expT)
 
 	item, err := node.newOutViewNode(replace.Addr, expT)
 	if err != nil {
@@ -95,7 +93,7 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 		MsgType: nbsnet.GspReplaceAck,
 		ReplaceAck: &pb.Subscribe{
 			SeqNo:  1,
-			Expire: exp,
+			Expire: expT.Unix(),
 			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},

@@ -8,9 +8,9 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"math/big"
 	"net"
+	"time"
 )
 
 func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
@@ -55,9 +55,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
-	expire, _ := ptypes.Timestamp(sub.Expire)
-
-	item, err := node.newOutViewNode(sub.Addr, expire)
+	item, err := node.newOutViewNode(sub.Addr, time.Unix(sub.Expire, 0))
 	if err != nil {
 		logger.Error("create view node err:->", err)
 		return err
@@ -103,8 +101,7 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
-	exp, _ := ptypes.Timestamp(sub.Expire)
-	if item, ok := node.PartialView[sub.NodeId]; ok && exp.Equal(item.expiredTime) {
+	if item, ok := node.PartialView[sub.NodeId]; ok && sub.Expire == item.expiredTime.Unix() {
 		return fmt.Errorf("this sub has been accepted by me")
 	}
 
@@ -182,8 +179,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 	if node.nodeID == sub.NodeId {
 		return fmt.Errorf("hey it's yourself")
 	}
-	exp, _ := ptypes.Timestamp(sub.Expire)
-	item, err := node.newOutViewNode(sub.Addr, exp)
+	item, err := node.newOutViewNode(sub.Addr, time.Unix(sub.Expire, 0))
 	if err != nil {
 		return err
 	}
