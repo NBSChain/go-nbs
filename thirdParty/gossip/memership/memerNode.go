@@ -292,7 +292,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
 			continue
 		}
-
+		logger.Debug("send heart beat to:->", item.nodeId)
 		if err := item.sendData(data); err != nil {
 			logger.Warning("send data failed:->", err)
 			node.removeFromView(item, node.PartialView)
