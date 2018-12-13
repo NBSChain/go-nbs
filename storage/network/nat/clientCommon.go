@@ -15,7 +15,7 @@ import (
 const (
 	KeepAliveTime    = time.Minute
 	KeepAliveTimeOut = KeepAliveTime * 3
-	HolePunchTimeOut = 2 * time.Second
+	HolePunchTimeOut = 4 * time.Second
 	BootStrapTimeOut = time.Second * 2
 )
 
@@ -117,12 +117,14 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	}
 
 	reqData, _ := proto.Marshal(req)
-	if _, err := conn.Write(reqData); err != nil {
-		logger.Errorf("failed to write answer to inviter:", err)
-		return
-	}
+	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.PeerId)
 
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite, req)
+	for i := 0; i < 3; i++ {
+		if _, err := conn.Write(reqData); err != nil {
+			logger.Errorf("failed to write answer to inviter:", err)
+			return
+		}
+	}
 }
 
 func (tunnel *KATunnel) refreshNatInfo(alive *net_pb.KeepAlive) {

@@ -171,8 +171,8 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	logger.Debug("accept the subscriber:->", sub)
 
-	_, ok := node.PartialView[sub.NodeId]
-	if ok {
+	item, ok := node.PartialView[sub.NodeId]
+	if ok && sub.Expire == item.expiredTime.Unix() {
 		return fmt.Errorf("duplicate accept subscribe=%s request:->", sub.NodeId)
 	}
 
