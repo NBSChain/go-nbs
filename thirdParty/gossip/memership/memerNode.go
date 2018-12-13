@@ -297,7 +297,6 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 			logger.Warning("send data failed:->", err)
 			node.removeFromView(item, node.PartialView)
 		}
-
 	}
 
 	return nil

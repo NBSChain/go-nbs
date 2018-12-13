@@ -101,7 +101,8 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
-	if item, ok := node.PartialView[sub.NodeId]; ok && sub.Expire == item.expiredTime.Unix() {
+	if item, ok := node.PartialView[sub.NodeId]; ok &&
+		sub.Expire == item.expiredTime.Unix() {
 		return fmt.Errorf("this sub has been accepted by me")
 	}
 
@@ -112,7 +113,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	}
 
 	if counter == 0 {
-		logger.Debug("yeah TTL counter is 0, I am your last station")
+		logger.Debug("yeah TTL is 0, I am your last station")
 		return node.asContactServer(sub)
 	}
 
