@@ -117,7 +117,7 @@ func (tunnel *KATunnel) answerInvite(invite *net_pb.ReverseInvite) {
 	}
 
 	reqData, _ := proto.Marshal(req)
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.PeerId)
+	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.SessionId)
 
 	for i := 0; i < 3; i++ {
 		if _, err := conn.Write(reqData); err != nil {

@@ -65,7 +65,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		MsgType: nbsnet.GspVoteResult,
 		VoteResult: &pb.Subscribe{
 			Expire: sub.Expire,
-			NodeId: sub.NodeId,
+			NodeId: node.nodeID,
 			SeqNo:  sub.SeqNo,
 			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
