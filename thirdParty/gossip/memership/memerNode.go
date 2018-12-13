@@ -285,7 +285,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 	data, _ := proto.Marshal(msg)
 	for _, item := range node.PartialView {
 		if now.After(item.expiredTime) {
-			logger.Warning("subscribe expired:->", item.expiredTime, now)
+			logger.Warning("subscribe expired:->", item.expiredTime, now, item.nodeId)
 			node.removeFromView(item, node.PartialView)
 		}
 

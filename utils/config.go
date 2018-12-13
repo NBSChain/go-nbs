@@ -38,14 +38,12 @@ const (
 var (
 	natServerIP = []string{
 		"13.57.241.215",
-		"47.52.172.234",
 		"52.8.190.235",
 	}
 
 	gossipContracts = []string{
-		"13.57.241.215",
-		"47.52.172.234",
 		"52.8.190.235",
+		"13.57.241.215",
 	}
 
 	defaultBootstrapAddresses = []string{

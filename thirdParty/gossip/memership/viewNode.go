@@ -94,7 +94,7 @@ func (item *ViewNode) waitingWork() {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, err := item.outConn.Read(buffer)
 		if err != nil {
-			logger.Warning("node in view read err:->", err)
+			logger.Warning("node in view read err:->", err, item.nodeId)
 			break
 		}
 		msg := &pb.Gossip{}
