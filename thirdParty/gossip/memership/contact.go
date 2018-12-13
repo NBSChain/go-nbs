@@ -112,7 +112,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	}
 
 	if counter == 0 {
-		logger.Debug("yeah counter is 0, I am your last station")
+		logger.Debug("yeah TTL counter is 0, I am your last station")
 		return node.asContactServer(sub)
 	}
 
