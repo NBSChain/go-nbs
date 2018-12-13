@@ -24,7 +24,7 @@ const (
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
 
-	MemShipHeartBeat = time.Second * 60 //TODO::?? heart beat time interval.
+	MemShipHeartBeat = time.Second * 120 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Hour
@@ -333,7 +333,7 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 		return node.asSubAdapter(task.msg.Subscribe)
 	}
 
-	subId := task.msg.Subscribe.Addr.NetworkId
+	subId := task.msg.Subscribe.NodeId
 	if subId == node.nodeID {
 		item := node.choseRandomInPartialView()
 		logger.Debug("hey, don't introduce me to myself, forward:->", item.nodeId)

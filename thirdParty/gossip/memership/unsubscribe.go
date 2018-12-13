@@ -6,6 +6,8 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"time"
 )
 
 func (node *MemManager) DestroyNode() error {
@@ -80,7 +82,10 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 		return fmt.Errorf("no need to make a new item, I have got it")
 	}
 
-	item, err := node.newOutViewNode(replace.Addr, int64(DefaultSubExpire))
+	expT := time.Now().Add(DefaultSubExpire)
+	exp, _ := ptypes.TimestampProto(expT)
+
+	item, err := node.newOutViewNode(replace.Addr, expT)
 	if err != nil {
 		logger.Warning("new node err:->", err)
 		return err
@@ -89,9 +94,10 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspReplaceAck,
 		ReplaceAck: &pb.Subscribe{
-			SeqNo:    1,
-			Duration: int64(DefaultSubExpire),
-			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+			SeqNo:  1,
+			Expire: exp,
+			NodeId: node.nodeID,
+			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
 	}
 
@@ -103,16 +109,15 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 func (node *MemManager) acceptAsReplacedPeer(task *gossipTask) error {
 
 	ack := task.msg.ReplaceAck
-	nodeId := ack.Addr.NetworkId
 
-	_, ok := node.InputView[nodeId]
+	_, ok := node.InputView[ack.NodeId]
 	if !ok {
 		return fmt.Errorf("no need to replace, I have got it")
 	}
 
-	node.newInViewNode(nodeId, task.addr)
+	node.newInViewNode(ack.NodeId, task.addr)
 
-	logger.Debug("get new input item cause'of some unsub:->", nodeId)
+	logger.Debug("get new input item cause'of some unsub:->", ack.NodeId)
 
 	return nil
 }

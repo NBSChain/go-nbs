@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"net"
 	"time"
 )
@@ -66,12 +67,14 @@ func (node *MemManager) RegisterMySelf() error {
 
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 
+	exp, _ := ptypes.TimestampProto(time.Now().Add(DefaultSubExpire))
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
-			SeqNo:    1,
-			Duration: int64(DefaultSubExpire),
-			Addr:     nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
+			SeqNo:  1,
+			Expire: exp,
+			NodeId: node.nodeID,
+			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -138,7 +141,7 @@ func (node *MemManager) firstInitSub(task *gossipTask) error {
 		return err
 	}
 
-	if node.nodeID == subReq.Addr.NetworkId {
+	if node.nodeID == subReq.NodeId {
 		logger.Info("it's yourself.")
 		return nil
 	}
@@ -150,18 +153,18 @@ func (node *MemManager) firstInitSub(task *gossipTask) error {
 func (node *MemManager) subToContract(task *gossipTask) error {
 
 	result := task.msg.VoteResult
-	nodeId := result.Addr.NetworkId
-
+	nodeId := result.NodeId
+	expire, _ := ptypes.Timestamp(result.Expire)
 	item, ok := node.InputView[nodeId]
 	if ok {
 		logger.Info("duplicated sub confirm")
-		item.expiredTime = time.Now().Add(time.Duration(result.Duration))
+		item.expiredTime = expire
 		return nil
 	}
 
 	logger.Debug("get contact node:->", result, task.addr)
 
-	item, err := node.newOutViewNode(result.Addr, result.Duration)
+	item, err := node.newOutViewNode(result.Addr, expire)
 	if err != nil {
 		logger.Error("sub to contact node:->", err)
 		return err

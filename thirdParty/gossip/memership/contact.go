@@ -8,6 +8,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"math/big"
 	"net"
 )
@@ -54,7 +55,9 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
-	item, err := node.newOutViewNode(sub.Addr, sub.Duration)
+	expire, _ := ptypes.Timestamp(sub.Expire)
+
+	item, err := node.newOutViewNode(sub.Addr, expire)
 	if err != nil {
 		logger.Error("create view node err:->", err)
 		return err
@@ -63,9 +66,10 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspVoteResult,
 		VoteResult: &pb.Subscribe{
-			Duration: sub.Duration,
-			SeqNo:    sub.SeqNo,
-			Addr:     nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+			Expire: sub.Expire,
+			NodeId: sub.NodeId,
+			SeqNo:  sub.SeqNo,
+			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
 		},
 	}
 
@@ -79,7 +83,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		return fmt.Errorf("get connection remote addr failed")
 	}
 
-	node.newInViewNode(sub.Addr.NetworkId, addr)
+	node.newInViewNode(sub.NodeId, addr)
 
 	return nil
 }
@@ -98,6 +102,11 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 }
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
+
+	exp, _ := ptypes.Timestamp(sub.Expire)
+	if item, ok := node.PartialView[sub.NodeId]; ok && exp.Equal(item.expiredTime) {
+		return fmt.Errorf("this sub has been accepted by me")
+	}
 
 	if node.subNo++; node.subNo >= ProbUpdateInter {
 		node.taskQueue <- &gossipTask{
@@ -121,6 +130,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
 	if err := node.sendVoteApply(req); err != nil {
 		logger.Warning("no one wants to vote:->", err)
+		return node.asContactServer(sub)
 	}
 
 	return nil
@@ -163,18 +173,17 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	logger.Debug("accept the subscriber:->", sub)
-	nodeId := sub.Addr.NetworkId
 
-	_, ok := node.PartialView[nodeId]
+	_, ok := node.PartialView[sub.NodeId]
 	if ok {
-		return fmt.Errorf("duplicate accept subscribe=%s request:->", nodeId)
+		return fmt.Errorf("duplicate accept subscribe=%s request:->", sub.NodeId)
 	}
 
-	if node.nodeID == nodeId {
+	if node.nodeID == sub.NodeId {
 		return fmt.Errorf("hey it's yourself")
 	}
-
-	item, err := node.newOutViewNode(sub.Addr, sub.Duration)
+	exp, _ := ptypes.Timestamp(sub.Expire)
+	item, err := node.newOutViewNode(sub.Addr, exp)
 	if err != nil {
 		return err
 	}
