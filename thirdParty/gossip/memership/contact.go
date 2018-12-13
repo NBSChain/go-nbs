@@ -86,6 +86,8 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
+	logger.Debug("ok I am your contact server")
+
 	node.broadCastSub(sub)
 
 	if err := node.publishVoteResult(sub); err != nil {
