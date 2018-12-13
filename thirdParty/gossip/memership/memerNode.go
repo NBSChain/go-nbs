@@ -24,7 +24,7 @@ const (
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
 
-	MemShipHeartBeat = time.Second * 120 //TODO::?? heart beat time interval.
+	MemShipHeartBeat = time.Second * 60 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Hour
@@ -292,7 +292,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
 			continue
 		}
-		logger.Debug("send heart beat to:->", item.nodeId)
+		logger.Debug("send heart beat to:->", item.nodeId, item.outConn.String())
 		if err := item.sendData(data); err != nil {
 			logger.Warning("send data failed:->", err)
 			node.removeFromView(item, node.PartialView)

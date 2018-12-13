@@ -106,6 +106,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	}
 
 	if counter == 0 {
+		logger.Debug("yeah counter is 0, I am your last station")
 		return node.asContactServer(sub)
 	}
 
@@ -119,8 +120,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	}
 
 	if err := node.sendVoteApply(req); err != nil {
-		logger.Warning(err)
-		return node.asContactServer(sub)
+		logger.Warning("no one wants to vote:->", err)
 	}
 
 	return nil
