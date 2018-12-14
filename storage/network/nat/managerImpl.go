@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
@@ -32,8 +33,8 @@ func NewNatManager(networkId string) *Manager {
 	natObj.initService()
 
 	go natObj.TaskReceiver()
-	go natObj.RunLoop()
 	go natObj.timer()
+	go natObj.RunLoop()
 
 	return natObj
 }
@@ -54,8 +55,10 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		return err
 	}
 	netNatAddr.NatServer = serverHost
-
+	ctx, cancel := context.WithCancel(context.Background())
 	tunnel := &KATunnel{
+		ctx:        ctx,
+		cancel:     cancel,
 		natChanged: make(chan struct{}),
 		networkId:  nat.networkId,
 		natAddr:    netNatAddr,
@@ -66,7 +69,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		digTask:    make(map[string]*ConnTask),
 	}
 
-	go tunnel.runLoop()
+	go tunnel.sendToServer()
 
 	go tunnel.waitServerCmd()
 

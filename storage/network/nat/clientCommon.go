@@ -1,6 +1,7 @@
 package nat
 
 import (
+	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
@@ -28,10 +29,12 @@ type ConnTask struct {
 }
 
 type KATunnel struct {
+	ctx        context.Context
+	cancel     context.CancelFunc
+	networkId  string
 	errNo      int
 	natChanged chan struct{}
 	natAddr    *nbsnet.NbsUdpAddr
-	networkId  string
 	serverHub  *net.UDPConn
 	kaConn     *net.UDPConn
 	sharedAddr string
@@ -50,15 +53,23 @@ func (task *ConnTask) Close() {
 *			client side
 *
 *************************************************************************/
-func (tunnel *KATunnel) runLoop() {
+func (tunnel *KATunnel) sendToServer() {
 
 	for {
-		if err := tunnel.sendKeepAlive(); err != nil {
-			logger.Warning("failed to send nat keep alive message")
-			//TODO::if failed more than 3 times, wo need to find new nat server
+		select {
+		case <-time.After(KeepAliveTime):
+			if err := tunnel.sendKeepAlive(); err != nil {
+				logger.Warning("failed to send nat keep alive message")
+				if tunnel.errNo++; tunnel.errNo > ErrNoBeforeRetry {
+					logger.Warning("too many times send fail")
+					tunnel.reSetupChannel()
+					return
+				}
+			}
+		case <-tunnel.ctx.Done():
+			logger.Warning("tunnel is down ......")
+			return
 		}
-
-		time.Sleep(KeepAliveTime)
 	}
 }
 
@@ -89,6 +100,7 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 //TODO::
 func (tunnel *KATunnel) reSetupChannel() {
 	tunnel.errNo = 0
+	tunnel.cancel()
 
 }
 

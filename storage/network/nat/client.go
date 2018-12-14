@@ -48,5 +48,12 @@ func (tunnel *KATunnel) waitServerCmd() {
 		case nbsnet.NatDigConfirm:
 			tunnel.makeAHole(msg.DigConfirm)
 		}
+
+		select {
+		case <-tunnel.ctx.Done():
+			logger.Info("tunnel is closed and quit to wait server command")
+			return
+		default:
+		}
 	}
 }
