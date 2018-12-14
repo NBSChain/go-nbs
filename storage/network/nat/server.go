@@ -103,6 +103,17 @@ func (nat *Manager) RunLoop() {
 
 	for {
 		select {
+		case task := <-nat.task:
+			if err := nat.taskProcess(task); err != nil {
+				logger.Warning("nat message proccess err :->", err)
+			}
+		}
+	}
+}
+
+func (nat *Manager) timer() {
+	for {
+		select {
 		case <-time.After(KeepAliveTime):
 			nat.cacheLock.Lock()
 
@@ -115,11 +126,6 @@ func (nat *Manager) RunLoop() {
 			}
 
 			nat.cacheLock.Unlock()
-
-		case task := <-nat.task:
-			if err := nat.taskProcess(task); err != nil {
-				logger.Warning("nat message proccess err :->", err)
-			}
 		}
 	}
 }

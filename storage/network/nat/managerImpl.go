@@ -33,6 +33,7 @@ func NewNatManager(networkId string) *Manager {
 
 	go natObj.TaskReceiver()
 	go natObj.RunLoop()
+	go natObj.timer()
 
 	return natObj
 }
