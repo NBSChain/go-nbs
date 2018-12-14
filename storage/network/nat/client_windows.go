@@ -8,11 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func (tunnel *KATunnel) readKeepAlive() {
-	logger.Info("windows-> no need to get data from keep alive connection")
-}
-
-func (tunnel *KATunnel) listening() {
+func (tunnel *KATunnel) waitServerCmd() {
 
 	for {
 		responseData := make([]byte, utils.NormalReadBuffer)

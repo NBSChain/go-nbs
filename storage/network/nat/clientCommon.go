@@ -17,6 +17,7 @@ const (
 	KeepAliveTimeOut = KeepAliveTime * 3
 	HolePunchTimeOut = 4 * time.Second
 	BootStrapTimeOut = time.Second * 2
+	ErrNoBeforeRetry = 3
 )
 
 type ConnTask struct {
@@ -27,6 +28,7 @@ type ConnTask struct {
 }
 
 type KATunnel struct {
+	errNo      int
 	natChanged chan struct{}
 	natAddr    *nbsnet.NbsUdpAddr
 	networkId  string
@@ -72,7 +74,7 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 
 	requestData, err := proto.Marshal(request)
 	if err != nil {
-		logger.Warning("failed to marshal keep alive request:", err)
+		logger.Warning("failed to marshal keep alive message:", err)
 		return err
 	}
 
@@ -85,11 +87,9 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 }
 
 //TODO::
-func (tunnel *KATunnel) connManage() {
-}
+func (tunnel *KATunnel) reSetupChannel() {
+	tunnel.errNo = 0
 
-//TODO::
-func (tunnel *KATunnel) restoreNatChannel() {
 }
 
 /************************************************************************

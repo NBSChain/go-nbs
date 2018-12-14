@@ -25,8 +25,8 @@ func NewNatManager(networkId string) *Manager {
 		networkId:   networkId,
 		canServe:    make(chan bool),
 		cache:       make(map[string]*HostBehindNat),
-		task:        make(chan *MsgTask, MsgPoolSize),
-		msgHandlers: make(map[net_pb.MsgType]taskProcess),
+		task:        make(chan *natTask, MsgPoolSize),
+		msgHandlers: make(map[int]taskProcess),
 	}
 
 	natObj.initService()
@@ -68,11 +68,7 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 
 	go tunnel.runLoop()
 
-	go tunnel.listening()
-
-	go tunnel.readKeepAlive()
-
-	go tunnel.connManage()
+	go tunnel.waitServerCmd()
 
 	nat.NatKATun = tunnel
 	select {

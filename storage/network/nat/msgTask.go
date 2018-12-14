@@ -4,21 +4,35 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
 	"time"
 )
 
-type taskProcess func(*MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error)
+const (
+	DrainOutOldKa = 1
+)
 
-type MsgTask struct {
-	fromAddr *net.UDPAddr
-	request  *net_pb.NatMsg
+type taskProcess func(*natTask) error
+
+type msgTask struct {
+	addr    *net.UDPAddr
+	message *net_pb.NatMsg
+}
+type innerTask struct {
+	params []interface{}
+	result chan interface{}
+}
+type natTask struct {
+	taskType int
+	msgTask
+	innerTask
 }
 
-func (nat *Manager) checkWhoIsHe(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
-	peerAddr := task.fromAddr
-	request := task.request.BootReg
+func (nat *Manager) checkWhoIsHe(task *natTask) error {
+	peerAddr := task.addr
+	request := task.message.BootReg
 
 	response := &net_pb.BootAnswer{}
 	response.PublicIp = peerAddr.IP.String()
@@ -37,14 +51,18 @@ func (nat *Manager) checkWhoIsHe(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, e
 		Typ:        nbsnet.NatBootAnswer,
 		BootAnswer: response,
 	}
+	data, _ := proto.Marshal(pbRes)
+	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
+		return err
+	}
 
-	return pbRes, peerAddr, nil
+	return nil
 }
 
-func (nat *Manager) updateKATime(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
+func (nat *Manager) updateKATime(task *natTask) error {
 
-	req := task.request.KeepAlive
-	peerAddr := task.fromAddr
+	req := task.message.KeepAlive
+	peerAddr := task.addr
 	nodeId := req.NodeId
 
 	nat.cacheLock.Lock()
@@ -71,68 +89,95 @@ func (nat *Manager) updateKATime(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, e
 			PubPort: int32(peerAddr.Port),
 		},
 	}
+	data, _ := proto.Marshal(res)
+	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
+		return err
+	}
 
-	return res, peerAddr, nil
+	return nil
 }
 
-func (nat *Manager) forwardInvite(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
-	invite := task.request.ReverseInvite
+func (nat *Manager) forwardInvite(task *natTask) error {
+	invite := task.message.ReverseInvite
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
 	item, ok := nat.cache[invite.PeerId]
 	if !ok {
-		return nil, nil, NotFundErr
+		return NotFundErr
 	}
 
 	logger.Debug("Step3: forward notification to applier:", item.pubAddr)
-
-	return task.request, item.pubAddr, nil
+	data, _ := proto.Marshal(task.message)
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (nat *Manager) forwardDigApply(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
-	req := task.request.DigApply
-	peerAddr := task.fromAddr
+func (nat *Manager) forwardDigApply(task *natTask) error {
+	req := task.message.DigApply
+	peerAddr := task.addr
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
 	toItem, ok := nat.cache[req.TargetId]
 	if !ok {
-		return nil, nil, NotFundErr
+		return NotFundErr
 	}
 
 	req.Public = peerAddr.String()
 
-	logger.Debug("hole punch step2-2 forward dig out request:->", task.request.DigApply.Public)
-
-	return task.request, toItem.pubAddr, nil
+	logger.Debug("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
+	data, _ := proto.Marshal(task.message)
+	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.pubAddr); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (nat *Manager) forwardDigConfirm(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
-	ack := task.request.DigConfirm
-	addr := task.fromAddr
+func (nat *Manager) forwardDigConfirm(task *natTask) error {
+	ack := task.message.DigConfirm
+	addr := task.addr
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
 	item, ok := nat.cache[ack.TargetId]
 	if !ok {
-		return nil, nil, NotFundErr
+		return NotFundErr
 	}
 
 	ack.Public = addr.String()
 
-	logger.Debug("hole punch step2-6 forward dig out notification:->", task.request.DigConfirm.Public)
-
-	return task.request, item.pubAddr, nil
+	logger.Debug("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
+	data, _ := proto.Marshal(task.message)
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (nat *Manager) pong(task *MsgTask) (*net_pb.NatMsg, *net.UDPAddr, error) {
-
+func (nat *Manager) pong(task *natTask) error {
 	nat.canServe <- true
-
 	logger.Debug("I can serve as in public network.")
-	return nil, nil, nil
+	return nil
+}
+
+func (nat *Manager) checkKaTunnel(task *natTask) error {
+
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	currentClock := time.Now()
+	for nodeId, item := range nat.cache {
+
+		if currentClock.Sub(item.updateTIme) > KeepAliveTimeOut {
+			logger.Warning("the nat item has been removed:->", nodeId)
+			delete(nat.cache, nodeId)
+		}
+	}
+	return nil
 }

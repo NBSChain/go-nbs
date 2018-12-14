@@ -30,8 +30,8 @@ type Manager struct {
 	NatKATun     *KATunnel
 	cacheLock    sync.Mutex
 	cache        map[string]*HostBehindNat
-	task         chan *MsgTask
-	msgHandlers  map[net_pb.MsgType]taskProcess
+	task         chan *natTask
+	msgHandlers  map[int]taskProcess
 }
 
 //TODO:: support ipv6 later.
@@ -46,12 +46,13 @@ func (nat *Manager) initService() {
 	}
 
 	nat.sysNatServer = natServer
-	nat.msgHandlers[nbsnet.NatBootReg] = nat.checkWhoIsHe
-	nat.msgHandlers[nbsnet.NatKeepAlive] = nat.updateKATime
-	nat.msgHandlers[nbsnet.NatReversInvite] = nat.forwardInvite
-	nat.msgHandlers[nbsnet.NatDigApply] = nat.forwardDigApply
-	nat.msgHandlers[nbsnet.NatDigConfirm] = nat.forwardDigConfirm
-	nat.msgHandlers[nbsnet.NatPingPong] = nat.pong
+	nat.msgHandlers[int(nbsnet.NatBootReg)] = nat.checkWhoIsHe
+	nat.msgHandlers[int(nbsnet.NatKeepAlive)] = nat.updateKATime
+	nat.msgHandlers[int(nbsnet.NatReversInvite)] = nat.forwardInvite
+	nat.msgHandlers[int(nbsnet.NatDigApply)] = nat.forwardDigApply
+	nat.msgHandlers[int(nbsnet.NatDigConfirm)] = nat.forwardDigConfirm
+	nat.msgHandlers[int(nbsnet.NatPingPong)] = nat.pong
+	nat.msgHandlers[DrainOutOldKa] = nat.checkKaTunnel
 }
 
 func (nat *Manager) MsgConsumer() {
@@ -69,10 +70,12 @@ func (nat *Manager) TaskReceiver() {
 			continue
 		}
 
-		task := &MsgTask{
-			fromAddr: peerAddr,
-			request:  request,
+		task := &natTask{
+			taskType: int(request.Typ),
 		}
+
+		task.message = request
+		task.addr = peerAddr
 
 		nat.task <- task
 	}
@@ -90,11 +93,11 @@ func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatMsg, error) {
 
 	request := &net_pb.NatMsg{}
 	if err := proto.Unmarshal(data[:n], request); err != nil {
-		logger.Warning("can't parse the nat request", err, peerAddr)
+		logger.Warning("can't parse the nat message", err, peerAddr)
 		return nil, nil, err
 	}
 
-	logger.Debug("request:", request, peerAddr)
+	logger.Debug("message:", request, peerAddr)
 
 	return peerAddr, request, nil
 }
@@ -104,7 +107,13 @@ func (nat *Manager) RunLoop() {
 	for {
 		select {
 		case task := <-nat.task:
-			if err := nat.taskProcess(task); err != nil {
+			msgType := int(task.message.Typ)
+			handler, ok := nat.msgHandlers[msgType]
+			if !ok {
+				logger.Warning(HandlerNotFound)
+				continue
+			}
+			if err := handler(task); err != nil {
 				logger.Warning("nat message proccess err :->", err)
 			}
 		}
@@ -112,45 +121,13 @@ func (nat *Manager) RunLoop() {
 }
 
 func (nat *Manager) timer() {
+
 	for {
 		select {
 		case <-time.After(KeepAliveTime):
-			nat.cacheLock.Lock()
-
-			currentClock := time.Now()
-			for nodeId, item := range nat.cache {
-
-				if currentClock.Sub(item.updateTIme) > KeepAliveTimeOut {
-					delete(nat.cache, nodeId)
-				}
+			nat.task <- &natTask{
+				taskType: DrainOutOldKa,
 			}
-
-			nat.cacheLock.Unlock()
 		}
 	}
-}
-
-func (nat *Manager) taskProcess(task *MsgTask) error {
-
-	msgType := task.request.Typ
-	handler, ok := nat.msgHandlers[msgType]
-	if !ok {
-		return HandlerNotFound
-	}
-	resMsg, peerAddr, err := handler(task)
-	if err != nil {
-		return err
-	}
-	if resMsg == nil {
-		return nil
-	}
-
-	logger.Debug("send the response:->", peerAddr, resMsg)
-
-	data, _ := proto.Marshal(resMsg)
-	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
-		return err
-	}
-
-	return nil
 }
