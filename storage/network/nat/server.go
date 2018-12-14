@@ -145,6 +145,8 @@ func (nat *Manager) taskProcess(task *MsgTask) error {
 		return nil
 	}
 
+	logger.Debug("send the response:->", peerAddr, resMsg)
+
 	data, _ := proto.Marshal(resMsg)
 	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
 		return err
