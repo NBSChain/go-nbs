@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	KeepAliveTime    = time.Minute
+	KeepAliveTime    = time.Second * 20
 	KeepAliveTimeOut = KeepAliveTime * 3
 	HolePunchTimeOut = 4 * time.Second
 	BootStrapTimeOut = time.Second * 2
