@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"net"
 )
 
 /************************************************************************
@@ -19,27 +20,28 @@ func (tunnel *KATunnel) readKeepAlive() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
-		n, err := tunnel.kaConn.Read(buffer)
+		n, peerAddr, err := tunnel.kaConn.ReadFromUDP(buffer)
 		if err != nil {
 			//TODO::recovery and broadcast the new information
 			logger.Warning("reading keep alive message failed:", err)
 			continue
 		}
 
-		if err := tunnel.process(buffer[:n]); err != nil {
+		msg := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
+			logger.Warning("keep alive msg Unmarshal failed:", err)
+			continue
+		}
+
+		logger.Debug("KA tunnel receive message:->", msg, peerAddr)
+
+		if err := tunnel.process(msg, peerAddr); err != nil {
 			continue
 		}
 	}
 }
 
-func (tunnel *KATunnel) process(buffer []byte) error {
-
-	msg := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer, msg); err != nil {
-		logger.Warning("keep alive msg Unmarshal failed:", err)
-		return err
-	}
-	logger.Debug("KA tunnel receive message:->", msg)
+func (tunnel *KATunnel) process(msg *net_pb.NatMsg, peerAddr *net.UDPAddr) error {
 
 	switch msg.Typ {
 	case nbsnet.NatKeepAlive:
