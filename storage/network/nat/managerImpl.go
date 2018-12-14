@@ -2,14 +2,12 @@ package nat
 
 import (
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -17,53 +15,7 @@ const (
 	MsgPoolSize = 1 << 10
 )
 
-func NewNatManager(networkId string) *Manager {
-
-	denat.GetDeNatSerIns().Setup(networkId)
-
-	natObj := &Manager{
-		networkId:  networkId,
-		canServe:   make(chan bool),
-		cache:      make(map[string]*HostBehindNat),
-		task:       make(chan *natTask, MsgPoolSize),
-		serverTask: make(map[int]taskProcess),
-	}
-
-	natObj.initService()
-
-	go natObj.TaskReceiver()
-	go natObj.timer()
-	go natObj.RunLoop()
-
-	return natObj
-}
-
-func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
-
-	port := strconv.Itoa(utils.GetConfig().NatChanSerPort)
-	listener, err := shareport.ListenUDP("udp4", "0.0.0.0:"+port)
-	if err != nil {
-		logger.Warning("create share listening udp failed.")
-		return err
-	}
-
-	serverHost := netNatAddr.NatServer
-	client, err := shareport.DialUDP("udp4", "0.0.0.0:"+port, serverHost)
-	if err != nil {
-		logger.Warning("create share port dial udp connection failed.")
-		return err
-	}
-
-	nat.NatKATun = newTunnel(nat.networkId, netNatAddr, listener, client)
-
-	return nil
-}
-
-func (nat *Manager) WaitNatConfirm() chan bool {
-	return nat.canServe
-}
-
-func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
+func (nat *Server) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	connId string, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
 
 	priConnTask := &ConnTask{
@@ -109,7 +61,7 @@ func (nat *Manager) PunchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	return nil, 0, fmt.Errorf("time out")
 }
 
-func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
+func (nat *Server) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	connId string, toPort int) (*net.UDPConn, error) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
@@ -156,7 +108,7 @@ func (nat *Manager) InvitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 }
 
-func (nat *Manager) waitInviteAnswer(host, sessionID string, task *ConnTask) {
+func (nat *Server) waitInviteAnswer(host, sessionID string, task *ConnTask) {
 
 	lisConn, err := shareport.ListenUDP("udp4", host)
 	if err != nil {

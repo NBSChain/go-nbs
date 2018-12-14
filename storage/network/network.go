@@ -10,8 +10,6 @@ type Network interface {
 
 	GetNatInfo() string
 
-	GetAddress() nbsnet.NbsUdpAddr
-
 	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)
 
 	ListenUDP(network string, lisAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)

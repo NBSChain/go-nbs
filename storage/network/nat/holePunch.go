@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
+func (tunnel *Client) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	sid string, toPort int, task *ConnTask) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
@@ -55,7 +55,7 @@ func (tunnel *KATunnel) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
 
-func (tunnel *KATunnel) digOut(req *net_pb.DigApply) {
+func (tunnel *Client) digOut(req *net_pb.DigApply) {
 
 	go tunnel.notifyCaller(req)
 
@@ -78,7 +78,7 @@ func (tunnel *KATunnel) digOut(req *net_pb.DigApply) {
 	logger.Debug("hole punch step2-4  dig dig:->",
 		conn.LocalAddr().String(), conn.RemoteAddr().String())
 }
-func (tunnel *KATunnel) notifyCaller(msg *net_pb.DigApply) {
+func (tunnel *Client) notifyCaller(msg *net_pb.DigApply) {
 
 	lPort := strconv.Itoa(int(msg.TargetPort))
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
@@ -110,13 +110,13 @@ func (tunnel *KATunnel) notifyCaller(msg *net_pb.DigApply) {
 	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
 }
 
-func (tunnel *KATunnel) makeAHole(ack *net_pb.DigConfirm) {
+func (tunnel *Client) makeAHole(ack *net_pb.DigConfirm) {
 
 	sid := ack.SessionId
 
 	task, ok := tunnel.digTask[sid]
 	if !ok {
-		logger.Error("can't find the dig task")
+		logger.Error("can't find the dig taskQueue")
 		return
 	}
 	defer delete(tunnel.digTask, sid)

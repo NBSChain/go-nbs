@@ -15,13 +15,13 @@ enum NatType {
 message BootReg {
     string  nodeId      = 1;
     string  privateIp   = 2;
-    string  privatePort = 3;
+    int32  privatePort = 3;
 }
 
 message BootAnswer {
     NatType NatType     = 1;
     string  PublicIp    = 2;
-    string  PublicPort  = 3;
+    int32  PublicPort  = 3;
 }
 
 message DigApply {

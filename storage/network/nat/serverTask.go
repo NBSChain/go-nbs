@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"strconv"
@@ -30,7 +31,7 @@ type natTask struct {
 	innerTask
 }
 
-func (nat *Manager) checkWhoIsHe(task *natTask) error {
+func (nat *Server) checkWhoIsHe(task *natTask) error {
 	peerAddr := task.addr
 	request := task.message.BootReg
 
@@ -41,8 +42,13 @@ func (nat *Manager) checkWhoIsHe(task *natTask) error {
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 		response.NatType = net_pb.NatType_NoNatDevice
 	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
-		response.NatType = net_pb.NatType_ToBeChecked
-		go nat.ping(peerAddr, request.NodeId)
+		if nat.networkId == request.NodeId {
+			logger.Info("yeah, I'm the bootstrap node:->")
+			response.NatType = net_pb.NatType_CanBeNatServer
+		} else {
+			response.NatType = net_pb.NatType_ToBeChecked
+			go nat.ping(peerAddr, request.NodeId)
+		}
 	} else {
 		response.NatType = net_pb.NatType_BehindNat
 	}
@@ -59,7 +65,7 @@ func (nat *Manager) checkWhoIsHe(task *natTask) error {
 	return nil
 }
 
-func (nat *Manager) updateKATime(task *natTask) error {
+func (nat *Server) updateKATime(task *natTask) error {
 
 	req := task.message.KeepAlive
 	peerAddr := task.addr
@@ -97,7 +103,7 @@ func (nat *Manager) updateKATime(task *natTask) error {
 	return nil
 }
 
-func (nat *Manager) forwardInvite(task *natTask) error {
+func (nat *Server) forwardInvite(task *natTask) error {
 	invite := task.message.ReverseInvite
 
 	nat.cacheLock.Lock()
@@ -116,7 +122,7 @@ func (nat *Manager) forwardInvite(task *natTask) error {
 	return nil
 }
 
-func (nat *Manager) forwardDigApply(task *natTask) error {
+func (nat *Server) forwardDigApply(task *natTask) error {
 	req := task.message.DigApply
 	peerAddr := task.addr
 
@@ -138,7 +144,7 @@ func (nat *Manager) forwardDigApply(task *natTask) error {
 	return nil
 }
 
-func (nat *Manager) forwardDigConfirm(task *natTask) error {
+func (nat *Server) forwardDigConfirm(task *natTask) error {
 	ack := task.message.DigConfirm
 	addr := task.addr
 
@@ -160,13 +166,13 @@ func (nat *Manager) forwardDigConfirm(task *natTask) error {
 	return nil
 }
 
-func (nat *Manager) pong(task *natTask) error {
-	nat.canServe <- true
+func (nat *Server) pong(task *natTask) error {
+	nat.CanServe <- true
 	logger.Debug("I can serve as in public network.")
 	return nil
 }
 
-func (nat *Manager) checkKaTunnel(task *natTask) error {
+func (nat *Server) checkKaTunnel(task *natTask) error {
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
@@ -180,4 +186,38 @@ func (nat *Manager) checkKaTunnel(task *natTask) error {
 		}
 	}
 	return nil
+}
+
+func (nat *Server) ping(peerAddr *net.UDPAddr, reqNodeId string) {
+
+	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   peerAddr.IP,
+		Port: utils.GetConfig().NatServerPort,
+	})
+
+	if err != nil {
+		logger.Warning("ping DialUDP err:->", err)
+		return
+	}
+	defer conn.Close()
+
+	if err := conn.SetDeadline(time.Now().Add(BootStrapTimeOut / 2)); err != nil {
+		logger.Warning("ping SetDeadline err:->", err)
+		return
+	}
+
+	request := &net_pb.NatMsg{
+		Typ: nbsnet.NatPingPong,
+		PingPong: &net_pb.PingPong{
+			Ping:  nat.networkId,
+			Pong:  reqNodeId,
+			Nonce: "", //TODO::security nonce
+			TTL:   1,  //time to live
+		},
+	}
+	reqData, _ := proto.Marshal(request)
+	if _, err := conn.Write(reqData); err != nil {
+		logger.Warning("ping Write err:->", err)
+		return
+	}
 }

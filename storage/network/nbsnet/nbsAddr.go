@@ -16,9 +16,7 @@ type NbsUdpAddr struct {
 	NatIp     string
 	NatPort   int32
 	PubIp     string
-	PubPort   int32
 	PriIp     string
-	PriPort   int32
 }
 
 func (addr *NbsUdpAddr) String() string {
@@ -29,13 +27,10 @@ func (addr *NbsUdpAddr) String() string {
 		"\tNatIp:%20s\n"+
 		"\tNatPort:%20d\n "+
 		"\tPubIp:%20s\n"+
-		"\tPubPort:%20d\n"+
 		"\tPriIp:%20s\n"+
-		"\tPriPort:%20d\n"+
 		"**************************************\n",
 		addr.NetworkId, addr.CanServe, addr.NatServer,
-		addr.NatIp, addr.NatPort, addr.PubIp,
-		addr.PubPort, addr.PriIp, addr.PriPort)
+		addr.NatIp, addr.NatPort, addr.PubIp, addr.PriIp)
 }
 
 func CanServe(natType net_pb.NatType) bool {

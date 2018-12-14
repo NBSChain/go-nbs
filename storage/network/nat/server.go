@@ -5,7 +5,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"net"
 	"sync"
 	"time"
@@ -23,19 +23,35 @@ type HostBehindNat struct {
 	priAddr    string
 }
 
-type Manager struct {
+type Server struct {
 	sysNatServer *net.UDPConn
 	networkId    string
-	canServe     chan bool
-	NatKATun     *KATunnel
+	CanServe     chan bool
 	cacheLock    sync.Mutex
 	cache        map[string]*HostBehindNat
-	task         chan *natTask
-	serverTask   map[int]taskProcess
+	taskQueue    chan *natTask
+	taskRouter   map[int]taskProcess
+}
+
+func NewNatServer(networkId string) *Server {
+	natObj := &Server{
+		networkId:  networkId,
+		CanServe:   make(chan bool),
+		cache:      make(map[string]*HostBehindNat),
+		taskQueue:  make(chan *natTask, MsgPoolSize),
+		taskRouter: make(map[int]taskProcess),
+	}
+
+	natObj.initService()
+	go natObj.receiveMsg()
+	go natObj.timer()
+	go natObj.runLoop()
+
+	return natObj
 }
 
 //TODO:: support ipv6 later.
-func (nat *Manager) initService() {
+func (nat *Server) initService() {
 
 	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
 		Port: utils.GetConfig().NatServerPort,
@@ -46,25 +62,35 @@ func (nat *Manager) initService() {
 	}
 
 	nat.sysNatServer = natServer
-	nat.serverTask[int(nbsnet.NatBootReg)] = nat.checkWhoIsHe
-	nat.serverTask[int(nbsnet.NatKeepAlive)] = nat.updateKATime
-	nat.serverTask[int(nbsnet.NatReversInvite)] = nat.forwardInvite
-	nat.serverTask[int(nbsnet.NatDigApply)] = nat.forwardDigApply
-	nat.serverTask[int(nbsnet.NatDigConfirm)] = nat.forwardDigConfirm
-	nat.serverTask[int(nbsnet.NatPingPong)] = nat.pong
-	nat.serverTask[DrainOutOldKa] = nat.checkKaTunnel
+	nat.taskRouter[int(nbsnet.NatBootReg)] = nat.checkWhoIsHe
+	nat.taskRouter[int(nbsnet.NatKeepAlive)] = nat.updateKATime
+	nat.taskRouter[int(nbsnet.NatReversInvite)] = nat.forwardInvite
+	nat.taskRouter[int(nbsnet.NatDigApply)] = nat.forwardDigApply
+	nat.taskRouter[int(nbsnet.NatDigConfirm)] = nat.forwardDigConfirm
+	nat.taskRouter[int(nbsnet.NatPingPong)] = nat.pong
+	nat.taskRouter[DrainOutOldKa] = nat.checkKaTunnel
 }
 
-func (nat *Manager) TaskReceiver() {
+func (nat *Server) receiveMsg() {
 
 	logger.Info(">>>>>>Nat sysNatServer start to listen......")
 
 	for {
-		peerAddr, request, err := nat.readNatRequest()
+		data := make([]byte, utils.NormalReadBuffer)
+
+		n, peerAddr, err := nat.sysNatServer.ReadFromUDP(data)
 		if err != nil {
-			logger.Error(err)
+			logger.Warning("nat sysNatServer read udp data failed:", err)
 			continue
 		}
+
+		request := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(data[:n], request); err != nil {
+			logger.Warning("can't parse the nat message", err, peerAddr)
+			continue
+		}
+
+		logger.Debug("message:", request, peerAddr)
 
 		task := &natTask{
 			taskType: int(request.Typ),
@@ -72,39 +98,17 @@ func (nat *Manager) TaskReceiver() {
 
 		task.message = request
 		task.addr = peerAddr
-
-		nat.task <- task
+		nat.taskQueue <- task
 	}
 }
 
-func (nat *Manager) readNatRequest() (*net.UDPAddr, *net_pb.NatMsg, error) {
-
-	data := make([]byte, utils.NormalReadBuffer)
-
-	n, peerAddr, err := nat.sysNatServer.ReadFromUDP(data)
-	if err != nil {
-		logger.Warning("nat sysNatServer read udp data failed:", err)
-		return nil, nil, err
-	}
-
-	request := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(data[:n], request); err != nil {
-		logger.Warning("can't parse the nat message", err, peerAddr)
-		return nil, nil, err
-	}
-
-	logger.Debug("message:", request, peerAddr)
-
-	return peerAddr, request, nil
-}
-
-func (nat *Manager) RunLoop() {
+func (nat *Server) runLoop() {
 
 	for {
 		select {
-		case task := <-nat.task:
+		case task := <-nat.taskQueue:
 			msgType := int(task.message.Typ)
-			handler, ok := nat.serverTask[msgType]
+			handler, ok := nat.taskRouter[msgType]
 			if !ok {
 				logger.Warning(HandlerNotFound)
 				continue
@@ -116,12 +120,12 @@ func (nat *Manager) RunLoop() {
 	}
 }
 
-func (nat *Manager) timer() {
+func (nat *Server) timer() {
 
 	for {
 		select {
 		case <-time.After(KeepAliveTime):
-			nat.task <- &natTask{
+			nat.taskQueue <- &natTask{
 				taskType: DrainOutOldKa,
 			}
 		}
