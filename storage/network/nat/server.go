@@ -31,7 +31,7 @@ type Manager struct {
 	cacheLock    sync.Mutex
 	cache        map[string]*HostBehindNat
 	task         chan *natTask
-	msgHandlers  map[int]taskProcess
+	serverTask   map[int]taskProcess
 }
 
 //TODO:: support ipv6 later.
@@ -46,13 +46,13 @@ func (nat *Manager) initService() {
 	}
 
 	nat.sysNatServer = natServer
-	nat.msgHandlers[int(nbsnet.NatBootReg)] = nat.checkWhoIsHe
-	nat.msgHandlers[int(nbsnet.NatKeepAlive)] = nat.updateKATime
-	nat.msgHandlers[int(nbsnet.NatReversInvite)] = nat.forwardInvite
-	nat.msgHandlers[int(nbsnet.NatDigApply)] = nat.forwardDigApply
-	nat.msgHandlers[int(nbsnet.NatDigConfirm)] = nat.forwardDigConfirm
-	nat.msgHandlers[int(nbsnet.NatPingPong)] = nat.pong
-	nat.msgHandlers[DrainOutOldKa] = nat.checkKaTunnel
+	nat.serverTask[int(nbsnet.NatBootReg)] = nat.checkWhoIsHe
+	nat.serverTask[int(nbsnet.NatKeepAlive)] = nat.updateKATime
+	nat.serverTask[int(nbsnet.NatReversInvite)] = nat.forwardInvite
+	nat.serverTask[int(nbsnet.NatDigApply)] = nat.forwardDigApply
+	nat.serverTask[int(nbsnet.NatDigConfirm)] = nat.forwardDigConfirm
+	nat.serverTask[int(nbsnet.NatPingPong)] = nat.pong
+	nat.serverTask[DrainOutOldKa] = nat.checkKaTunnel
 }
 
 func (nat *Manager) TaskReceiver() {
@@ -104,7 +104,7 @@ func (nat *Manager) RunLoop() {
 		select {
 		case task := <-nat.task:
 			msgType := int(task.message.Typ)
-			handler, ok := nat.msgHandlers[msgType]
+			handler, ok := nat.serverTask[msgType]
 			if !ok {
 				logger.Warning(HandlerNotFound)
 				continue

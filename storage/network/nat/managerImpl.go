@@ -22,11 +22,11 @@ func NewNatManager(networkId string) *Manager {
 	denat.GetDeNatSerIns().Setup(networkId)
 
 	natObj := &Manager{
-		networkId:   networkId,
-		canServe:    make(chan bool),
-		cache:       make(map[string]*HostBehindNat),
-		task:        make(chan *natTask, MsgPoolSize),
-		msgHandlers: make(map[int]taskProcess),
+		networkId:  networkId,
+		canServe:   make(chan bool),
+		cache:      make(map[string]*HostBehindNat),
+		task:       make(chan *natTask, MsgPoolSize),
+		serverTask: make(map[int]taskProcess),
 	}
 
 	natObj.initService()
