@@ -34,48 +34,42 @@ func (tunnel *KATunnel) readKeepAlive() {
 
 func (tunnel *KATunnel) process(buffer []byte) error {
 
-	response := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer, response); err != nil {
-		logger.Warning("keep alive response Unmarshal failed:", err)
+	msg := &net_pb.NatMsg{}
+	if err := proto.Unmarshal(buffer, msg); err != nil {
+		logger.Warning("keep alive msg Unmarshal failed:", err)
 		return err
 	}
+	logger.Debug("KA tunnel receive message:->", msg)
 
-	logger.Debug("keep alive:->", response)
-
-	switch response.Typ {
+	switch msg.Typ {
 	case nbsnet.NatKeepAlive:
-		tunnel.refreshNatInfo(response.KeepAlive)
+		tunnel.refreshNatInfo(msg.KeepAlive)
 	case nbsnet.NatReversInvite:
-		tunnel.answerInvite(response.ReverseInvite)
+		tunnel.answerInvite(msg.ReverseInvite)
 	case nbsnet.NatDigApply:
-		tunnel.digOut(response.DigApply)
+		tunnel.digOut(msg.DigApply)
 	case nbsnet.NatDigConfirm:
-		tunnel.makeAHole(response.DigConfirm)
+		tunnel.makeAHole(msg.DigConfirm)
 	}
 
 	return nil
 }
 
 func (tunnel *KATunnel) listening() {
+	//logger.Debug("no need to listen for linux/unix...")
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := tunnel.serverHub.ReadFromUDP(buffer)
 		if err != nil {
-			logger.Warning("receiving port:", err, peerAddr)
+			logger.Warning("server hub receiving port:", err, peerAddr)
 			continue
 		}
 
-		request := &net_pb.NatMsg{}
-		if err := proto.Unmarshal(buffer[:n], request); err != nil {
-			logger.Warning("parse message failed", err)
+		msg := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
+			logger.Warning("server hub parse message failed", err)
 			continue
 		}
-
-		logger.Debug("listen connection:", request)
-
-		switch request.Typ {
-		default:
-			logger.Warning("unknown msg for linux/unix/bsd systems.")
-		}
+		logger.Info("server hub receive msg:->", msg)
 	}
 }

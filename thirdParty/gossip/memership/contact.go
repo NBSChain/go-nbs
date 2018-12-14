@@ -126,7 +126,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 		},
 	}
 
-	if err := node.sendVoteApply(req); err != nil {
+	if err := node.sendVoteApply(req, sub.NodeId); err != nil {
 		logger.Warning("no one wants to vote:->", err)
 		return node.asContactServer(sub)
 	}
@@ -139,7 +139,7 @@ func (node *MemManager) getVoteApply(task *gossipTask) error {
 	return node.asContactProxy(req.Subscribe, int(req.TTL))
 }
 
-func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
+func (node *MemManager) sendVoteApply(pb *pb.Gossip, targetId string) error {
 	data, err := proto.Marshal(pb)
 	if err != nil {
 		return err
@@ -152,6 +152,10 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip) error {
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
 		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100)
 		if pro.Int64() > int64(item.probability*100) {
+			continue
+		}
+		if item.nodeId == targetId {
+			logger.Debug("don't let him find himself, the life is already so hard:->")
 			continue
 		}
 
