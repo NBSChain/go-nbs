@@ -22,10 +22,10 @@ func (tunnel *KATunnel) waitServerCmd() {
 		n, peerAddr, err := tunnel.kaConn.ReadFromUDP(buffer)
 		if err != nil {
 			if tunnel.errNo++; tunnel.errNo > ErrNoBeforeRetry {
-				go tunnel.reSetupChannel()
+				logger.Warning("too many reading error:->")
+				tunnel.reSetupChannel()
 				return
 			}
-			//TODO::recovery and broadcast the new information
 			logger.Warning("reading keep alive message failed:", err)
 			continue
 		}
@@ -51,7 +51,7 @@ func (tunnel *KATunnel) waitServerCmd() {
 
 		select {
 		case <-tunnel.ctx.Done():
-			logger.Info("tunnel is closed and quit to wait server command")
+			logger.Info("exit reading thread cause's of context close")
 			return
 		default:
 		}

@@ -14,6 +14,11 @@ func (tunnel *KATunnel) waitServerCmd() {
 		responseData := make([]byte, utils.NormalReadBuffer)
 		hasRead, peerAddr, err := tunnel.serverHub.ReadFromUDP(responseData)
 		if err != nil {
+			if tunnel.errNo++; tunnel.errNo > ErrNoBeforeRetry {
+				logger.Warning("too many reading error:->")
+				tunnel.reSetupChannel()
+				return
+			}
 			logger.Warning("receiving port:", err, peerAddr)
 			continue
 		}

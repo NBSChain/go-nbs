@@ -1,7 +1,6 @@
 package nat
 
 import (
-	"context"
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/denat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
@@ -54,30 +53,8 @@ func (nat *Manager) SetUpNatChannel(netNatAddr *nbsnet.NbsUdpAddr) error {
 		logger.Warning("create share port dial udp connection failed.")
 		return err
 	}
-	netNatAddr.NatServer = serverHost
-	ctx, cancel := context.WithCancel(context.Background())
-	tunnel := &KATunnel{
-		ctx:        ctx,
-		cancel:     cancel,
-		natChanged: make(chan struct{}),
-		networkId:  nat.networkId,
-		natAddr:    netNatAddr,
-		serverHub:  listener,
-		kaConn:     client,
-		sharedAddr: client.LocalAddr().String(),
-		updateTime: time.Now(),
-		digTask:    make(map[string]*ConnTask),
-	}
 
-	go tunnel.sendToServer()
-
-	go tunnel.waitServerCmd()
-
-	nat.NatKATun = tunnel
-	select {
-	case <-tunnel.natChanged:
-	case <-time.After(time.Second * 2): //TODO::
-	}
+	nat.NatKATun = newTunnel(nat.networkId, netNatAddr, listener, client)
 
 	return nil
 }

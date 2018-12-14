@@ -55,10 +55,6 @@ func (nat *Manager) initService() {
 	nat.msgHandlers[DrainOutOldKa] = nat.checkKaTunnel
 }
 
-func (nat *Manager) MsgConsumer() {
-
-}
-
 func (nat *Manager) TaskReceiver() {
 
 	logger.Info(">>>>>>Nat sysNatServer start to listen......")
@@ -114,7 +110,7 @@ func (nat *Manager) RunLoop() {
 				continue
 			}
 			if err := handler(task); err != nil {
-				logger.Warning("nat message proccess err :->", err)
+				logger.Warning("nat message process err :->", err)
 			}
 		}
 	}

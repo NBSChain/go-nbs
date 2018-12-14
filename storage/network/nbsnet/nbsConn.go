@@ -75,7 +75,6 @@ func (conn *NbsUdpConn) Send(b []byte) (int, error) {
 		return conn.RealConn.Write(b)
 	case CTypeNatSimplex:
 		return conn.RealConn.Write(b)
-
 	case CTypeNatDuplex:
 		return conn.RealConn.Write(b)
 	default:

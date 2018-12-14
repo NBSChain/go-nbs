@@ -30,7 +30,7 @@ type ConnTask struct {
 
 type KATunnel struct {
 	ctx        context.Context
-	cancel     context.CancelFunc
+	closeCtx   context.CancelFunc
 	networkId  string
 	errNo      int
 	natChanged chan struct{}
@@ -42,6 +42,34 @@ type KATunnel struct {
 	digTask    map[string]*ConnTask
 }
 
+func newTunnel(networkId string, netNatAddr *nbsnet.NbsUdpAddr, l, c *net.UDPConn) *KATunnel {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	tunnel := &KATunnel{
+		ctx:        ctx,
+		closeCtx:   cancel,
+		natChanged: make(chan struct{}),
+		networkId:  networkId,
+		natAddr:    netNatAddr,
+		serverHub:  l,
+		kaConn:     c,
+		sharedAddr: c.LocalAddr().String(),
+		updateTime: time.Now(),
+		digTask:    make(map[string]*ConnTask),
+	}
+
+	go tunnel.sendToServer()
+
+	go tunnel.waitServerCmd()
+
+	select {
+	case <-tunnel.natChanged:
+	case <-time.After(time.Second * 2): //TODO::
+	}
+	return tunnel
+}
+
+//TODO:: data race
 func (task *ConnTask) Close() {
 	if task.portCapConn != nil {
 		_ = task.portCapConn.Close()
@@ -61,13 +89,13 @@ func (tunnel *KATunnel) sendToServer() {
 			if err := tunnel.sendKeepAlive(); err != nil {
 				logger.Warning("failed to send nat keep alive message")
 				if tunnel.errNo++; tunnel.errNo > ErrNoBeforeRetry {
-					logger.Warning("too many times send fail")
+					logger.Warning("too many times send errors")
 					tunnel.reSetupChannel()
 					return
 				}
 			}
 		case <-tunnel.ctx.Done():
-			logger.Warning("tunnel is down ......")
+			logger.Info("exit sending thread cause's of context close")
 			return
 		}
 	}
@@ -100,8 +128,7 @@ func (tunnel *KATunnel) sendKeepAlive() error {
 //TODO::
 func (tunnel *KATunnel) reSetupChannel() {
 	tunnel.errNo = 0
-	tunnel.cancel()
-
+	tunnel.closeCtx()
 }
 
 /************************************************************************
