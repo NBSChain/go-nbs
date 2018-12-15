@@ -60,6 +60,17 @@ func (nat *Server) checkWhoIsHe(task *natTask) error {
 		return err
 	}
 
+	if response.NatType == net_pb.NatType_BehindNat ||
+		response.NatType == net_pb.NatType_ToBeChecked {
+		priAddr := nbsnet.JoinHostPort(request.PrivateIp, request.PrivatePort)
+		item := &HostBehindNat{
+			updateTIme: time.Now(),
+			pubAddr:    peerAddr,
+			priAddr:    priAddr,
+		}
+		nat.cache[request.NodeId] = item
+	}
+
 	return nil
 }
 

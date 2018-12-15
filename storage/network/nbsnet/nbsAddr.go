@@ -63,6 +63,11 @@ func SplitHostPort(addr string) (string, int32, error) {
 	return host, int32(intPort), err
 }
 
+func JoinHostPort(host string, port int32) string {
+	portStr := strconv.Itoa(int(port))
+	return net.JoinHostPort(host, portStr)
+}
+
 func ExternalIP() []string {
 
 	interfaces, err := net.Interfaces()

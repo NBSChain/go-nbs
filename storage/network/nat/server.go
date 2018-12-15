@@ -109,8 +109,7 @@ func (nat *Server) runLoop() {
 	for {
 		select {
 		case task := <-nat.taskQueue:
-			msgType := int(task.message.Typ)
-			handler, ok := nat.taskRouter[msgType]
+			handler, ok := nat.taskRouter[task.taskType]
 			if !ok {
 				logger.Warning(HandlerNotFound)
 				continue
