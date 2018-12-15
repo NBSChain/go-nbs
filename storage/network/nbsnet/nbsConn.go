@@ -143,3 +143,9 @@ func (conn *NbsUdpConn) String() string {
 	return "[" + conn.RealConn.LocalAddr().String() + "]-->[" +
 		conn.RealConn.RemoteAddr().String() + "]"
 }
+
+func ConnString(conn net.Conn) string {
+
+	return "[" + conn.LocalAddr().String() + "]-->[" +
+		conn.RemoteAddr().String() + "]"
+}

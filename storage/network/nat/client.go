@@ -206,7 +206,7 @@ func (c *Client) sendKeepAlive() error {
 		logger.Warning("failed to send keep alive channel message:", err)
 		return err
 	}
-
+	logger.Debug("send  keep alive to nat server:->", nbsnet.ConnString(c.conn))
 	return nil
 }
 
