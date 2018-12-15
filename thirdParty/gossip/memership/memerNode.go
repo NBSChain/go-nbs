@@ -29,7 +29,7 @@ const (
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Hour
 	SubscribeTimeOut = time.Second * 2
-	IsolatedTime     = MemShipHeartBeat * 3
+	IsolatedTime     = MemShipHeartBeat * 5
 	MSGTrashCollect  = time.Minute * 10
 	MaxItemPerRound  = 1 << 10
 	ProbUpdateInter  = 10
