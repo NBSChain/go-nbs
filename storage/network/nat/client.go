@@ -154,7 +154,7 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 		conn.SetDeadline(NoTimeOut)
 		c.conn = conn
 
-		logger.Info("create client success for network")
+		logger.Info("create client success for network:->", c.NatAddr.String())
 		return nil
 	}
 
