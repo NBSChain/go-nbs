@@ -24,7 +24,7 @@ const (
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
 
-	MemShipHeartBeat = time.Second * 60 //TODO::?? heart beat time interval.
+	MemShipHeartBeat = time.Second * 20 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Hour
