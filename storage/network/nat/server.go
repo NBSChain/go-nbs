@@ -17,6 +17,8 @@ var (
 	logger          = utils.GetLogInstance()
 )
 
+const MsgPoolSize = 1 << 10
+
 type HostBehindNat struct {
 	updateTIme time.Time
 	pubAddr    *net.UDPAddr

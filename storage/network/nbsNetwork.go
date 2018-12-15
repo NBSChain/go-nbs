@@ -14,12 +14,13 @@ import (
 )
 
 type nbsNetwork struct {
-	networkId   string
-	ctx         context.Context
-	CanServe    bool
-	natServer   *nat.Server
-	natClient   *nat.Client
-	connManager *nbsnet.ConnManager
+	networkId string
+	ctx       context.Context
+	CanServe  bool
+	natServer *nat.Server
+	natClient *nat.Client
+	digTask   map[string]*connTask
+	cmdRouter map[int]nat.CmdProcess
 }
 
 const (
@@ -27,9 +28,10 @@ const (
 )
 
 var (
-	once     sync.Once
-	instance *nbsNetwork
-	logger   = utils.GetLogInstance()
+	CmdTaskErr = fmt.Errorf("convert cmmond task parameter err:->")
+	once       sync.Once
+	instance   *nbsNetwork
+	logger     = utils.GetLogInstance()
 )
 
 /************************************************************************
@@ -51,7 +53,9 @@ func newNetwork() *nbsNetwork {
 	peerId := account.GetAccountInstance().GetPeerID()
 
 	network := &nbsNetwork{
-		ctx: context.Background(),
+		ctx:       context.Background(),
+		digTask:   make(map[string]*connTask),
+		cmdRouter: make(map[int]nat.CmdProcess),
 	}
 
 	if peerId != "" {
@@ -80,13 +84,10 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 
 	network.natServer = nat.NewNatServer(network.networkId)
 
-	c, err := nat.NewNatClient(peerId, network.natServer.CanServe)
-	if err != nil {
+	if err := network.setupNatClient(peerId); err != nil {
 		return err
 	}
 
-	network.natClient = c
-	network.CanServe = c.CanServer
 	return nil
 }
 
@@ -113,7 +114,7 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 	if err != nil {
 		return nil, err
 	}
-
+	natAddr := network.natClient.NatAddr
 	host, _, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  c,
@@ -122,10 +123,10 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
 			CanServe:  network.CanServe,
-			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.NatIp,
-			PubIp:     network.natAddr.PubIp,
-			NatPort:   network.natAddr.NatPort,
+			NatServer: natAddr.NatServer,
+			NatIp:     natAddr.NatIp,
+			PubIp:     natAddr.PubIp,
+			NatPort:   natAddr.NatPort,
 			PriIp:     host,
 		},
 	}
@@ -153,6 +154,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		cType = nbsnet.CTypeNatListen
 	}
 
+	natAddr := network.natClient.NatAddr
 	host, _, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  realConn,
@@ -160,11 +162,11 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		SessionID: lAddr.String(),
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
-			CanServe:  network.natAddr.CanServe,
-			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.NatIp,
-			NatPort:   network.natAddr.NatPort,
-			PubIp:     network.natAddr.PubIp,
+			CanServe:  natAddr.CanServe,
+			NatServer: natAddr.NatServer,
+			NatIp:     natAddr.NatIp,
+			NatPort:   natAddr.NatPort,
+			PubIp:     natAddr.PubIp,
 			PriIp:     host,
 		},
 	}
@@ -189,20 +191,20 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 	var connType nbsnet.ConnType
 	if lAddr.CanServe {
 		connType = nbsnet.CTypeNatSimplex
-		c, err := network.natServer.InvitePeerBehindNat(lAddr, rAddr, sessionID, toPort)
+		c, err := network.invitePeerBehindNat(lAddr, rAddr, sessionID, toPort)
 		if err != nil {
 			return nil, err
 		}
 		realConn = c
 	} else {
-		c, t, err := network.natServer.PunchANatHole(lAddr, rAddr, sessionID, toPort)
+		c, t, err := network.punchANatHole(lAddr, rAddr, sessionID, toPort)
 		if err != nil {
 			return nil, err
 		}
 		connType = t
 		realConn = c
 	}
-
+	natAddr := network.natClient.NatAddr
 	host, _, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
 	conn := &nbsnet.NbsUdpConn{
 		RealConn:  realConn,
@@ -210,61 +212,54 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 		SessionID: sessionID,
 		LocAddr: &nbsnet.NbsUdpAddr{
 			NetworkId: network.networkId,
-			CanServe:  network.natAddr.CanServe,
-			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.NatIp,
-			PubIp:     network.natAddr.PubIp,
-			NatPort:   network.natAddr.NatPort,
+			CanServe:  natAddr.CanServe,
+			NatServer: natAddr.NatServer,
+			NatIp:     natAddr.NatIp,
+			PubIp:     natAddr.PubIp,
+			NatPort:   natAddr.NatPort,
 			PriIp:     host,
 		},
 	}
 
 	return conn, nil
 }
+func (network *nbsNetwork) runLoop() {
+	network.cmdRouter[nat.CMDAnswerInvite] = network.answerInvite
+	network.cmdRouter[nat.CMDDigOut] = network.digOut
+	network.cmdRouter[nat.CMDDigSetup] = network.makeAHole
 
-/************************************************************************
-*
-*			private functions
-*
-*************************************************************************/
-
-func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*nbsnet.NbsUdpConn, error) {
-
-	if rAddr == nil {
-		return nil, fmt.Errorf("remote address can't be nil")
+	for {
+		select {
+		case task := <-network.natClient.CmdTask:
+			process, ok := network.cmdRouter[task.CmdType]
+			if !ok {
+				logger.Warning("unknown task type:->", task.CmdType)
+				continue
+			}
+			if err := process(task.Params); err != nil {
+				logger.Warning(err)
+				continue
+			}
+		case <-network.natClient.Ctx.Done():
+			logger.Warning("nat client process quit")
+			network.natServer.CanServe = make(chan bool)
+			go network.setupNatClient(network.networkId)
+			return
+		}
 	}
+}
 
-	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
-
-	rUdpAddr := &net.UDPAddr{
-		Port: toPort,
-		IP:   net.ParseIP(rAddr.PubIp),
-	}
-
-	lUdpAddr := &net.UDPAddr{
-		IP: net.ParseIP(lAddr.PriIp),
-	}
-
-	c, err := net.DialUDP("udp4", lUdpAddr, rUdpAddr)
+func (network *nbsNetwork) setupNatClient(peerId string) error {
+	defer close(network.natServer.CanServe)
+	c, err := nat.NewNatClient(peerId, network.natServer.CanServe)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	logger.Debug("Step6:make direct connection:->", c.LocalAddr().String(), c.RemoteAddr().String())
-	host, _, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
-	conn := &nbsnet.NbsUdpConn{
-		RealConn:  c,
-		CType:     nbsnet.CTypeNormal,
-		SessionID: sessionID,
-		LocAddr: &nbsnet.NbsUdpAddr{
-			NetworkId: network.networkId,
-			CanServe:  network.natAddr.CanServe,
-			NatServer: network.natAddr.NatServer,
-			NatIp:     network.natAddr.NatIp,
-			PubIp:     network.natAddr.PubIp,
-			NatPort:   network.natAddr.NatPort,
-			PriIp:     host,
-		},
+	network.natClient = c
+	network.CanServe = c.CanServer
+	if !network.CanServe {
+		go network.runLoop()
 	}
-	return conn, nil
+	return nil
 }

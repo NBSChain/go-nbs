@@ -1,13 +1,11 @@
 package nat
 
 import (
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -37,11 +35,11 @@ func (nat *Server) checkWhoIsHe(task *natTask) error {
 
 	response := &net_pb.BootAnswer{}
 	response.PublicIp = peerAddr.IP.String()
-	response.PublicPort = fmt.Sprintf("%d", peerAddr.Port)
+	response.PublicPort = int32(peerAddr.Port)
 
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 		response.NatType = net_pb.NatType_NoNatDevice
-	} else if strconv.Itoa(peerAddr.Port) == request.PrivatePort {
+	} else if peerAddr.Port == int(request.PrivatePort) {
 		if nat.networkId == request.NodeId {
 			logger.Info("yeah, I'm the bootstrap node:->")
 			response.NatType = net_pb.NatType_CanBeNatServer

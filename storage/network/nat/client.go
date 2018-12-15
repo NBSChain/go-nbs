@@ -3,14 +3,11 @@ package nat
 import (
 	"context"
 	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -19,41 +16,42 @@ var NoTimeOut = time.Time{}
 const (
 	KeepAliveTime    = time.Second * 100
 	KeepAliveTimeOut = KeepAliveTime * 3
-	HolePunchTimeOut = 4 * time.Second
 	BootStrapTimeOut = time.Second * 2
 	ErrNoBeforeRetry = 3
+	CmdTaskPoolSize  = 100
+	CMDAnswerInvite  = 1
+	CMDDigOut        = 2
+	CMDDigSetup      = 3
 )
 
-type ConnTask struct {
-	err         error
-	locPort     string
-	udpConn     chan *net.UDPConn
-	portCapConn *net.UDPConn
+type CmdProcess func(interface{}) error
+
+type ClientCmd struct {
+	CmdType int
+	Params  interface{}
 }
 
 type Client struct {
 	networkId  string
 	CanServer  bool
-	ctx        context.Context
+	Ctx        context.Context
 	closeCtx   context.CancelFunc
 	errNo      int
-	natChanged chan struct{}
 	NatAddr    *nbsnet.NbsUdpAddr
 	conn       *net.UDPConn
 	updateTime time.Time
-	digTask    map[string]*ConnTask
+	CmdTask    chan *ClientCmd
 }
 
 func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Client{
-		ctx:        ctx,
+		Ctx:        ctx,
 		closeCtx:   cancel,
 		networkId:  networkId,
-		natChanged: make(chan struct{}),
 		updateTime: time.Now(),
-		digTask:    make(map[string]*ConnTask),
+		CmdTask:    make(chan *ClientCmd, CmdTaskPoolSize),
 	}
 
 	if err := c.findWhoAmI(canServer); err != nil {
@@ -163,45 +161,38 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 	return fmt.Errorf("failed to find who am I")
 }
 
-//TODO:: data race
-func (task *ConnTask) Close() {
-	if task.portCapConn != nil {
-		_ = task.portCapConn.Close()
-	}
-}
-
 /************************************************************************
 *
 *			client side
 *
 *************************************************************************/
-func (tunnel *Client) keepAlive() {
+func (c *Client) keepAlive() {
 
 	for {
 		select {
 		case <-time.After(KeepAliveTime):
-			if err := tunnel.sendKeepAlive(); err != nil {
+			if err := c.sendKeepAlive(); err != nil {
 				logger.Warning("failed to send nat keep alive message")
-				if tunnel.errNo++; tunnel.errNo > ErrNoBeforeRetry {
+				if c.errNo++; c.errNo > ErrNoBeforeRetry {
 					logger.Warning("too many times send errors")
-					tunnel.reSetupChannel()
+					c.closeCtx()
 					return
 				}
 			}
-		case <-tunnel.ctx.Done():
+		case <-c.Ctx.Done():
 			logger.Info("exit sending thread cause's of context close")
 			return
 		}
 	}
 }
 
-func (tunnel *Client) sendKeepAlive() error {
+func (c *Client) sendKeepAlive() error {
 
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId: tunnel.networkId,
-			LAddr:  tunnel.sharedAddr,
+			NodeId: c.networkId,
+			LAddr:  c.conn.LocalAddr().String(),
 		},
 	}
 
@@ -211,18 +202,12 @@ func (tunnel *Client) sendKeepAlive() error {
 		return err
 	}
 
-	if no, err := tunnel.kaConn.Write(requestData); err != nil || no == 0 {
+	if no, err := c.conn.Write(requestData); err != nil || no == 0 {
 		logger.Warning("failed to send keep alive channel message:", err)
 		return err
 	}
 
 	return nil
-}
-
-//TODO::
-func (tunnel *Client) reSetupChannel() {
-	tunnel.errNo = 0
-	tunnel.closeCtx()
 }
 
 /************************************************************************
@@ -231,113 +216,68 @@ func (tunnel *Client) reSetupChannel() {
 *
 *************************************************************************/
 
-func (tunnel *Client) answerInvite(invite *net_pb.ReverseInvite) {
-	myPort := strconv.Itoa(int(invite.ToPort))
+func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
+	//TODO::
+	c.updateTime = time.Now()
 
-	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+myPort,
-		invite.PubIp+":"+invite.FromPort)
-	if err != nil {
-		logger.Errorf("failed to dial up peer to answer inviter:", err)
-		return
-	}
-	defer conn.Close()
+	if c.NatAddr.NatIp != alive.PubIP &&
+		c.NatAddr.NatPort != alive.PubPort {
 
-	req := &net_pb.NatMsg{
-		Typ: nbsnet.NatReversInviteAck,
-		ReverseInviteAck: &net_pb.ReverseInviteAck{
-			SessionId: invite.SessionId,
-		},
-	}
-
-	reqData, _ := proto.Marshal(req)
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.SessionId)
-
-	for i := 0; i < 3; i++ {
-		if _, err := conn.Write(reqData); err != nil {
-			logger.Errorf("failed to write answer to inviter:", err)
-			return
-		}
-	}
-}
-
-func (tunnel *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
-
-	tunnel.updateTime = time.Now()
-
-	if tunnel.NatAddr.NatIp != alive.PubIP &&
-		tunnel.NatAddr.NatPort != alive.PubPort {
-
-		tunnel.NatAddr.NatIp = alive.PubIP
-		tunnel.NatAddr.NatPort = alive.PubPort
-		tunnel.natChanged <- struct{}{}
+		c.NatAddr.NatIp = alive.PubIP
+		c.NatAddr.NatPort = alive.PubPort
 		logger.Info("node's nat info changed.", alive)
 	}
 }
 
-func (tunnel *Client) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *ConnTask, toPort int, sessionID string) {
+func (c *Client) readCmd() {
 
-	conn, err := net.DialUDP("udp4", &net.UDPAddr{
-		IP:   net.ParseIP(lAddr.PriIp),
-		Port: int(lAddr.PriPort),
-	}, &net.UDPAddr{
-		IP:   net.ParseIP(rAddr.PriIp),
-		Port: toPort,
-	})
-	if err != nil {
-		logger.Warning("Step 1-1:can't dial by private network.", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
 
-	logger.Debug("hole punch step1-2 start in private network:->", conStr)
+		n, peerAddr, err := c.conn.ReadFromUDP(buffer)
+		if err != nil {
+			if c.errNo++; c.errNo > ErrNoBeforeRetry {
+				logger.Warning("too many reading error:->")
+				c.closeCtx()
+				return
+			}
+			logger.Warning("reading keep alive message failed:", err)
+			continue
+		}
 
-	holeMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatPriDigSyn,
-		Seq: time.Now().Unix(),
-	}
-	data, _ := proto.Marshal(holeMsg)
-	if _, err := conn.Write(data); err != nil {
-		logger.Error("Step 1-3:private network dig dig failed:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
+		msg := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
+			logger.Warning("keep alive msg Unmarshal failed:", err)
+			continue
+		}
 
-	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
+		logger.Debug("KA c receive message:->", msg, peerAddr)
 
-	buffer := make([]byte, utils.NormalReadBuffer)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		logger.Error("Step 1-5:private network reading dig result err:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-	resMsg := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer[:n], resMsg); err != nil {
-		logger.Info("Step 1-4:->dig in private network Unmarshal err:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
+		switch msg.Typ {
+		case nbsnet.NatKeepAlive:
+			c.refreshNatInfo(msg.KeepAlive)
+		case nbsnet.NatReversInvite:
+			c.CmdTask <- &ClientCmd{
+				CmdType: CMDAnswerInvite,
+				Params:  msg.ReverseInvite,
+			}
+		case nbsnet.NatDigApply:
+			c.CmdTask <- &ClientCmd{
+				CmdType: CMDDigOut,
+				Params:  msg.DigApply,
+			}
+		case nbsnet.NatDigConfirm:
+			c.CmdTask <- &ClientCmd{
+				CmdType: CMDDigSetup,
+				Params:  msg.DigConfirm,
+			}
+		}
 
-	if resMsg.Typ != nbsnet.NatPriDigAck || resMsg.Seq != holeMsg.Seq+1 {
-		task.err = fmt.Errorf("wrong ack package")
-		task.udpConn <- nil
-		return
+		select {
+		case <-c.Ctx.Done():
+			logger.Info("exit reading thread cause's of context close")
+			return
+		default:
+		}
 	}
-
-	if err := conn.SetDeadline(time.Time{}); err != nil {
-		task.err = err
-		task.udpConn <- nil
-	}
-
-	task.err = nil
-	task.udpConn <- conn
 }

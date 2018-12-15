@@ -1,6 +1,7 @@
-package nat
+package network
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
@@ -10,8 +11,8 @@ import (
 	"time"
 )
 
-func (tunnel *Client) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
-	sid string, toPort int, task *ConnTask) {
+func (network *nbsNetwork) digHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
+	sid string, toPort int, task *connTask) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 	if err != nil {
@@ -41,7 +42,7 @@ func (tunnel *Client) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	_, port, _ := net.SplitHostPort(conn.LocalAddr().String())
 	task.locPort = port
 	task.portCapConn = conn
-	tunnel.digTask[sid] = task
+	network.digTask[sid] = task
 
 	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
 
@@ -55,14 +56,17 @@ func (tunnel *Client) DigHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 *************************************************************************/
 //TIPS:: the server forward the connection invite to peer
 
-func (tunnel *Client) digOut(req *net_pb.DigApply) {
-
-	go tunnel.notifyCaller(req)
+func (network *nbsNetwork) digOut(params interface{}) error {
+	req, ok := params.(*net_pb.DigApply)
+	if !ok {
+		return CmdTaskErr
+	}
+	go network.notifyCaller(req)
 
 	lPort := strconv.Itoa(int(req.TargetPort))
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, req.Public)
 	if err != nil {
-		return
+		return err
 	}
 	defer conn.Close()
 
@@ -73,12 +77,15 @@ func (tunnel *Client) digOut(req *net_pb.DigApply) {
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
 		logger.Error(err)
+		return err
 	}
 
 	logger.Debug("hole punch step2-4  dig dig:->",
 		conn.LocalAddr().String(), conn.RemoteAddr().String())
+	return nil
 }
-func (tunnel *Client) notifyCaller(msg *net_pb.DigApply) {
+
+func (network *nbsNetwork) notifyCaller(msg *net_pb.DigApply) {
 
 	lPort := strconv.Itoa(int(msg.TargetPort))
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
@@ -110,22 +117,24 @@ func (tunnel *Client) notifyCaller(msg *net_pb.DigApply) {
 	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
 }
 
-func (tunnel *Client) makeAHole(ack *net_pb.DigConfirm) {
-
+func (network *nbsNetwork) makeAHole(params interface{}) error {
+	ack, ok := params.(*net_pb.DigConfirm)
+	if !ok {
+		return CmdTaskErr
+	}
 	sid := ack.SessionId
 
-	task, ok := tunnel.digTask[sid]
+	task, ok := network.digTask[sid]
 	if !ok {
-		logger.Error("can't find the dig taskQueue")
-		return
+		return fmt.Errorf("can't find the dig taskQueue")
 	}
-	defer delete(tunnel.digTask, sid)
+	defer delete(network.digTask, sid)
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
 	if err != nil {
 		task.err = err
 		task.udpConn <- nil
-		return
+		return err
 	}
 
 	task.udpConn <- conn
@@ -133,4 +142,5 @@ func (tunnel *Client) makeAHole(ack *net_pb.DigConfirm) {
 
 	logger.Debug("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
+	return nil
 }
