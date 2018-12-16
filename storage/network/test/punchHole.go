@@ -30,7 +30,7 @@ func punchAHole() {
 	if len(os.Args) == 2 {
 		peerId = os.Args[1]
 		port := utils.GetConfig().GossipCtrlPort
-		conn, err := network.GetInstance().Connect(nodeId, peerId, "", port)
+		conn, err := network.GetInstance().Connect(nodeId, peerId, port)
 		if err != nil {
 			panic(err)
 		}

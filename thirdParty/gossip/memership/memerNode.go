@@ -172,7 +172,7 @@ func (node *MemManager) receivingCmd() {
 
 		message := &pb.Gossip{}
 		if err := proto.Unmarshal(buffer[:n], message); err != nil {
-			logger.Warning("this is not a gossip message:->", buffer)
+			logger.Warning("this is not a gossip message:->", peerAddr, n)
 			continue
 		}
 

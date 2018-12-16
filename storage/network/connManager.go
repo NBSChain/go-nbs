@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	HolePunchTimeOut = 4 * time.Second
+	HolePunchTimeOut = 6 * time.Second
 )
 
 type connTask struct {
@@ -139,7 +139,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		udpConn: make(chan *net.UDPConn),
 	}
 	defer pubConnTask.Close()
-	go network.digHoeInPubNet(lAddr, rAddr, connId, toPort, pubConnTask)
+	go network.noticeNatAndWait(lAddr, rAddr, connId, toPort, pubConnTask)
 
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {

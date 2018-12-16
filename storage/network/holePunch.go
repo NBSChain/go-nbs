@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (network *nbsNetwork) digHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
+func (network *nbsNetwork) noticeNatAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	sid string, toPort int, task *connTask) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
@@ -43,9 +43,7 @@ func (network *nbsNetwork) digHoeInPubNet(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	task.locPort = port
 	task.portCapConn = conn
 	network.digTask[sid] = task
-
 	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
-
 	return
 }
 
@@ -80,8 +78,7 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 		return err
 	}
 
-	logger.Debug("hole punch step2-4  dig dig:->",
-		conn.LocalAddr().String(), conn.RemoteAddr().String())
+	logger.Debug("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
 	return nil
 }
 
