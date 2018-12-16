@@ -23,16 +23,15 @@ const (
 	GetOutputViews    = 6
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
-
-	MemShipHeartBeat = time.Second * 20 //TODO::?? heart beat time interval.
-	MaxInnerTaskSize = 1 << 10
-	MaxForwardTimes  = 10
-	DefaultSubExpire = time.Hour
-	SubscribeTimeOut = time.Second * 2
-	IsolatedTime     = MemShipHeartBeat * 5
-	MSGTrashCollect  = time.Minute * 10
-	MaxItemPerRound  = 1 << 10
-	ProbUpdateInter  = 10
+	MemShipHeartBeat  = time.Second * 20 //TODO::?? heart beat time interval.
+	MaxInnerTaskSize  = 1 << 10
+	MaxForwardTimes   = 10
+	DefaultSubExpire  = 1 //45
+	SubscribeTimeOut  = time.Second * 2
+	IsolatedTime      = MemShipHeartBeat * 5
+	MSGTrashCollect   = time.Minute * 10
+	MaxItemPerRound   = 1 << 10
+	ProbUpdateInter   = 10
 )
 
 var (

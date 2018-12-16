@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
+	"math/rand"
 	"net"
 	"time"
 )
@@ -65,12 +66,14 @@ func (node *MemManager) RegisterMySelf() error {
 }
 
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
+	rand.Seed(int64(time.Now().UnixNano()))
+	randNo := time.Duration(DefaultSubExpire+rand.Intn(25)) * time.Minute
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
 			SeqNo:  1,
-			Expire: time.Now().Add(DefaultSubExpire).Unix(),
+			Expire: time.Now().Add(randNo).Unix(),
 			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},

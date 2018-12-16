@@ -92,7 +92,7 @@ func (item *ViewNode) waitingWork() {
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := item.outConn.Read(buffer)
+		n, addr, err := item.outConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
 			break
@@ -103,12 +103,13 @@ func (item *ViewNode) waitingWork() {
 			continue
 		}
 
-		addr := item.outConn.RealConn.RemoteAddr()
+		//addr := item.outConn.RealConn.RemoteAddr()
 		task := &gossipTask{
 			taskType: int(msg.MsgType),
 		}
 		task.msg = msg
-		task.addr = addr.(*net.UDPAddr)
+		//task.addr = addr.(*net.UDPAddr)
+		task.addr = addr
 		item.manager.taskQueue <- task
 	}
 }
