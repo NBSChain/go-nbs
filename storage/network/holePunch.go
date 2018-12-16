@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (network *nbsNetwork) noticeNatAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
+func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	sid string, toPort int, task *connTask) {
 
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)

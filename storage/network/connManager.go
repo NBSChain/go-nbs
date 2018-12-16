@@ -139,7 +139,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		udpConn: make(chan *net.UDPConn),
 	}
 	defer pubConnTask.Close()
-	go network.noticeNatAndWait(lAddr, rAddr, connId, toPort, pubConnTask)
+	go network.noticePeerAndWait(lAddr, rAddr, connId, toPort, pubConnTask)
 
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {

@@ -33,3 +33,19 @@ const (
 	GspUpdateOVWei = net_pb.MsgType_GspUpdateOVWei
 	GspUpdateIVWei = net_pb.MsgType_GspUpdateIVWei
 )
+
+type dispatcher struct {
+	router map[int32]process
+}
+
+type process func(param interface{}) error
+
+func GetInstance() *dispatcher {
+	return &dispatcher{
+		router: make(map[int32]process),
+	}
+}
+
+func (d dispatcher) Register(msgType int32, handler process) {
+	d.router[msgType] = handler
+}
