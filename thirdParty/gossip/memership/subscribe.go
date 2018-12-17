@@ -3,11 +3,11 @@ package memership
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
-	"math/rand"
 	"net"
 	"time"
 )
@@ -66,14 +66,11 @@ func (node *MemManager) RegisterMySelf() error {
 }
 
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
-	rand.Seed(int64(time.Now().UnixNano()))
-	randNo := time.Duration(DefaultSubExpire+rand.Intn(25)) * time.Minute
-
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
 			SeqNo:  1,
-			Expire: time.Now().Add(randNo).Unix(),
+			Expire: time.Now().Add(DefaultSubExpire).Unix(),
 			NodeId: node.nodeID,
 			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
 		},
@@ -109,6 +106,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 	}
 
 	if msg.SubAck.FromId == node.nodeID {
+		node.isBootNode = true
 		return fmt.Errorf("it's yourself")
 	}
 
@@ -196,6 +194,11 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 
 func (node *MemManager) Resub() error {
 
+	if node.isBootNode {
+		logger.Info("I'm the boot node, so maybe it's normal situation")
+		return nil
+	}
+
 	if len(node.PartialView) == 0 {
 		logger.Debug("register myself because of no partial view in my cache")
 		return node.RegisterMySelf()
@@ -206,6 +209,24 @@ func (node *MemManager) Resub() error {
 
 	if err := node.acquireProxy(item.outConn); err != nil {
 		logger.Warning("send reSub request err:->", err)
+		node.removeFromView(item, node.PartialView)
+		return err
+	}
+
+	if err := item.outConn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
+		logger.Warning("set outConn time out when reSub err:->", err)
+		node.removeFromView(item, node.PartialView)
+		return err
+	}
+
+	if err := node.checkProxyValidation(item.outConn); err != nil {
+		logger.Warning("can't reSub to node err:->", item.nodeId, err)
+		node.removeFromView(item, node.PartialView)
+		return err
+	}
+
+	if err := item.outConn.SetDeadline(nat.NoTimeOut); err != nil {
+		logger.Warning("set outConn time out when reSub err:->", err)
 		node.removeFromView(item, node.PartialView)
 		return err
 	}

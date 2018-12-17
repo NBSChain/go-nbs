@@ -26,7 +26,7 @@ const (
 	MemShipHeartBeat  = time.Second * 20 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
-	DefaultSubExpire  = 45
+	DefaultSubExpire  = time.Hour
 	SubscribeTimeOut  = time.Second * 2
 	IsolatedTime      = MemShipHeartBeat * 5
 	MSGTrashCollect   = time.Minute * 10
@@ -65,6 +65,7 @@ type MemManager struct {
 	close       context.CancelFunc
 	nodeID      string
 	subNo       int
+	isBootNode  bool
 	updateTime  time.Time
 	taskQueue   chan *gossipTask
 	serviceConn *nbsnet.NbsUdpConn
@@ -249,7 +250,8 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 		}
 	}
 
-	if len(node.InputView) == 0 && now.Sub(node.updateTime) > IsolatedTime {
+	if len(node.InputView) == 0 &&
+		now.Sub(node.updateTime) > IsolatedTime {
 		return node.Resub()
 	}
 
