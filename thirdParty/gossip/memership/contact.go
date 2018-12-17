@@ -131,16 +131,16 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 			Subscribe: sub,
 		},
 	}
+
 	data, _ := proto.Marshal(req)
-	for no, j := node.sendVoteApply(data, sub.NodeId), 0; no == 0 && j < 3; j++ {
-		logger.Warning("no one wants to vote in round:->", j)
-		if counter == 2*len(node.PartialView) {
-			logger.Warning("it's the first sub and I'm the only man ")
-			return node.asContactServer(sub)
+	for i := 0; i < 3; i++ {
+		if no := node.sendVoteApply(data, sub.NodeId); no > 0 {
+			return nil
 		}
+		logger.Warning("no one want to vote, ask again:->", i)
 	}
 
-	return nil
+	return fmt.Errorf("really no one want to vote, sorry")
 }
 
 func (node *MemManager) getVoteApply(task *gossipTask) error {
