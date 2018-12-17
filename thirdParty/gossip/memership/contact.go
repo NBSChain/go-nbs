@@ -125,10 +125,16 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 			Subscribe: sub,
 		},
 	}
-
-	if err := node.sendVoteApply(req, sub.NodeId); err != nil {
-		logger.Warning("no one wants to vote:->", err)
-		return node.asContactServer(sub)
+	data, _ := proto.Marshal(req)
+	if no := node.sendVoteApply(data, sub.NodeId); no == 0 {
+		logger.Warning("no one wants to vote")
+		if counter == 2*len(node.PartialView) {
+			logger.Warning("it's the first sub and I'm the only man ")
+			return node.asContactServer(sub)
+		} else {
+			logger.Info("get ticket again and my man won't to indirect this vote")
+			return nil
+		}
 	}
 
 	return nil
@@ -139,11 +145,8 @@ func (node *MemManager) getVoteApply(task *gossipTask) error {
 	return node.asContactProxy(req.Subscribe, int(req.TTL))
 }
 
-func (node *MemManager) sendVoteApply(pb *pb.Gossip, targetId string) error {
-	data, err := proto.Marshal(pb)
-	if err != nil {
-		return err
-	}
+func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
+
 	node.normalizeWeight(node.PartialView)
 
 	var forwardTime int
@@ -167,11 +170,7 @@ func (node *MemManager) sendVoteApply(pb *pb.Gossip, targetId string) error {
 		forwardTime++
 	}
 
-	if forwardTime == 0 {
-		return fmt.Errorf("no contact node vote")
-	}
-
-	return nil
+	return forwardTime
 }
 
 func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {

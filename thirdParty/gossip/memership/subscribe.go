@@ -92,6 +92,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 	buffer := make([]byte, utils.NormalReadBuffer)
 	hasRead, err := conn.Read(buffer)
 	if err != nil {
+		logger.Warning("read contact proxy result err:->", err)
 		return err
 	}
 
