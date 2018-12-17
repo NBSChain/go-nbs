@@ -342,6 +342,10 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 
 	if _, ok := node.PartialView[subId]; ok {
 		item := node.choseRandomInPartialView()
+		if subId == item.nodeId {
+			logger.Debug("I think you have been introduced by yourself.")
+			return nil
+		}
 		logger.Debug("I have got you, so forward to next node:->", item.nodeId)
 		return item.send(task.msg)
 	}

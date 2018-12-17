@@ -137,10 +137,10 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 		if counter == 2*len(node.PartialView) {
 			logger.Warning("it's the first sub and I'm the only man ")
 			return node.asContactServer(sub)
-		} else {
-			logger.Info("get ticket again and my man won't to indirect this vote")
-			return nil
 		}
+
+		logger.Info("get ticket again and my man won't to indirect this vote so many times.")
+		return nil
 	}
 
 	return nil
