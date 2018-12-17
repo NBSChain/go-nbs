@@ -158,15 +158,15 @@ func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
 		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100)
 		if pro.Int64() > int64(item.probability*100) {
-			logger.Debug("no luck to send vote apply, try next one")
+			logger.Debug("no luck to send vote apply, try next one:->", item.nodeId)
 			continue
 		}
 		if item.nodeId == targetId {
-			logger.Debug("don't let him find himself, the life is already so hard:->")
+			logger.Debug("don't let him find himself, the life is already so hard:->", targetId)
 			continue
 		}
 
-		logger.Debug("ok, vote for him please", item.nodeId)
+		logger.Debug("ok, vote for him please:->", item.nodeId)
 		if err := item.sendData(data); err != nil {
 			logger.Warning("failed to send apply for err:->", err)
 			continue
