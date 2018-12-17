@@ -140,7 +140,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 		logger.Warning("no one want to vote, ask again:->", i)
 	}
 
-	return fmt.Errorf("really no one want to vote, sorry")
+	return node.asContactServer(sub)
 }
 
 func (node *MemManager) getVoteApply(task *gossipTask) error {
