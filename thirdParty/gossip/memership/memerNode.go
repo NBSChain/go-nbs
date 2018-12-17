@@ -26,7 +26,7 @@ const (
 	MemShipHeartBeat  = time.Second * 20 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
-	DefaultSubExpire  = 1 //45
+	DefaultSubExpire  = 45
 	SubscribeTimeOut  = time.Second * 2
 	IsolatedTime      = MemShipHeartBeat * 5
 	MSGTrashCollect   = time.Minute * 10
