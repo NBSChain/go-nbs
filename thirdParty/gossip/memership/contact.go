@@ -109,7 +109,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
 	if item, ok := node.PartialView[sub.NodeId]; ok &&
 		sub.Expire == item.expiredTime.Unix() {
-		return fmt.Errorf("this sub has been accepted by me")
+		return fmt.Errorf("this sub(%s) has been accepted by me:->", item.nodeId)
 	}
 
 	if node.subNo++; node.subNo >= ProbUpdateInter {
@@ -132,15 +132,12 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 		},
 	}
 	data, _ := proto.Marshal(req)
-	if no := node.sendVoteApply(data, sub.NodeId); no == 0 {
-		logger.Warning("no one wants to vote")
+	for no, j := node.sendVoteApply(data, sub.NodeId), 0; no == 0 && j < 3; j++ {
+		logger.Warning("no one wants to vote in round:->", j)
 		if counter == 2*len(node.PartialView) {
 			logger.Warning("it's the first sub and I'm the only man ")
 			return node.asContactServer(sub)
 		}
-
-		logger.Info("get ticket again and my man won't to indirect this vote so many times.")
-		return nil
 	}
 
 	return nil
@@ -159,7 +156,7 @@ func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
 	for _, item := range node.PartialView {
 
 		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
-		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100, item.nodeId)
+		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100)
 		if pro.Int64() > int64(item.probability*100) {
 			logger.Debug("no luck to send vote apply, try next one")
 			continue
@@ -169,6 +166,7 @@ func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
 			continue
 		}
 
+		logger.Debug("ok, vote for him please", item.nodeId)
 		if err := item.sendData(data); err != nil {
 			logger.Warning("failed to send apply for err:->", err)
 			continue
