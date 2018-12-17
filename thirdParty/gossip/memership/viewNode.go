@@ -64,11 +64,12 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 
 func (item *ViewNode) sendData(data []byte) error {
 
-	if _, err := item.outConn.Write(data); err != nil {
+	n, err := item.outConn.Write(data)
+	if err != nil {
 		return err
 	}
 	item.updateTime = time.Now()
-
+	logger.Debug("view node send data:->", n)
 	return nil
 }
 
@@ -80,9 +81,11 @@ func (item *ViewNode) send(pb proto.Message) error {
 		return err
 	}
 
-	if _, err := item.outConn.Write(data); err != nil {
+	n, err := item.outConn.Write(data)
+	if err != nil {
 		return err
 	}
+	logger.Debug("view node send message:->", n)
 	item.updateTime = time.Now()
 
 	return nil
@@ -102,13 +105,10 @@ func (item *ViewNode) waitingWork() {
 			logger.Warning("unmarshal err:->", err)
 			continue
 		}
-
-		//addr := item.outConn.RealConn.RemoteAddr()
 		task := &gossipTask{
 			taskType: int(msg.MsgType),
 		}
 		task.msg = msg
-		//task.addr = addr.(*net.UDPAddr)
 		task.addr = addr
 		item.manager.taskQueue <- task
 	}

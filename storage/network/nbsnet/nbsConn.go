@@ -123,7 +123,7 @@ func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
 			Seq: msg.Seq + 1,
 		}
 		data, _ := proto.Marshal(res)
-		logger.Debug("Step 1-6:->answer dig in private:->", res)
+		logger.Info("Step 1-6:->answer dig in private:->", res)
 		if _, err := conn.RealConn.WriteToUDP(data, peerAddr); err != nil {
 			logger.Warning("answer NatPriDigAck err:->", err)
 		}
