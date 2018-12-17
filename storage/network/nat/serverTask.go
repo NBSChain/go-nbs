@@ -145,7 +145,7 @@ func (nat *Server) forwardDigApply(task *natTask) error {
 
 	req.Public = peerAddr.String()
 
-	logger.Debug("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
+	logger.Info("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
 	data, _ := proto.Marshal(task.message)
 	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.pubAddr); err != nil {
 		return err
@@ -167,7 +167,7 @@ func (nat *Server) forwardDigConfirm(task *natTask) error {
 
 	ack.Public = addr.String()
 
-	logger.Debug("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
+	logger.Info("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
 	data, _ := proto.Marshal(task.message)
 	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
 		return err

@@ -78,7 +78,7 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 		return err
 	}
 
-	logger.Debug("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
+	logger.Info("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (network *nbsNetwork) notifyCaller(msg *net_pb.DigApply) {
 		return
 	}
 
-	logger.Debug("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
+	logger.Info("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
 }
 
 func (network *nbsNetwork) makeAHole(params interface{}) error {
@@ -137,7 +137,7 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 	task.udpConn <- conn
 	task.err = nil
 
-	logger.Debug("hole punch step2-7 create hole channel:->",
+	logger.Info("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
 	return nil
 }

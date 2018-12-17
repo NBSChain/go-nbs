@@ -145,7 +145,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	for i := 2; i > 0; i-- {
 		select {
 		case conn := <-priConnTask.udpConn:
-			logger.Debug("hole punch step1-8 dig direct in private network finished:->", priConnTask.err)
+			logger.Info("hole punch step1-8 dig direct in private network finished:->", priConnTask.err)
 			if conn != nil {
 				return conn, nbsnet.CTypeNormal, nil
 			} else {
@@ -155,7 +155,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 				}
 			}
 		case conn := <-pubConnTask.udpConn:
-			logger.Debug("hole punch step2-x dig in public network finished:->", pubConnTask.err)
+			logger.Info("hole punch step2-x dig in public network finished:->", pubConnTask.err)
 			if conn != nil {
 				return conn, nbsnet.CTypeNatDuplex, nil
 			} else {
