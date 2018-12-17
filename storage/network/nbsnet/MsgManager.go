@@ -1,12 +1,14 @@
 package nbsnet
 
 import (
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"sync"
 )
 
 const (
-	NatBootReg = net_pb.MsgType_NatBootReg
-
+	NatMsgBase         = net_pb.MsgType_NatBase
+	NatBootReg         = net_pb.MsgType_NatBootReg
 	NatKeepAlive       = net_pb.MsgType_NatKeepAlive
 	NatDigApply        = net_pb.MsgType_NatDigApply
 	NatPingPong        = net_pb.MsgType_NatPingPong
@@ -17,7 +19,10 @@ const (
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
+	DrainOutOldKa      = net_pb.MsgType_NatInnerBase + 1
+	NatEnd             = net_pb.MsgType_NatEnd
 
+	GspBase        = net_pb.MsgType_GspBase
 	GspSub         = net_pb.MsgType_GspSub
 	GspSubACK      = net_pb.MsgType_GspSubACK
 	GspVoteContact = net_pb.MsgType_GspVoteContact
@@ -32,20 +37,69 @@ const (
 	GspRemoveOVAcr = net_pb.MsgType_GspRemoveOVAcr
 	GspUpdateOVWei = net_pb.MsgType_GspUpdateOVWei
 	GspUpdateIVWei = net_pb.MsgType_GspUpdateIVWei
+	GspInnerBase   = net_pb.MsgType_GspInnerBase
+	GspEnd         = net_pb.MsgType_GspEnd
+	MsgPoolSize    = 1 << 12
 )
 
-type dispatcher struct {
-	router map[int32]process
+var (
+	once          sync.Once
+	instance      *dispatcher
+	MsgConvertErr = fmt.Errorf("convert to message failed")
+)
+
+type Task struct {
+	TypId  net_pb.MsgType
+	Param  interface{}
+	Result chan interface{}
 }
 
-type process func(param interface{}) error
+type dispatcher struct {
+	msgQueue chan *Task
+	router   map[net_pb.MsgType]MsgProcess
+}
+
+type MsgProcess func(param *Task) error
 
 func GetInstance() *dispatcher {
-	return &dispatcher{
-		router: make(map[int32]process),
-	}
+
+	once.Do(func() {
+		d := &dispatcher{
+			msgQueue: make(chan *Task, MsgPoolSize),
+			router:   make(map[net_pb.MsgType]MsgProcess),
+		}
+		instance = d
+		go d.runLoop()
+	})
+
+	return instance
 }
 
-func (d dispatcher) Register(msgType int32, handler process) {
+func (d *dispatcher) Register(msgType net_pb.MsgType, handler MsgProcess) {
 	d.router[msgType] = handler
+}
+
+func (d *dispatcher) Enqueue(param *Task) {
+	d.msgQueue <- param
+}
+
+func (d *dispatcher) runLoop() {
+
+	for {
+		select {
+
+		case task := <-d.msgQueue:
+
+			p, ok := d.router[task.TypId]
+			if !ok {
+				logger.Warning("unknown task type:->", task.TypId)
+				continue
+			}
+
+			if err := p(task); err != nil {
+				logger.Warning("process task err:->", err)
+				continue
+			}
+		}
+	}
 }

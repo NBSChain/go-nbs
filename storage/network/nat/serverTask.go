@@ -9,27 +9,17 @@ import (
 	"time"
 )
 
-const (
-	DrainOutOldKa = 1
-)
-
-type taskProcess func(*natTask) error
-
 type msgTask struct {
 	addr    *net.UDPAddr
 	message *net_pb.NatMsg
 }
-type innerTask struct {
-	params []interface{}
-	result chan interface{}
-}
-type natTask struct {
-	taskType int
-	msgTask
-	innerTask
-}
 
-func (nat *Server) checkWhoIsHe(task *natTask) error {
+func (nat *Server) checkWhoIsHe(t *nbsnet.Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return nbsnet.MsgConvertErr
+	}
+
 	peerAddr := task.addr
 	request := task.message.BootReg
 
@@ -74,7 +64,11 @@ func (nat *Server) checkWhoIsHe(task *natTask) error {
 	return nil
 }
 
-func (nat *Server) updateKATime(task *natTask) error {
+func (nat *Server) updateKATime(t *nbsnet.Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return nbsnet.MsgConvertErr
+	}
 
 	req := task.message.KeepAlive
 	peerAddr := task.addr
@@ -112,7 +106,12 @@ func (nat *Server) updateKATime(task *natTask) error {
 	return nil
 }
 
-func (nat *Server) forwardInvite(task *natTask) error {
+func (nat *Server) forwardInvite(t *nbsnet.Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return nbsnet.MsgConvertErr
+	}
+
 	invite := task.message.ReverseInvite
 
 	nat.cacheLock.Lock()
@@ -131,7 +130,12 @@ func (nat *Server) forwardInvite(task *natTask) error {
 	return nil
 }
 
-func (nat *Server) forwardDigApply(task *natTask) error {
+func (nat *Server) forwardDigApply(t *nbsnet.Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return nbsnet.MsgConvertErr
+	}
+
 	req := task.message.DigApply
 	peerAddr := task.addr
 
@@ -153,7 +157,12 @@ func (nat *Server) forwardDigApply(task *natTask) error {
 	return nil
 }
 
-func (nat *Server) forwardDigConfirm(task *natTask) error {
+func (nat *Server) forwardDigConfirm(t *nbsnet.Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return nbsnet.MsgConvertErr
+	}
+
 	ack := task.message.DigConfirm
 	addr := task.addr
 
@@ -175,13 +184,13 @@ func (nat *Server) forwardDigConfirm(task *natTask) error {
 	return nil
 }
 
-func (nat *Server) pong(task *natTask) error {
+func (nat *Server) pong(t *nbsnet.Task) error {
 	nat.CanServe <- true
 	logger.Debug("I can serve as in public network.")
 	return nil
 }
 
-func (nat *Server) checkKaTunnel(task *natTask) error {
+func (nat *Server) checkKaTunnel(t *nbsnet.Task) error {
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
