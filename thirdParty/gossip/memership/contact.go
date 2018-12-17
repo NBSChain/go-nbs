@@ -30,6 +30,12 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	forwardTime := 0
 	logger.Debug("broad cast sub to all partial views:->", len(node.PartialView))
 	for _, item := range node.PartialView {
+
+		if item.nodeId == sub.NodeId {
+			logger.Debug("don't introduce himself, no need.")
+			continue
+		}
+
 		if err := item.sendData(data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
