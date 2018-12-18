@@ -70,29 +70,12 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 *************************************************************************/
 //TODO::
 func (conn *NbsUdpConn) Send(b []byte) (int, error) {
-	switch conn.CType {
-	case CTypeNormal:
-		return conn.RealConn.Write(b)
-	case CTypeNatSimplex:
-		return conn.RealConn.Write(b)
-	case CTypeNatDuplex:
-		return conn.RealConn.Write(b)
-	default:
-		return 0, fmt.Errorf("unkown nat connection type")
-	}
+	return conn.RealConn.Write(b)
 }
 
 //TODO::
 func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
-
-	switch conn.CType {
-	case CTypeNormal:
-		return conn.RealConn.Read(b)
-	case CTypeNatSimplex:
-		return conn.RealConn.Read(b)
-	default:
-		return 0, fmt.Errorf("unkown nat connection type")
-	}
+	return conn.RealConn.Read(b)
 }
 
 func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
