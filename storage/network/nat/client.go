@@ -40,14 +40,15 @@ type Client struct {
 	errNo      int
 	NatAddr    *nbsnet.NbsUdpAddr
 	conn       *net.UDPConn
+	listen     *net.UDPConn
 	updateTime time.Time
 	CmdTask    chan *ClientCmd
 }
 
-func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
+func NewNatClient(networkId string, canServer chan bool) (c *Client, err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	c := &Client{
+	c = &Client{
 		Ctx:        ctx,
 		closeCtx:   cancel,
 		networkId:  networkId,
@@ -55,7 +56,7 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 		CmdTask:    make(chan *ClientCmd, CmdTaskPoolSize),
 	}
 
-	if err := c.findWhoAmI(canServer); err != nil {
+	if err = c.findWhoAmI(canServer); err != nil {
 		return nil, err
 	}
 
@@ -63,6 +64,10 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 		return c, nil
 	}
 
+	if c.listen, err = shareport.ListenUDP("udp4", c.conn.LocalAddr().String()); err != nil {
+		return nil, err
+	}
+	go c.listenPing()
 	go c.keepAlive()
 
 	go c.readCmd()
@@ -228,6 +233,14 @@ func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
 		c.NatAddr.NatPort = alive.PubPort
 		logger.Info("node's nat info changed.", alive)
 	}
+}
+
+func (c *Client) listenPing() {
+	buffer := make([]byte, utils.NormalReadBuffer)
+
+	n, peerAddr, err := c.listen.ReadFromUDP(buffer)
+
+	logger.Warning(peerAddr, n, err)
 }
 
 func (c *Client) readCmd() {
