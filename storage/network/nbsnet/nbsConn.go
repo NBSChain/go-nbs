@@ -1,10 +1,7 @@
 package nbsnet
 
 import (
-	"fmt"
-	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/gogo/protobuf/proto"
 	"net"
 	"time"
 )
@@ -79,42 +76,7 @@ func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 }
 
 func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
-
-	switch conn.CType {
-	case CTypeNormal:
-		return conn.RealConn.ReadFromUDP(b)
-	case CTypeNatSimplex:
-		return conn.RealConn.ReadFromUDP(b)
-	case CTypeNatDuplex:
-		return conn.RealConn.ReadFromUDP(b)
-	case CTypeNatListen: //TODO::I don't think this is the final resolution.
-	GOON:
-		n, peerAddr, err := conn.RealConn.ReadFromUDP(b)
-		if err != nil {
-			return 0, nil, err
-		}
-		msg := &net_pb.NatMsg{}
-		if err2 := proto.Unmarshal(b[:n], msg); err2 != nil {
-			return n, peerAddr, nil
-		}
-
-		if msg.Typ != NatPriDigSyn {
-			return n, peerAddr, nil
-		}
-		res := &net_pb.NatMsg{
-			Typ: NatPriDigAck,
-			Seq: msg.Seq + 1,
-		}
-		data, _ := proto.Marshal(res)
-		logger.Info("Step 1-6:->answer dig in private:->", res)
-		if _, err := conn.RealConn.WriteToUDP(data, peerAddr); err != nil {
-			logger.Warning("answer NatPriDigAck err:->", err)
-		}
-		goto GOON
-
-	default:
-		return 0, nil, fmt.Errorf("unkown nat connection type")
-	}
+	return conn.RealConn.ReadFromUDP(b)
 }
 
 /************************************************************************

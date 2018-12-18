@@ -189,9 +189,9 @@ func (c *Client) keepAlive(natServer *net.UDPAddr) {
 				logger.Warning("failed to send keep alive channel message:", err)
 				c.errNo++
 			}
-			logger.Debug("send  keep alive to nat server:->", nbsnet.ConnString(c.listenConn), natServer)
+			logger.Debug("send  keep alive to nat server:->", c.listenConn.LocalAddr().String(), natServer)
 
-			if c.errNo++; c.errNo > ErrNoBeforeRetry {
+			if c.errNo > ErrNoBeforeRetry {
 				logger.Warning("too many times send errors")
 				c.closeCtx()
 				return
