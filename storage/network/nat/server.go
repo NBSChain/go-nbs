@@ -55,6 +55,7 @@ func NewNatServer(networkId string) *Server {
 	natObj.initService()
 	go natObj.receiveMsg()
 	go natObj.timer()
+	go natObj.runLoop()
 	return natObj
 }
 
