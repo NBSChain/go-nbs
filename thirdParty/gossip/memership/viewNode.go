@@ -64,12 +64,10 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 
 func (item *ViewNode) sendData(data []byte) error {
 
-	n, err := item.outConn.Write(data)
-	if err != nil {
+	if _, err := item.outConn.Write(data); err != nil {
 		return err
 	}
 	item.updateTime = time.Now()
-	logger.Debug("view node send data:->", n)
 	return nil
 }
 
@@ -81,11 +79,9 @@ func (item *ViewNode) send(pb proto.Message) error {
 		return err
 	}
 
-	n, err := item.outConn.Write(data)
-	if err != nil {
+	if _, err := item.outConn.Write(data); err != nil {
 		return err
 	}
-	logger.Debug("view node send message:->", n)
 	item.updateTime = time.Now()
 
 	return nil
