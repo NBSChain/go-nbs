@@ -11,9 +11,12 @@ import (
 	"time"
 )
 
+const MsgPoolSize = 1 << 12
+
 var (
-	NotFundErr = fmt.Errorf("no such node behind nat device")
-	logger     = utils.GetLogInstance()
+	MsgConvertErr = fmt.Errorf("convert to message failed")
+	NotFundErr    = fmt.Errorf("no such node behind nat device")
+	logger        = utils.GetLogInstance()
 )
 
 type HostBehindNat struct {
@@ -22,12 +25,22 @@ type HostBehindNat struct {
 	priAddr    string
 }
 
+type Task struct {
+	TypId  net_pb.MsgType
+	Param  interface{}
+	Result chan interface{}
+}
+
+type MsgProcess func(param *Task) error
+
 type Server struct {
 	sysNatServer *net.UDPConn
 	networkId    string
 	CanServe     chan bool
 	cacheLock    sync.Mutex
 	cache        map[string]*HostBehindNat
+	msgQueue     chan *Task
+	router       map[net_pb.MsgType]MsgProcess
 }
 
 func NewNatServer(networkId string) *Server {
@@ -35,6 +48,8 @@ func NewNatServer(networkId string) *Server {
 		networkId: networkId,
 		CanServe:  make(chan bool),
 		cache:     make(map[string]*HostBehindNat),
+		msgQueue:  make(chan *Task, MsgPoolSize),
+		router:    make(map[net_pb.MsgType]MsgProcess),
 	}
 
 	natObj.initService()
@@ -53,15 +68,14 @@ func (nat *Server) initService() {
 	if err != nil {
 		logger.Panic("can't start nat sysNatServer.", err)
 	}
-
 	nat.sysNatServer = natServer
-	nbsnet.GetInstance().Register(nbsnet.NatBootReg, nat.checkWhoIsHe)
-	nbsnet.GetInstance().Register(nbsnet.NatKeepAlive, nat.updateKATime)
-	nbsnet.GetInstance().Register(nbsnet.NatReversInvite, nat.forwardInvite)
-	nbsnet.GetInstance().Register(nbsnet.NatDigApply, nat.forwardDigApply)
-	nbsnet.GetInstance().Register(nbsnet.NatDigConfirm, nat.forwardDigConfirm)
-	nbsnet.GetInstance().Register(nbsnet.NatPingPong, nat.pong)
-	nbsnet.GetInstance().Register(nbsnet.DrainOutOldKa, nat.checkKaTunnel)
+	nat.router[nbsnet.NatBootReg] = nat.checkWhoIsHe
+	nat.router[nbsnet.NatKeepAlive] = nat.updateKATime
+	nat.router[nbsnet.NatReversInvite] = nat.forwardInvite
+	nat.router[nbsnet.NatDigApply] = nat.forwardDigApply
+	nat.router[nbsnet.NatDigConfirm] = nat.forwardDigConfirm
+	nat.router[nbsnet.NatPingPong] = nat.pong
+	nat.router[nbsnet.DrainOutOldKa] = nat.checkKaTunnel
 }
 
 func (nat *Server) receiveMsg() {
@@ -85,7 +99,7 @@ func (nat *Server) receiveMsg() {
 
 		logger.Debug("message:", request, peerAddr)
 
-		task := &nbsnet.Task{
+		task := &Task{
 			TypId: request.Typ,
 			Param: &msgTask{
 				message: request,
@@ -93,7 +107,28 @@ func (nat *Server) receiveMsg() {
 			},
 		}
 
-		nbsnet.GetInstance().Enqueue(task)
+		nat.msgQueue <- task
+	}
+}
+
+func (nat *Server) runLoop() {
+
+	for {
+		select {
+
+		case task := <-nat.msgQueue:
+
+			p, ok := nat.router[task.TypId]
+			if !ok {
+				logger.Warning("unknown task type:->", task.TypId)
+				continue
+			}
+
+			if err := p(task); err != nil {
+				logger.Warning("process task err:->", err)
+				continue
+			}
+		}
 	}
 }
 
@@ -102,10 +137,10 @@ func (nat *Server) timer() {
 	for {
 		select {
 		case <-time.After(KeepAliveTime):
-			task := &nbsnet.Task{
+			task := &Task{
 				TypId: nbsnet.DrainOutOldKa,
 			}
-			nbsnet.GetInstance().Enqueue(task)
+			nat.msgQueue <- task
 		}
 	}
 }

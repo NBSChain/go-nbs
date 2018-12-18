@@ -14,10 +14,10 @@ type msgTask struct {
 	message *net_pb.NatMsg
 }
 
-func (nat *Server) checkWhoIsHe(t *nbsnet.Task) error {
+func (nat *Server) checkWhoIsHe(t *Task) error {
 	task, ok := t.Param.(*msgTask)
 	if !ok {
-		return nbsnet.MsgConvertErr
+		return MsgConvertErr
 	}
 
 	peerAddr := task.addr
@@ -64,10 +64,10 @@ func (nat *Server) checkWhoIsHe(t *nbsnet.Task) error {
 	return nil
 }
 
-func (nat *Server) updateKATime(t *nbsnet.Task) error {
+func (nat *Server) updateKATime(t *Task) error {
 	task, ok := t.Param.(*msgTask)
 	if !ok {
-		return nbsnet.MsgConvertErr
+		return MsgConvertErr
 	}
 
 	req := task.message.KeepAlive
@@ -106,10 +106,10 @@ func (nat *Server) updateKATime(t *nbsnet.Task) error {
 	return nil
 }
 
-func (nat *Server) forwardInvite(t *nbsnet.Task) error {
+func (nat *Server) forwardInvite(t *Task) error {
 	task, ok := t.Param.(*msgTask)
 	if !ok {
-		return nbsnet.MsgConvertErr
+		return MsgConvertErr
 	}
 
 	invite := task.message.ReverseInvite
@@ -130,10 +130,10 @@ func (nat *Server) forwardInvite(t *nbsnet.Task) error {
 	return nil
 }
 
-func (nat *Server) forwardDigApply(t *nbsnet.Task) error {
+func (nat *Server) forwardDigApply(t *Task) error {
 	task, ok := t.Param.(*msgTask)
 	if !ok {
-		return nbsnet.MsgConvertErr
+		return MsgConvertErr
 	}
 
 	req := task.message.DigApply
@@ -157,10 +157,10 @@ func (nat *Server) forwardDigApply(t *nbsnet.Task) error {
 	return nil
 }
 
-func (nat *Server) forwardDigConfirm(t *nbsnet.Task) error {
+func (nat *Server) forwardDigConfirm(t *Task) error {
 	task, ok := t.Param.(*msgTask)
 	if !ok {
-		return nbsnet.MsgConvertErr
+		return MsgConvertErr
 	}
 
 	ack := task.message.DigConfirm
@@ -184,20 +184,19 @@ func (nat *Server) forwardDigConfirm(t *nbsnet.Task) error {
 	return nil
 }
 
-func (nat *Server) pong(t *nbsnet.Task) error {
+func (nat *Server) pong(t *Task) error {
 	nat.CanServe <- true
 	logger.Debug("I can serve as in public network.")
 	return nil
 }
 
-func (nat *Server) checkKaTunnel(t *nbsnet.Task) error {
+func (nat *Server) checkKaTunnel(t *Task) error {
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
 	currentClock := time.Now()
 	for nodeId, item := range nat.cache {
-
 		if currentClock.Sub(item.updateTIme) > KeepAliveTimeOut {
 			logger.Warning("the nat item has been removed:->", nodeId)
 			delete(nat.cache, nodeId)
