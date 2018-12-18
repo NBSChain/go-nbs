@@ -149,16 +149,15 @@ func (c *Client) findWhoAmI(canSever chan bool) (*net.UDPAddr, error) {
 				c.NatAddr.CanServe = false
 			}
 		}
-
 		c.CanServer = c.NatAddr.CanServe
+		lisAddr := conn.LocalAddr().(*net.UDPAddr)
+		conn.Close()
 
-		if c.listenConn, err = net.ListenUDP("udp4", conn.LocalAddr().(*net.UDPAddr)); err != nil {
+		if c.listenConn, err = net.ListenUDP("udp4", lisAddr); err != nil {
 			logger.Warning(err)
-			conn.Close()
 			continue
 		}
 
-		conn.Close()
 		logger.Info("create client success for network:->\n", c.NatAddr.String())
 		return natServerAddr, nil
 	}
