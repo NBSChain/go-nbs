@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -78,10 +79,10 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 			IP:   net.ParseIP(serverIp),
 			Port: utils.GetConfig().NatServerPort,
 		}
-
-		conn, err := net.DialUDP("udp4", &net.UDPAddr{
+		l := &net.UDPAddr{
 			Port: utils.GetConfig().NatClientPort,
-		}, natServerAddr)
+		}
+		conn, err := shareport.DialUDP("udp4", l.String(), natServerAddr.String())
 		if err != nil {
 			logger.Warning("this nat server is done:->", serverIp, err)
 			continue
