@@ -129,14 +129,10 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
 	if err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return err
 	}
-
-	task.udpConn <- conn
-	task.err = nil
-
+	task.finish(nil, conn)
 	logger.Info("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
 	return nil

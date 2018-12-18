@@ -271,6 +271,8 @@ func (c *Client) readCmd() {
 				CmdType: CMDDigSetup,
 				Params:  msg.DigConfirm,
 			}
+		case nbsnet.NatPriDigSyn:
+			c.priDigAck(msg, peerAddr)
 		}
 
 		select {
@@ -279,5 +281,18 @@ func (c *Client) readCmd() {
 			return
 		default:
 		}
+	}
+}
+
+func (c *Client) priDigAck(syn *net_pb.NatMsg, peerAddr *net.UDPAddr) {
+
+	res := &net_pb.NatMsg{
+		Typ: nbsnet.NatPriDigAck,
+		Seq: syn.Seq + 1,
+	}
+	data, _ := proto.Marshal(res)
+	logger.Info("Step 1-6:->answer dig in private:->", res)
+	if _, err := c.conn.WriteToUDP(data, peerAddr); err != nil {
+		logger.Warning("answer NatPriDigAck err:->", err)
 	}
 }

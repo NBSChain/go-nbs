@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	HolePunchTimeOut = 6 * time.Second
+	HolePunchTimeOut = 4 * time.Second
 )
 
 type connTask struct {
@@ -28,6 +28,11 @@ func (task *connTask) Close() {
 	if task.portCapConn != nil {
 		_ = task.portCapConn.Close()
 	}
+}
+
+func (task *connTask) finish(err error, conn *net.UDPConn) {
+	task.err = err
+	task.udpConn <- conn
 }
 
 /************************************************************************
@@ -175,8 +180,7 @@ func (network *nbsNetwork) waitInviteAnswer(host, sessionID string, task *connTa
 
 	lisConn, err := shareport.ListenUDP("udp4", host)
 	if err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return
 	}
 	defer lisConn.Close()
@@ -186,8 +190,7 @@ func (network *nbsNetwork) waitInviteAnswer(host, sessionID string, task *connTa
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return
 	}
 
@@ -199,24 +202,63 @@ func (network *nbsNetwork) waitInviteAnswer(host, sessionID string, task *connTa
 	}
 
 	if res.Typ != nbsnet.NatReversInviteAck {
-		task.err = fmt.Errorf("didn't get the answer")
-		task.udpConn <- nil
+		task.finish(fmt.Errorf("didn't get the answer"), nil)
 		return
 	}
 
 	conn, err := shareport.DialUDP("udp4", host, peerAddr.String())
 	if err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return
 	}
-	task.udpConn <- conn
-	task.err = err
+
+	task.finish(err, conn)
 
 	logger.Debug("Step5: get answer and make a connection:->", host, peerAddr.String())
 }
 
 func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *connTask, toPort int, sessionID string) {
+
+	pingConn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP(rAddr.PriIp),
+		Port: utils.GetConfig().NatClientPort,
+	})
+	defer pingConn.Close()
+
+	if err != nil {
+		logger.Info("Step 1-1:can't dial by private network.", err)
+		task.finish(err, nil)
+		return
+	}
+
+	logger.Debug("ping nat client port in private network:->", nbsnet.ConnString(pingConn))
+
+	holeMsg := &net_pb.NatMsg{
+		Typ: nbsnet.NatPriDigSyn,
+		Seq: time.Now().Unix(),
+	}
+
+	data, _ := proto.Marshal(holeMsg)
+	if _, err := pingConn.Write(data); err != nil {
+		logger.Info("Step 1-3:private network dig dig failed:->", err)
+		task.finish(err, nil)
+		return
+	}
+
+	if err := pingConn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
+		logger.Info("set ping time err:->", err)
+		task.finish(err, nil)
+		return
+	}
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	_, peerAddr, err := pingConn.ReadFromUDP(buffer)
+	if err != nil {
+		logger.Info("Step 1-5:private network reading dig result err:->", err)
+		task.finish(err, nil)
+		return
+	}
+	logger.Info("create connection in private network success:->", peerAddr)
 
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP: net.ParseIP(lAddr.PriIp),
@@ -224,63 +266,8 @@ func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, t
 		IP:   net.ParseIP(rAddr.PriIp),
 		Port: toPort,
 	})
-	if err != nil {
-		logger.Warning("Step 1-1:can't dial by private network.", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-	conStr := "[" + conn.LocalAddr().String() + "]-->[" + conn.RemoteAddr().String() + "]"
 
-	logger.Debug("hole punch step1-2 start in private network:->", conStr)
-
-	holeMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatPriDigSyn,
-		Seq: time.Now().Unix(),
-	}
-	data, _ := proto.Marshal(holeMsg)
-	if _, err := conn.Write(data); err != nil {
-		logger.Error("Step 1-3:private network dig dig failed:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-
-	if err := conn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-
-	buffer := make([]byte, utils.NormalReadBuffer)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		logger.Error("Step 1-5:private network reading dig result err:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-	resMsg := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer[:n], resMsg); err != nil {
-		logger.Info("Step 1-4:->dig in private network Unmarshal err:->", err)
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-
-	if resMsg.Typ != nbsnet.NatPriDigAck || resMsg.Seq != holeMsg.Seq+1 {
-		task.err = fmt.Errorf("wrong ack package")
-		task.udpConn <- nil
-		return
-	}
-
-	if err := conn.SetDeadline(time.Time{}); err != nil {
-		task.err = err
-		task.udpConn <- nil
-	}
-
-	task.err = nil
-	task.udpConn <- conn
+	task.finish(nil, conn)
 }
 
 func (network *nbsNetwork) answerInvite(params interface{}) error {
