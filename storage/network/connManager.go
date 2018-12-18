@@ -86,11 +86,14 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	connId string, toPort int) (*net.UDPConn, error) {
 
-	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
+	ip, port, _ := nbsnet.SplitHostPort(rAddr.NatServer)
+	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP(ip),
+		Port: int(port),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
 	localHost := conn.LocalAddr().String()
 	_, fromPort, _ := net.SplitHostPort(localHost)
@@ -107,6 +110,7 @@ func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 	reqData, _ := proto.Marshal(req)
 	if _, err := conn.Write(reqData); err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -115,8 +119,8 @@ func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 
 	logger.Debug("Step1: notify applier's nat server:", req)
-
-	go network.waitInviteAnswer(localHost, connId, connChan)
+	conn.Close()
+	go network.waitInviteAnswer(conn.LocalAddr().(*net.UDPAddr), connId, connChan)
 
 	select {
 	case conn := <-connChan.udpConn:
@@ -176,20 +180,20 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	return nil, 0, fmt.Errorf("time out")
 }
 
-func (network *nbsNetwork) waitInviteAnswer(host, sessionID string, task *connTask) {
+func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string, task *connTask) {
 
-	lisConn, err := shareport.ListenUDP("udp4", host)
+	lisConn, err := net.ListenUDP("udp4", host)
 	if err != nil {
 		task.finish(err, nil)
 		return
 	}
-	defer lisConn.Close()
 
 	logger.Debug("Step2: wait the answer:", host)
 
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
+		lisConn.Close()
 		task.finish(err, nil)
 		return
 	}
@@ -203,10 +207,11 @@ func (network *nbsNetwork) waitInviteAnswer(host, sessionID string, task *connTa
 
 	if res.Typ != nbsnet.NatReversInviteAck {
 		task.finish(fmt.Errorf("didn't get the answer"), nil)
+		lisConn.Close()
 		return
 	}
-
-	conn, err := shareport.DialUDP("udp4", host, peerAddr.String())
+	lisConn.Close()
+	conn, err := net.DialUDP("udp4", host, peerAddr)
 	if err != nil {
 		task.finish(err, nil)
 		return
@@ -300,6 +305,7 @@ func (network *nbsNetwork) answerInvite(params interface{}) error {
 			logger.Errorf("failed to write answer to inviter:", err)
 			return err
 		}
+		logger.Debug("i will change this :->", nbsnet.ConnString(conn))
 	}
 	return nil
 }
