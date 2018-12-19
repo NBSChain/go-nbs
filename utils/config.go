@@ -43,9 +43,9 @@ var (
 	}
 
 	gossipContracts = []string{
-		//"52.8.190.235",
+		"52.8.190.235",
 		//"13.57.241.215",
-		"192.168.103.101",
+		//"192.168.103.101",
 	}
 
 	defaultBootstrapAddresses = []string{
