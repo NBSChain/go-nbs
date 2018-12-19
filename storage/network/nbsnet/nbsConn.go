@@ -57,7 +57,6 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUd
 }
 
 func (conn *NbsUdpConn) KeepHoleOpened() {
-	logger.Debug("setup keep live routine")
 	for {
 		select {
 		case <-time.After(NatHoleKATime):
@@ -82,22 +81,20 @@ func (conn *NbsUdpConn) keepAlive() error {
 	}
 	data, _ := proto.Marshal(msg)
 
-	logger.Debug("time to refresh")
+	logger.Debug("setup keep live routine", conn.String())
 
 	conn.Lock()
+	defer conn.Unlock()
 	if now.Sub(conn.updateTime) < NatHoleKATime {
 		logger.Debug("no need right now")
 		return nil
 	}
-	logger.Debug("prepare to write...")
-	if _, err := conn.Write(data); err != nil {
+	if _, err := conn.RealConn.Write(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
-		conn.Unlock()
 		return err
 	}
 
 	conn.updateTime = now
-	conn.Unlock()
 	logger.Debug("try to keep hole opened:->", conn.String())
 	return nil
 }
