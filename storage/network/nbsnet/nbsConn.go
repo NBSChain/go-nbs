@@ -24,24 +24,26 @@ const (
 )
 
 type NbsUdpConn struct {
-	SessionID string
-	CType     ConnType
-	ctx       context.Context
-	close     context.CancelFunc
-	RealConn  *net.UDPConn
-	LocAddr   *NbsUdpAddr
+	SessionID  string
+	CType      ConnType
+	ctx        context.Context
+	close      context.CancelFunc
+	RealConn   *net.UDPConn
+	LocAddr    *NbsUdpAddr
+	updateTime time.Time
 }
 
 func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUdpAddr) *NbsUdpConn {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &NbsUdpConn{
-		ctx:       ctx,
-		close:     cancel,
-		RealConn:  c,
-		CType:     cType,
-		SessionID: sessionID,
-		LocAddr:   natAddr,
+		ctx:        ctx,
+		close:      cancel,
+		RealConn:   c,
+		CType:      cType,
+		SessionID:  sessionID,
+		LocAddr:    natAddr,
+		updateTime: time.Now(),
 	}
 
 	if cType == CTypeNatSimplex ||
@@ -54,9 +56,12 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUd
 
 func (conn *NbsUdpConn) KeepHoleOpened() {
 	for {
-		now := time.Now().String()
-		msg := &net_pb.ConnKA{
-			KA: crypto.MD5SS(now),
+		now := time.Now()
+		msg := &net_pb.NatMsg{
+			Typ: NatBlankKA,
+			ConnKA: &net_pb.ConnKA{
+				KA: crypto.MD5SS(now.String()),
+			},
 		}
 		data, _ := proto.Marshal(msg)
 
@@ -64,12 +69,18 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 
 		select {
 		case <-time.After(NatHoleKATime):
+			if now.Sub(conn.updateTime) < NatHoleKATime {
+				continue
+			}
+
 			if _, err := conn.Write(data); err != nil {
 				logger.Warning("the keep alive for hole msg err:->", err)
 				return
 			}
+			conn.updateTime = now
 		case <-conn.ctx.Done():
 			logger.Debug("bye")
+			return
 		}
 	}
 }
@@ -84,10 +95,12 @@ func (conn *NbsUdpConn) SetDeadline(t time.Time) error {
 }
 
 func (conn *NbsUdpConn) Write(d []byte) (int, error) {
+	conn.updateTime = time.Now()
 	return conn.RealConn.Write(d)
 }
 
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
+	conn.updateTime = time.Now()
 	return conn.RealConn.Read(b)
 }
 
@@ -97,10 +110,12 @@ func (conn *NbsUdpConn) Close() error {
 }
 
 func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	conn.updateTime = time.Now()
 	return conn.RealConn.ReadFromUDP(b)
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+	conn.updateTime = time.Now()
 	return conn.RealConn.WriteToUDP(b, addr)
 }
 
@@ -113,17 +128,20 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 *			nat connection
 *
 *************************************************************************/
-func (conn *NbsUdpConn) Send(b []byte) (int, error) {
-	return conn.RealConn.Write(b)
-}
-
-func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
-	return conn.RealConn.Read(b)
-}
-
-func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
-	return conn.RealConn.ReadFromUDP(b)
-}
+//func (conn *NbsUdpConn) Send(b []byte) (int, error) {
+//	conn.updateTime = time.Now()
+//	return conn.RealConn.Write(b)
+//}
+//
+//func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
+//	conn.updateTime = time.Now()
+//	return conn.RealConn.Read(b)
+//}
+//
+//func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
+//	conn.updateTime = time.Now()
+//	return conn.RealConn.ReadFromUDP(b)
+//}
 
 /************************************************************************
 *

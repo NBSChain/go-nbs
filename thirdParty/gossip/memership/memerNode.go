@@ -23,12 +23,12 @@ const (
 	GetOutputViews    = 6
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
-	MemShipHeartBeat  = time.Second * 20 //TODO::?? heart beat time interval.
+	MemShipHeartBeat  = time.Second * 100 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
 	DefaultSubExpire  = time.Hour
 	SubscribeTimeOut  = time.Second * 2
-	IsolatedTime      = MemShipHeartBeat * 5
+	IsolatedTime      = MemShipHeartBeat * 3
 	MSGTrashCollect   = time.Minute * 10
 	MaxItemPerRound   = 1 << 10
 	ProbUpdateInter   = 10
@@ -164,7 +164,7 @@ func (node *MemManager) receivingCmd() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
-		n, peerAddr, err := node.serviceConn.ReceiveFromUDP(buffer)
+		n, peerAddr, err := node.serviceConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("reading contact application err:", err)
 			break
