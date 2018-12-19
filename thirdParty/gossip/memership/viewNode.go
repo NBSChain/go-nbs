@@ -39,7 +39,6 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 		outConn:     conn,
 		outAddr:     addr,
 		manager:     node,
-		updateTime:  time.Now(),
 		expiredTime: expire,
 	}
 
