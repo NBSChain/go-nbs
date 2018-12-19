@@ -58,35 +58,43 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUd
 
 func (conn *NbsUdpConn) KeepHoleOpened() {
 	for {
-		now := time.Now()
-		msg := &net_pb.NatMsg{
-			Typ: NatBlankKA,
-			ConnKA: &net_pb.ConnKA{
-				KA: crypto.MD5SS(now.String()),
-			},
-		}
-		data, _ := proto.Marshal(msg)
-
 		logger.Debug("try to keep hole opened:->", conn.String())
 
 		select {
 		case <-time.After(NatHoleKATime):
-			if now.Sub(conn.updateTime) < NatHoleKATime {
-				continue
-			}
-
-			if _, err := conn.Write(data); err != nil {
-				logger.Warning("the keep alive for hole msg err:->", err)
+			if err := conn.keepAlive(); err != nil {
 				return
 			}
-			conn.Lock()
-			conn.updateTime = now
-			conn.Unlock()
 		case <-conn.ctx.Done():
 			logger.Debug("bye")
 			return
 		}
 	}
+}
+
+func (conn *NbsUdpConn) keepAlive() error {
+	now := time.Now()
+	msg := &net_pb.NatMsg{
+		Typ: NatBlankKA,
+		ConnKA: &net_pb.ConnKA{
+			KA: crypto.MD5SS(now.String()),
+		},
+	}
+	data, _ := proto.Marshal(msg)
+
+	conn.Lock()
+	defer conn.Unlock()
+	if now.Sub(conn.updateTime) < NatHoleKATime {
+		return nil
+	}
+
+	if _, err := conn.Write(data); err != nil {
+		logger.Warning("the keep alive for hole msg err:->", err)
+		return err
+	}
+
+	conn.updateTime = now
+	return nil
 }
 
 /************************************************************************
