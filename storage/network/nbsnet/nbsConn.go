@@ -111,12 +111,10 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 *			nat connection
 *
 *************************************************************************/
-//TODO::
 func (conn *NbsUdpConn) Send(b []byte) (int, error) {
 	return conn.RealConn.Write(b)
 }
 
-//TODO::
 func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
 	return conn.RealConn.Read(b)
 }
