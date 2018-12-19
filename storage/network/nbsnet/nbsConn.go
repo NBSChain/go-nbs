@@ -60,6 +60,8 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 		}
 		data, _ := proto.Marshal(msg)
 
+		logger.Debug("try to keep hole opened:->", conn.String())
+
 		select {
 		case <-time.After(NatHoleKATime):
 			if _, err := conn.Write(data); err != nil {
