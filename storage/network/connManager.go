@@ -195,9 +195,10 @@ func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string,
 		task.finish(err, nil)
 		return
 	}
+	res.Typ = 10000
 
-	if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
-		logger.Error("i think the problem is heere:->", err)
+	if _, err := conn.Write([]byte(res.String())); err != nil {
+		logger.Error("i think the problem is here:->", err)
 	}
 
 	task.finish(err, conn)
