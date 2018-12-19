@@ -14,7 +14,7 @@ import (
 
 type connTask struct {
 	err         error
-	locPort     string
+	locPort     int
 	udpConn     chan *net.UDPConn
 	portCapConn *net.UDPConn
 }
