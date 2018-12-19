@@ -84,18 +84,22 @@ func (conn *NbsUdpConn) keepAlive() error {
 	logger.Debug("time to refresh")
 
 	conn.Lock()
-	defer conn.Unlock()
 	if now.Sub(conn.updateTime) < NatHoleKATime {
 		logger.Debug("no need right now")
+		conn.Unlock()
+
 		return nil
 	}
 
 	if _, err := conn.Write(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
+		conn.Unlock()
+
 		return err
 	}
 
 	conn.updateTime = now
+	conn.Unlock()
 	logger.Debug("try to keep hole opened:->", conn.String())
 	return nil
 }
