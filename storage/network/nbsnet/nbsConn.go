@@ -58,8 +58,6 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUd
 
 func (conn *NbsUdpConn) KeepHoleOpened() {
 	for {
-		logger.Debug("try to keep hole opened:->", conn.String())
-
 		select {
 		case <-time.After(NatHoleKATime):
 			if err := conn.keepAlive(); err != nil {
@@ -94,6 +92,7 @@ func (conn *NbsUdpConn) keepAlive() error {
 	}
 
 	conn.updateTime = now
+	logger.Debug("try to keep hole opened:->", conn.String())
 	return nil
 }
 
