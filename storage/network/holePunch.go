@@ -42,8 +42,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		return
 	}
 
-	_, port, _ := net.SplitHostPort(conn.LocalAddr().String())
-	task.locPort = port
+	task.locPort = conn.LocalAddr().(*net.UDPAddr).Port
 	task.portCapConn = conn
 	network.digTask[sid] = task
 	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
@@ -82,7 +81,7 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 			return err
 		}
 
-		logger.Info("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
+		logger.Info("hole punch step2-4  dig dig on peer's nat server:->", nbsnet.ConnString(conn))
 	}
 	return nil
 }
@@ -133,7 +132,14 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 	defer delete(network.digTask, sid)
 	task.portCapConn.Close()
 
-	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
+	host, rPort, _ := nbsnet.SplitHostPort(ack.Public)
+	conn, err := net.DialUDP("udp4", &net.UDPAddr{
+		Port: task.locPort,
+	}, &net.UDPAddr{
+		IP:   net.ParseIP(host),
+		Port: int(rPort),
+	})
+
 	if err != nil {
 		task.finish(err, nil)
 		return err
