@@ -72,6 +72,7 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 }
 
 func (conn *NbsUdpConn) keepAlive() error {
+
 	now := time.Now()
 	msg := &net_pb.NatMsg{
 		Typ: NatBlankKA,
@@ -86,15 +87,12 @@ func (conn *NbsUdpConn) keepAlive() error {
 	conn.Lock()
 	if now.Sub(conn.updateTime) < NatHoleKATime {
 		logger.Debug("no need right now")
-		conn.Unlock()
-
 		return nil
 	}
-
+	logger.Debug("prepare to write...")
 	if _, err := conn.Write(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
 		conn.Unlock()
-
 		return err
 	}
 
