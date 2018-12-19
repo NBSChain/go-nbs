@@ -7,6 +7,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/gogo/protobuf/proto"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -24,12 +25,13 @@ const (
 )
 
 type NbsUdpConn struct {
-	SessionID  string
-	CType      ConnType
-	ctx        context.Context
-	close      context.CancelFunc
-	RealConn   *net.UDPConn
-	LocAddr    *NbsUdpAddr
+	SessionID string
+	CType     ConnType
+	ctx       context.Context
+	close     context.CancelFunc
+	RealConn  *net.UDPConn
+	LocAddr   *NbsUdpAddr
+	sync.Mutex
 	updateTime time.Time
 }
 
@@ -77,7 +79,9 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 				logger.Warning("the keep alive for hole msg err:->", err)
 				return
 			}
+			conn.Lock()
 			conn.updateTime = now
+			conn.Unlock()
 		case <-conn.ctx.Done():
 			logger.Debug("bye")
 			return
@@ -95,12 +99,16 @@ func (conn *NbsUdpConn) SetDeadline(t time.Time) error {
 }
 
 func (conn *NbsUdpConn) Write(d []byte) (int, error) {
+	conn.Lock()
 	conn.updateTime = time.Now()
+	conn.Unlock()
 	return conn.RealConn.Write(d)
 }
 
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
+	conn.Lock()
 	conn.updateTime = time.Now()
+	conn.Unlock()
 	return conn.RealConn.Read(b)
 }
 
@@ -110,12 +118,16 @@ func (conn *NbsUdpConn) Close() error {
 }
 
 func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
+	conn.Lock()
 	conn.updateTime = time.Now()
+	conn.Unlock()
 	return conn.RealConn.ReadFromUDP(b)
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+	conn.Lock()
 	conn.updateTime = time.Now()
+	conn.Unlock()
 	return conn.RealConn.WriteToUDP(b, addr)
 }
 
