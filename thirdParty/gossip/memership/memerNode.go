@@ -35,8 +35,7 @@ const (
 )
 
 var (
-	HandlerNotFound = fmt.Errorf("no such gossip task handler")
-	ItemNotFound    = fmt.Errorf("no such peer node in my view")
+	ItemNotFound = fmt.Errorf("no such peer node in my view")
 )
 
 type msgTask struct {
@@ -203,7 +202,7 @@ func (node *MemManager) msgProcessor() {
 			var ok bool
 			handler, ok = node.taskRouter[task.taskType]
 			if !ok {
-				logger.Error("gossip msg handler err:->", HandlerNotFound, task.msg, task.taskType)
+				logger.Info("this is not my duty to process:->", task.taskType)
 				continue
 			}
 
