@@ -118,22 +118,8 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 		return nil, err
 	}
 	natAddr := network.natClient.NatAddr
-	host, _, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
-	conn := &nbsnet.NbsUdpConn{
-		RealConn:  c,
-		CType:     nbsnet.CTypeNormal,
-		SessionID: c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String(),
-		LocAddr: &nbsnet.NbsUdpAddr{
-			NetworkId: network.networkId,
-			CanServe:  network.CanServe,
-			NatServer: natAddr.NatServer,
-			NatIp:     natAddr.NatIp,
-			PubIp:     natAddr.PubIp,
-			NatPort:   natAddr.NatPort,
-			PriIp:     host,
-		},
-	}
-
+	Sid := c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String()
+	conn := nbsnet.NewNbsConn(c, Sid, nbsnet.CTypeNormal, natAddr)
 	return conn, nil
 }
 
@@ -158,22 +144,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 	}
 
 	natAddr := network.natClient.NatAddr
-	host, _, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
-	conn := &nbsnet.NbsUdpConn{
-		RealConn:  realConn,
-		CType:     cType,
-		SessionID: lAddr.String(),
-		LocAddr: &nbsnet.NbsUdpAddr{
-			NetworkId: network.networkId,
-			CanServe:  natAddr.CanServe,
-			NatServer: natAddr.NatServer,
-			NatIp:     natAddr.NatIp,
-			NatPort:   natAddr.NatPort,
-			PubIp:     natAddr.PubIp,
-			PriIp:     host,
-		},
-	}
-
+	conn := nbsnet.NewNbsConn(realConn, lAddr.String(), cType, natAddr)
 	return conn, nil
 }
 
@@ -208,22 +179,7 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 		realConn = c
 	}
 	natAddr := network.natClient.NatAddr
-	host, _, _ := nbsnet.SplitHostPort(realConn.LocalAddr().String())
-	conn := &nbsnet.NbsUdpConn{
-		RealConn:  realConn,
-		CType:     connType,
-		SessionID: sessionID,
-		LocAddr: &nbsnet.NbsUdpAddr{
-			NetworkId: network.networkId,
-			CanServe:  natAddr.CanServe,
-			NatServer: natAddr.NatServer,
-			NatIp:     natAddr.NatIp,
-			PubIp:     natAddr.PubIp,
-			NatPort:   natAddr.NatPort,
-			PriIp:     host,
-		},
-	}
-
+	conn := nbsnet.NewNbsConn(realConn, sessionID, connType, natAddr)
 	return conn, nil
 }
 func (network *nbsNetwork) runLoop() {

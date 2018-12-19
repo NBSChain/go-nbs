@@ -54,21 +54,7 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 
 	logger.Debug("Step6:make direct connection:->", c.LocalAddr().String(), c.RemoteAddr().String())
 	natAddr := network.natClient.NatAddr
-	host, _, _ := nbsnet.SplitHostPort(c.LocalAddr().String())
-	conn := &nbsnet.NbsUdpConn{
-		RealConn:  c,
-		CType:     nbsnet.CTypeNormal,
-		SessionID: sessionID,
-		LocAddr: &nbsnet.NbsUdpAddr{
-			NetworkId: network.networkId,
-			CanServe:  natAddr.CanServe,
-			NatServer: natAddr.NatServer,
-			NatIp:     natAddr.NatIp,
-			PubIp:     natAddr.PubIp,
-			NatPort:   natAddr.NatPort,
-			PriIp:     host,
-		},
-	}
+	conn := nbsnet.NewNbsConn(c, sessionID, nbsnet.CTypeNormal, natAddr)
 	return conn, nil
 }
 

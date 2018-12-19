@@ -1,7 +1,11 @@
 package nbsnet
 
 import (
+	"context"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/crypto"
+	"github.com/gogo/protobuf/proto"
 	"net"
 	"time"
 )
@@ -11,7 +15,8 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	_ ConnType = iota
+	NatHoleKATime          = time.Second * 20
+	_             ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex
 	CTypeNatDuplex
@@ -21,9 +26,50 @@ const (
 type NbsUdpConn struct {
 	SessionID string
 	CType     ConnType
+	ctx       context.Context
+	close     context.CancelFunc
 	RealConn  *net.UDPConn
-	IsClosed  bool
 	LocAddr   *NbsUdpAddr
+}
+
+func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUdpAddr) *NbsUdpConn {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conn := &NbsUdpConn{
+		ctx:       ctx,
+		close:     cancel,
+		RealConn:  c,
+		CType:     cType,
+		SessionID: sessionID,
+		LocAddr:   natAddr,
+	}
+
+	if cType == CTypeNatSimplex ||
+		cType == CTypeNatDuplex {
+		go conn.KeepHoleOpened()
+	}
+
+	return conn
+}
+
+func (conn *NbsUdpConn) KeepHoleOpened() {
+	for {
+		now := time.Now().String()
+		msg := &net_pb.ConnKA{
+			KA: crypto.MD5SS(now),
+		}
+		data, _ := proto.Marshal(msg)
+
+		select {
+		case <-time.After(NatHoleKATime):
+			if _, err := conn.Write(data); err != nil {
+				logger.Warning("the keep alive for hole msg err:->", err)
+				return
+			}
+		case <-conn.ctx.Done():
+			logger.Debug("bye")
+		}
+	}
 }
 
 /************************************************************************
@@ -44,7 +90,7 @@ func (conn *NbsUdpConn) Read(b []byte) (int, error) {
 }
 
 func (conn *NbsUdpConn) Close() error {
-	conn.IsClosed = true
+	conn.close()
 	return conn.RealConn.Close()
 }
 

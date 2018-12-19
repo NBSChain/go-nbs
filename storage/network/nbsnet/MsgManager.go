@@ -17,6 +17,7 @@ const (
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
+	NatBlankKA         = net_pb.MsgType_NatBlankKA
 	DrainOutOldKa      = net_pb.MsgType_NatInnerBase + 1
 	NatEnd             = net_pb.MsgType_NatEnd
 
