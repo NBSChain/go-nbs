@@ -179,28 +179,25 @@ func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string,
 	buffer := make([]byte, utils.NormalReadBuffer)
 	n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 	if err != nil {
+		logger.Warning("read the invite ack err:->", err)
 		lisConn.Close()
 		task.finish(err, nil)
 		return
 	}
 
 	res := &net_pb.NatMsg{}
-	if err := proto.Unmarshal(buffer[:n], res); err != nil {
-		task.err = err
-		task.udpConn <- nil
-		return
-	}
-
-	if res.Typ != nbsnet.NatReversInviteAck {
-		task.finish(fmt.Errorf("didn't get the answer"), nil)
-		lisConn.Close()
-		return
-	}
+	proto.Unmarshal(buffer[:n], res)
 	lisConn.Close()
+
+	logger.Debug("step5-1: get data:->", res)
 	conn, err := net.DialUDP("udp4", host, peerAddr)
 	if err != nil {
 		task.finish(err, nil)
 		return
+	}
+
+	if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
+		logger.Error("i think the problem is heere:->", err)
 	}
 
 	task.finish(err, conn)
