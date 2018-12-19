@@ -98,7 +98,7 @@ func (item *ViewNode) waitingWork() {
 		}
 		msg := &pb.Gossip{}
 		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
-			logger.Warning("unmarshal err:->", err)
+			logger.Warning("unmarshal err:->", err, addr, n)
 			continue
 		}
 		task := &gossipTask{

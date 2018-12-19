@@ -243,13 +243,13 @@ func (c *Client) readCmd() {
 				c.closeCtx()
 				return
 			}
-			logger.Warning("reading keep alive message failed:", err)
+			logger.Warning("reading keep alive message failed:->", err)
 			continue
 		}
 
 		msg := &net_pb.NatMsg{}
 		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
-			logger.Warning("keep alive msg Unmarshal failed:", err)
+			logger.Warning("keep alive msg Unmarshal failed:->", err)
 			continue
 		}
 
