@@ -11,6 +11,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"net"
 	"sync"
+	"time"
 )
 
 type nbsNetwork struct {
@@ -24,6 +25,8 @@ type nbsNetwork struct {
 }
 
 const (
+	HolePunchTimeOut    = 4 * time.Second
+	DigTryTimesOnNat    = 3
 	ConnectionSeparator = "-"
 )
 

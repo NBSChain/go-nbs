@@ -12,22 +12,11 @@ import (
 	"time"
 )
 
-const (
-	HolePunchTimeOut = 4 * time.Second
-)
-
 type connTask struct {
 	err         error
 	locPort     string
 	udpConn     chan *net.UDPConn
 	portCapConn *net.UDPConn
-}
-
-//TODO:: data race
-func (task *connTask) Close() {
-	if task.portCapConn != nil {
-		_ = task.portCapConn.Close()
-	}
 }
 
 func (task *connTask) finish(err error, conn *net.UDPConn) {
@@ -140,14 +129,11 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	priConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
-	defer priConnTask.Close()
 
 	go network.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
-
 	pubConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
-	defer pubConnTask.Close()
 	go network.noticePeerAndWait(lAddr, rAddr, connId, toPort, pubConnTask)
 
 	var pubFail, priFail bool
@@ -300,12 +286,12 @@ func (network *nbsNetwork) answerInvite(params interface{}) error {
 	reqData, _ := proto.Marshal(req)
 	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.SessionId)
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < DigTryTimesOnNat; i++ {
 		if _, err := conn.Write(reqData); err != nil {
 			logger.Errorf("failed to write answer to inviter:", err)
 			return err
 		}
-		logger.Debug("i will change this :->", nbsnet.ConnString(conn))
+		logger.Debug(" reverse invite dig dig on peer's nat server:->", nbsnet.ConnString(conn))
 	}
 	return nil
 }

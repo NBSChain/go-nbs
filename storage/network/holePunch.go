@@ -14,10 +14,14 @@ import (
 func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	sid string, toPort int, task *connTask) {
 
-	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
+	host, rPort, _ := nbsnet.SplitHostPort(rAddr.NatServer)
+	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+		IP:   net.ParseIP(host),
+		Port: int(rPort),
+	})
+
 	if err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return
 	}
 
@@ -34,8 +38,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
-		task.err = err
-		task.udpConn <- nil
+		task.finish(err, nil)
 		return
 	}
 
@@ -73,12 +76,14 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(msg)
-	if _, err := conn.Write(data); err != nil {
-		logger.Error(err)
-		return err
-	}
+	for i := 0; i < DigTryTimesOnNat; i++ {
+		if _, err := conn.Write(data); err != nil {
+			logger.Error(err)
+			return err
+		}
 
-	logger.Info("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
+		logger.Info("hole punch step2-4  dig dig:->", nbsnet.ConnString(conn))
+	}
 	return nil
 }
 
@@ -126,6 +131,7 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 		return fmt.Errorf("can't find the dig taskQueue")
 	}
 	defer delete(network.digTask, sid)
+	task.portCapConn.Close()
 
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+task.locPort, ack.Public)
 	if err != nil {
