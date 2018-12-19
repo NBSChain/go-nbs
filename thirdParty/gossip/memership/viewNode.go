@@ -29,7 +29,7 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 
 	conn, err := network.GetInstance().Connect(nil, addr, port)
 	if err != nil {
-		logger.Error("the contact failed to notify the subscriber:", err)
+		logger.Error("the contact failed to notify the subscriber:", err, addr, port)
 		return nil, err
 	}
 
