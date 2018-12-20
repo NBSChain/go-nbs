@@ -256,7 +256,7 @@ func (node *MemManager) timer() {
 func (node *MemManager) checkItemInView(task *gossipTask) error {
 	now := time.Now()
 	for _, item := range node.InputView {
-		if now.Sub(item.updateTime) > (MemShipHeartBeat * 2) {
+		if now.Sub(item.updateTime) > (MemShipHeartBeat*2 + IsolatedTime) {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}
