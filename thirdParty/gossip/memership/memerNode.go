@@ -376,6 +376,6 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 }
 
 func (node *MemManager) noop(task *gossipTask) error {
-	logger.Debug("noop:->", *task)
+	logger.Debug("noop:->", task.taskType, task.msg)
 	return nil
 }
