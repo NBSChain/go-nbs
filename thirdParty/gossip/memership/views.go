@@ -2,12 +2,10 @@ package memership
 
 import (
 	"crypto/rand"
-	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/golang/protobuf/proto"
 	"math/big"
-	"time"
 )
 
 //TODO:: make sure this random is ok
@@ -32,21 +30,6 @@ func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNod
 	}
 	delete(views, item.nodeId)
 	logger.Warning("remove node from view:->", item.nodeId)
-}
-
-func (node *MemManager) getHeartBeat(task *gossipTask) error {
-
-	node.updateTime = time.Now()
-
-	beat := task.msg
-	item, ok := node.InputView[beat.FromId]
-	if !ok {
-		err := fmt.Errorf("no such input view item:->%s", beat.FromId)
-		logger.Warning(err)
-		return err
-	}
-	item.updateTime = time.Now()
-	return nil
 }
 
 func (node *MemManager) updateMyInProb(task *gossipTask) error {

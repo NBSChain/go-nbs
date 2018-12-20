@@ -67,7 +67,6 @@ type MemManager struct {
 	nodeID      string
 	subNo       int
 	isBootNode  bool
-	updateTime  time.Time
 	taskQueue   chan *gossipTask
 	serviceConn *nbsnet.NbsUdpConn
 	InputView   map[string]*ViewNode
@@ -88,7 +87,6 @@ func NewMemberNode(peerId string) *MemManager {
 		nodeID:      peerId,
 		ctx:         ctx,
 		close:       cal,
-		updateTime:  time.Now(),
 		taskQueue:   make(chan *gossipTask, MaxInnerTaskSize),
 		InputView:   make(map[string]*ViewNode),
 		PartialView: make(map[string]*ViewNode),
@@ -99,7 +97,6 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspSub)] = node.firstInitSub
 	node.taskRouter[int(nbsnet.GspVoteContact)] = node.getVoteApply
 	node.taskRouter[int(nbsnet.GspVoteResult)] = node.subToContract
-	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.getHeartBeat
 	node.taskRouter[int(nbsnet.GspIntroduce)] = node.getForwardSub
 	node.taskRouter[int(nbsnet.GspWelcome)] = node.subAccepted
 	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck

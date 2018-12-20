@@ -199,7 +199,6 @@ func (node *MemManager) reSubscribe() error {
 
 	if node.isBootNode {
 		logger.Info("I'm the boot node, so maybe it's normal situation")
-		node.updateTime = time.Now()
 		return nil
 	}
 
