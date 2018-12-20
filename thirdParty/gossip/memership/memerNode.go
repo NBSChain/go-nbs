@@ -25,12 +25,12 @@ const (
 	ClearInputViews   = 8
 	RemoveOutPutItem  = 9
 	RemoveInPutItem   = 10
-	MemShipHeartBeat  = time.Second * 100 //TODO::?? heart beat time interval.
+	MemShipHeartBeat  = time.Second * 100
+	IsolatedTime      = time.Second * 3
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
 	DefaultSubExpire  = time.Hour
 	SubscribeTimeOut  = time.Second * 2
-	IsolatedTime      = MemShipHeartBeat * 3
 	MSGTrashCollect   = time.Minute * 10
 	MaxItemPerRound   = 1 << 10
 	ProbUpdateInter   = 10
@@ -158,7 +158,6 @@ func (node *MemManager) initMsgService() error {
 	}
 
 	node.serviceConn = conn
-
 	return nil
 }
 
@@ -222,20 +221,36 @@ func (node *MemManager) msgProcessor() {
 
 func (node *MemManager) timer() {
 	for {
+		var isolateCheck, heartBeat, msgCollect time.Duration
 		select {
-		case <-time.After(MemShipHeartBeat):
-			node.taskQueue <- &gossipTask{
-				taskType: SendHeartBeat,
+
+		case <-time.After(time.Second):
+			{
+
+				isolateCheck += time.Second
+				heartBeat += time.Second
+				msgCollect += time.Second
+
+				if isolateCheck >= IsolatedTime {
+					node.taskQueue <- &gossipTask{
+						taskType: CheckItemInView,
+					}
+					isolateCheck = 0
+				}
+				if heartBeat >= MemShipHeartBeat {
+					node.taskQueue <- &gossipTask{
+						taskType: SendHeartBeat,
+					}
+					heartBeat = 0
+				}
+				if msgCollect >= MSGTrashCollect { //TODO::need a test.
+					node.taskQueue <- &gossipTask{
+						taskType: MsgCounterCollect,
+					}
+					msgCollect = 0
+				}
 			}
 
-			node.taskQueue <- &gossipTask{
-				taskType: CheckItemInView,
-			}
-
-		case <-time.After(MSGTrashCollect):
-			node.taskQueue <- &gossipTask{
-				taskType: MsgCounterCollect,
-			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
 			return
@@ -245,16 +260,14 @@ func (node *MemManager) timer() {
 
 func (node *MemManager) checkItemInView(task *gossipTask) error {
 	now := time.Now()
-
 	for _, item := range node.InputView {
-		if now.Sub(item.updateTime) > IsolatedTime {
+		if now.Sub(item.updateTime) > (MemShipHeartBeat + IsolatedTime) {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}
 	}
 
-	if len(node.InputView) == 0 &&
-		now.Sub(node.updateTime) > IsolatedTime {
+	if len(node.InputView) == 0 && !node.isBootNode {
 		return node.reSubscribe()
 	}
 
@@ -362,6 +375,6 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 		return node.send(item, task.msg)
 	}
 
-	logger.Debug("yeah, I am always your backup")
+	logger.Debug("yeah, lucky enough, accept this introduce, I am always your backup")
 	return node.asSubAdapter(task.msg.Subscribe)
 }

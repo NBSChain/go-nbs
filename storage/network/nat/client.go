@@ -207,6 +207,8 @@ func (c *Client) listenPing() {
 		logger.Warning("start private nat ping listener err:->", err)
 		return
 	}
+	defer conn.Close()
+	defer logger.Warning("ping listening exit")
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)

@@ -33,7 +33,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	for _, item := range node.PartialView {
 
 		if item.nodeId == sub.NodeId {
-			logger.Debug("don't introduce himself, no need.")
+			logger.Debug("don't introduce himself, no  .")
 			continue
 		}
 
@@ -96,7 +96,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
-	logger.Debug("ok I am your contact server")
+	logger.Debug("ok I am your contact server, receive the init subscribe")
 
 	node.broadCastSub(sub)
 
@@ -142,6 +142,7 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 		logger.Warning("no one want to vote, ask again:->", i)
 	}
 
+	logger.Debug("ok no one proxy this subscribe, let me do it:->", sub.NodeId)
 	return node.asContactServer(sub)
 }
 

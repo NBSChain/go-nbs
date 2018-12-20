@@ -27,14 +27,10 @@ func (node *MemManager) randomSelectItem() *ViewNode {
 }
 
 func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
-
-	delete(views, item.nodeId)
-
 	if item.outConn != nil {
-		if err := item.outConn.Close(); err != nil {
-			logger.Warning(err)
-		}
+		item.outConn.Close()
 	}
+	delete(views, item.nodeId)
 	logger.Warning("remove node from view:->", item.nodeId)
 }
 
