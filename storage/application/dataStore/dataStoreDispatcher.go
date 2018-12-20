@@ -27,7 +27,7 @@ func GetServiceDispatcher() *ServiceRoutingMap {
 			panic(err)
 		}
 
-		logger.Info("data store service start to run......\n")
+		logger.Info("data store service start to run......")
 		instance = mounts
 	})
 

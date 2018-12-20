@@ -31,7 +31,7 @@ func GetDagInstance() DAGService {
 			panic(err)
 		}
 
-		logger.Info("dag service start to run......\n")
+		logger.Info("dag service start to run......")
 		instance = router
 	})
 

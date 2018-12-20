@@ -31,7 +31,7 @@ func GetInstance() Application {
 			panic(err)
 		}
 
-		logger.Info("--->Create application to run......\n")
+		logger.Info("--->Create application to run......")
 
 		instance = app
 	})
