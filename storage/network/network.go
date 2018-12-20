@@ -8,7 +8,7 @@ import (
 type Network interface {
 	StartUp(id string) error
 
-	GetNatInfo() string
+	GetNatAddr() (string, *nbsnet.NbsUdpAddr)
 
 	DialUDP(network string, localAddr, remoteAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error)
 

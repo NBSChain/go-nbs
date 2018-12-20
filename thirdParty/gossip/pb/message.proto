@@ -24,6 +24,7 @@ message Subscribe {
 message SynAck {
     int64 SeqNo     = 1;
     string FromId   = 2;
+    BasicHost Addr  = 3;
 }
 
 message VoteContact {

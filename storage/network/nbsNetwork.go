@@ -94,21 +94,8 @@ func (network *nbsNetwork) StartUp(peerId string) error {
 	return nil
 }
 
-func (network *nbsNetwork) GetNatInfo() string {
-
-	addr := network.natClient.NatAddr
-	status := fmt.Sprintf("\n=========================================================================\n"+
-		"\tnetworkId:\t%s\n"+
-		"\tcanServe:\t%v\n"+
-		"\tpubIp:\t%s\n"+
-		"\tpriIp:\t%s\n"+
-		"=========================================================================",
-		network.networkId,
-		addr.CanServe,
-		addr.PubIp,
-		addr.PriIp)
-
-	return status
+func (network *nbsNetwork) GetNatAddr() (string, *nbsnet.NbsUdpAddr) {
+	return network.networkId, network.natClient.NatAddr
 }
 
 func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error) {

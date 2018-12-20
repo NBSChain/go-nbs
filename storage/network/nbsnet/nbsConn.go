@@ -148,26 +148,6 @@ func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
 
 /************************************************************************
 *
-*			nat connection
-*
-*************************************************************************/
-//func (conn *NbsUdpConn) Send(b []byte) (int, error) {
-//	conn.updateTime = time.Now()
-//	return conn.RealConn.Write(b)
-//}
-//
-//func (conn *NbsUdpConn) Receive(b []byte) (int, error) {
-//	conn.updateTime = time.Now()
-//	return conn.RealConn.Read(b)
-//}
-//
-//func (conn *NbsUdpConn) ReceiveFromUDP(b []byte) (int, *net.UDPAddr, error) {
-//	conn.updateTime = time.Now()
-//	return conn.RealConn.ReadFromUDP(b)
-//}
-
-/************************************************************************
-*
 *			private functions
 *
 *************************************************************************/

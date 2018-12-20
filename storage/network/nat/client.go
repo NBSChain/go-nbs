@@ -17,7 +17,6 @@ const (
 	KeepAliveTime    = time.Second * 100
 	KeepAliveTimeOut = KeepAliveTime * 3
 	BootStrapTimeOut = time.Second * 2
-	ErrNoBeforeRetry = 3
 	CmdTaskPoolSize  = 100
 	CMDAnswerInvite  = 1
 	CMDDigOut        = 2
@@ -36,7 +35,6 @@ type Client struct {
 	CanServer  bool
 	Ctx        context.Context
 	closeCtx   context.CancelFunc
-	errNo      int
 	NatAddr    *nbsnet.NbsUdpAddr
 	natConn    *net.UDPConn
 	updateTime time.Time
@@ -169,15 +167,10 @@ func (c *Client) keepAlive() {
 
 			if no, err := c.natConn.Write(requestData); err != nil || no == 0 {
 				logger.Warning("failed to send keep alive channel message:", err)
-				c.errNo++
-			}
-			logger.Debug("send  keep alive to nat server:->", request.KeepAlive.LAddr)
-
-			if c.errNo > ErrNoBeforeRetry {
-				logger.Warning("too many times send errors")
 				c.closeCtx()
 				return
 			}
+			logger.Debug("send  keep alive to nat server:->", request.KeepAlive.LAddr)
 
 		case <-c.Ctx.Done():
 			logger.Info("exit sending thread cause's of context close")
@@ -201,7 +194,7 @@ func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
 
 		c.NatAddr.NatIp = alive.PubIP
 		c.NatAddr.NatPort = alive.PubPort
-		logger.Info("node's nat info changed.", alive)
+		logger.Warning("node's nat info changed.", alive)
 	}
 }
 
@@ -219,9 +212,9 @@ func (c *Client) listenPing() {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			c.errNo++
 			logger.Warning("private ping listener err:->", err)
-			continue
+			c.closeCtx()
+			return
 		}
 		msg := &net_pb.NatMsg{}
 		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
@@ -241,6 +234,8 @@ func (c *Client) listenPing() {
 		data, _ := proto.Marshal(res)
 		if _, err := conn.WriteToUDP(data, peerAddr); err != nil {
 			logger.Warning("answer NatPriDigAck err:->", err)
+			c.closeCtx()
+			return
 		}
 
 		select {
@@ -260,13 +255,9 @@ func (c *Client) readCmd() {
 
 		n, err := c.natConn.Read(buffer)
 		if err != nil {
-			if c.errNo++; c.errNo > ErrNoBeforeRetry {
-				logger.Warning("too many reading error:->")
-				c.closeCtx()
-				return
-			}
 			logger.Warning("reading keep alive message failed:->", err)
-			continue
+			c.closeCtx()
+			return
 		}
 
 		msg := &net_pb.NatMsg{}

@@ -135,6 +135,7 @@ func (node *MemManager) firstInitSub(task *gossipTask) error {
 		SubAck: &pb.SynAck{
 			SeqNo:  subReq.SeqNo,
 			FromId: node.nodeID,
+			Addr:   nbsnet.ConvertToGossipAddr(node.serviceConn.LocAddr, node.nodeID),
 		},
 	}
 
@@ -221,6 +222,15 @@ func (node *MemManager) reSubscribe() error {
 }
 
 func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
-	logger.Debug("he will solve our reSub request:->", task.addr)
+	ack := task.msg.SubAck
+	logger.Debug("he will solve our reSub request:->", task.addr, ack)
+
+	item := node.PartialView[ack.FromId]
+
+	if item.outAddr.NatServer != ack.Addr.NatServer {
+		item.outAddr = nbsnet.ConvertFromGossipAddr(ack.Addr)
+		logger.Warning("this item's nat server info changed:->", item.nodeId)
+		item.updateTime = time.Now()
+	}
 	return nil
 }
