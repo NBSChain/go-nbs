@@ -60,7 +60,7 @@ func (node *MemManager) RegisterMySelf() error {
 
 	if !success {
 		if node.isBootNode {
-			logger.Info("I'm a boot strap node")
+			logger.Info("I'm a boot strap node and alone now")
 			return nil
 		}
 		return fmt.Errorf("failed to find a contract server")
