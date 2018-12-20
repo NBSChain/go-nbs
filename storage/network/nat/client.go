@@ -62,10 +62,8 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 	if c.CanServer {
 		return c, nil
 	}
-
 	go c.keepAlive(natServ)
 	go c.readCmd()
-
 	return c, nil
 
 }

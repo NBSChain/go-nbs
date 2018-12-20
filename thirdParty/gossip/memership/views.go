@@ -101,7 +101,7 @@ func (node *MemManager) updateProbability(task *gossipTask) error {
 			},
 		}
 
-		if err := item.send(msg); err != nil {
+		if err := node.send(item, msg); err != nil {
 			logger.Warning("send weight update to partial view item err:->", err, item.nodeId)
 		}
 	}

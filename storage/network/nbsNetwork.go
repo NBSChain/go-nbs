@@ -199,6 +199,7 @@ func (network *nbsNetwork) runLoop() {
 				logger.Warning(err)
 				continue
 			}
+
 		case <-network.natClient.Ctx.Done():
 			logger.Warning("nat client process quit")
 			network.natServer.CanServe = make(chan bool)

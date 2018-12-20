@@ -101,7 +101,7 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 
 	logger.Debug("replace node cause'of unsub:->", replace.FromId, replace.ToId)
 
-	return item.send(msg)
+	return node.send(item, msg)
 }
 
 func (node *MemManager) acceptAsReplacedPeer(task *gossipTask) error {
@@ -151,7 +151,7 @@ func (node *MemManager) removeMeFromInView() {
 	}
 
 	for _, item := range node.PartialView {
-		if err := item.send(msg); err != nil {
+		if err := node.send(item, msg); err != nil {
 			logger.Warning("notify remove me err:->", err)
 		}
 	}

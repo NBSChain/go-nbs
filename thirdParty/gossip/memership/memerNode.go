@@ -202,7 +202,7 @@ func (node *MemManager) msgProcessor() {
 			var ok bool
 			handler, ok = node.taskRouter[task.taskType]
 			if !ok {
-				logger.Info("this is not my duty to process:->", task.taskType)
+				logger.Debug("this is not my duty to process:->", task.taskType)
 				continue
 			}
 
@@ -251,7 +251,7 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 
 	if len(node.InputView) == 0 &&
 		now.Sub(node.updateTime) > IsolatedTime {
-		return node.Resub()
+		return node.reSubscribe()
 	}
 
 	return nil
@@ -293,9 +293,8 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 			continue
 		}
 		logger.Debug("send heart beat to:->", item.nodeId, item.outConn.String())
-		if err := item.sendData(data); err != nil {
+		if err := node.sendData(item, data); err != nil {
 			logger.Warning("send data failed:->", err)
-			node.removeFromView(item, node.PartialView)
 		}
 	}
 
@@ -336,7 +335,7 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 	if subId == node.nodeID {
 		item := node.choseRandomInPartialView()
 		logger.Debug("hey, don't introduce me to myself, forward:->", item.nodeId)
-		return item.send(task.msg)
+		return node.send(item, task.msg)
 	}
 
 	if _, ok := node.PartialView[subId]; ok {
@@ -346,7 +345,7 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 			return nil
 		}
 		logger.Debug("I have got you, so forward to next node:->", item.nodeId)
-		return item.send(task.msg)
+		return node.send(item, task.msg)
 	}
 
 	prob := float64(1) / float64(1+len(node.PartialView))
@@ -356,7 +355,7 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 	if random.Int64() > int64(prob*100) {
 		item := node.choseRandomInPartialView()
 		logger.Debug("no lucky, forward you, sorry:->", item.nodeId)
-		return item.send(task.msg)
+		return node.send(item, task.msg)
 	}
 
 	logger.Debug("yeah, I am always your backup")

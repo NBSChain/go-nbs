@@ -223,7 +223,7 @@ func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, t
 	buffer := make([]byte, utils.NormalReadBuffer)
 	_, peerAddr, err := pingConn.ReadFromUDP(buffer)
 	if err != nil {
-		logger.Info("Step 1-5:private network reading dig result err:->", err)
+		logger.Warning("Step 1-5:private network reading dig result err:->", err)
 		task.finish(err, nil)
 		return
 	}

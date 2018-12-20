@@ -3,7 +3,6 @@ package memership
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -183,7 +182,7 @@ func (node *MemManager) subToContract(task *gossipTask) error {
 		},
 	}
 
-	return item.send(msg)
+	return node.send(item, msg)
 }
 
 func (node *MemManager) subAccepted(task *gossipTask) error {
@@ -197,10 +196,11 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 	return nil
 }
 
-func (node *MemManager) Resub() error {
+func (node *MemManager) reSubscribe() error {
 
 	if node.isBootNode {
 		logger.Info("I'm the boot node, so maybe it's normal situation")
+		node.updateTime = time.Now()
 		return nil
 	}
 
@@ -217,25 +217,6 @@ func (node *MemManager) Resub() error {
 		node.removeFromView(item, node.PartialView)
 		return err
 	}
-
-	if err := item.outConn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
-		logger.Warning("set outConn time out when reSub err:->", err)
-		node.removeFromView(item, node.PartialView)
-		return err
-	}
-
-	if err := node.checkProxyValidation(item.outConn); err != nil {
-		logger.Warning("can't reSub to node err:->", item.nodeId, err)
-		node.removeFromView(item, node.PartialView)
-		return err
-	}
-
-	if err := item.outConn.SetDeadline(nat.NoTimeOut); err != nil {
-		logger.Warning("set outConn time out when reSub err:->", err)
-		node.removeFromView(item, node.PartialView)
-		return err
-	}
-
 	return nil
 }
 

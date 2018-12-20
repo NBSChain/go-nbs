@@ -16,7 +16,7 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	NatHoleKATime          = time.Second * 20
+	NatHoleKATime          = time.Second * 30
 	_             ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex
@@ -72,6 +72,7 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 	}
 }
 
+//TODO::need a response ?ka-ack?
 func (conn *NbsUdpConn) keepAlive() error {
 
 	now := time.Now()

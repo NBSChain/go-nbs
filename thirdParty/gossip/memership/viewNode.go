@@ -19,7 +19,6 @@ type ViewNode struct {
 	expiredTime time.Time
 	outConn     *nbsnet.NbsUdpConn
 	outAddr     *nbsnet.NbsUdpAddr
-	manager     *MemManager
 }
 
 func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*ViewNode, error) {
@@ -38,13 +37,12 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 		probability: node.meanProb(node.PartialView),
 		outConn:     conn,
 		outAddr:     addr,
-		manager:     node,
 		updateTime:  time.Now(),
 		expiredTime: expire,
 	}
 
 	node.PartialView[item.nodeId] = item
-	go item.waitingWork()
+	go node.waitingWork(item)
 
 	return item, nil
 }
@@ -55,23 +53,23 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 		nodeId:      nodeId,
 		inAddr:      addr,
 		probability: node.meanProb(node.InputView),
-		manager:     node,
 		updateTime:  time.Now(),
 	}
 	node.InputView[nodeId] = view
 	return view
 }
 
-func (item *ViewNode) sendData(data []byte) error {
+func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 
 	if _, err := item.outConn.Write(data); err != nil {
+		node.removeFromView(item, node.PartialView)
 		return err
 	}
 	item.updateTime = time.Now()
 	return nil
 }
 
-func (item *ViewNode) send(pb proto.Message) error {
+func (node *MemManager) send(item *ViewNode, pb proto.Message) error {
 
 	data, err := proto.Marshal(pb)
 
@@ -80,6 +78,7 @@ func (item *ViewNode) send(pb proto.Message) error {
 	}
 
 	if _, err := item.outConn.Write(data); err != nil {
+		node.removeFromView(item, node.PartialView)
 		return err
 	}
 	item.updateTime = time.Now()
@@ -87,13 +86,14 @@ func (item *ViewNode) send(pb proto.Message) error {
 	return nil
 }
 
-func (item *ViewNode) waitingWork() {
+func (node *MemManager) waitingWork(item *ViewNode) {
 
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, addr, err := item.outConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
+			node.removeFromView(item, node.InputView)
 			break
 		}
 		msg := &pb.Gossip{}
@@ -106,7 +106,7 @@ func (item *ViewNode) waitingWork() {
 		}
 		task.msg = msg
 		task.addr = addr
-		item.manager.taskQueue <- task
+		node.taskQueue <- task
 	}
 }
 

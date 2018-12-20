@@ -36,7 +36,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 			continue
 		}
 
-		if err := item.sendData(data); err != nil {
+		if err := node.sendData(item, data); err != nil {
 			logger.Error("forward sub as contact err :->", err)
 			continue
 		}
@@ -49,7 +49,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 
 		logger.Debug("random chose target:->", item.nodeId)
 
-		if err := item.sendData(data); err != nil {
+		if err := node.sendData(item, data); err != nil {
 			logger.Error("forward extra C sub as contact err :->", err)
 			continue
 		}
@@ -77,7 +77,7 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		},
 	}
 
-	if err := item.send(msg); err != nil {
+	if err := node.send(item, msg); err != nil {
 		logger.Error("send contact vote result err:->", err)
 		return err
 	}
@@ -167,7 +167,7 @@ func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
 		}
 
 		logger.Debug("ok, vote for him please:->", item.nodeId)
-		if err := item.sendData(data); err != nil {
+		if err := node.sendData(item, data); err != nil {
 			logger.Warning("failed to send apply for err:->", err)
 			continue
 		}
@@ -201,7 +201,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 		},
 	}
 
-	return item.send(msg)
+	return node.send(item, msg)
 }
 
 func (node *MemManager) voteAck(task *gossipTask) error {
