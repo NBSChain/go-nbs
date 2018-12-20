@@ -177,10 +177,7 @@ func (node *MemManager) receivingCmd() {
 			logger.Warning("this is not a gossip message:->", peerAddr, n)
 			continue
 		}
-
 		logger.Debug("gossip server:->", peerAddr, message)
-
-		node.freshInputView(message.FromId)
 
 		task := &gossipTask{
 			taskType: int(message.MsgType),
@@ -213,7 +210,9 @@ func (node *MemManager) msgProcessor() {
 
 			if err := handler(task); err != nil {
 				logger.Error("gossip run loop err:->", err, task)
+				continue
 			}
+			node.freshInputView(task.msg.FromId)
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
 			return
