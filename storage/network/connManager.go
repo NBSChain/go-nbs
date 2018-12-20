@@ -190,7 +190,7 @@ func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, t
 
 	pingConn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
 		IP:   net.ParseIP(rAddr.PriIp),
-		Port: utils.GetConfig().NatClientPort,
+		Port: utils.GetConfig().NatPrivatePingPort,
 	})
 	defer pingConn.Close()
 

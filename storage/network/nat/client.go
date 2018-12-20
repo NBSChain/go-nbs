@@ -38,7 +38,7 @@ type Client struct {
 	closeCtx   context.CancelFunc
 	errNo      int
 	NatAddr    *nbsnet.NbsUdpAddr
-	listenConn *net.UDPConn
+	natConn    *net.UDPConn
 	updateTime time.Time
 	CmdTask    chan *ClientCmd
 }
@@ -54,21 +54,21 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 		CmdTask:    make(chan *ClientCmd, CmdTaskPoolSize),
 	}
 
-	natServ, err := c.findWhoAmI(canServer)
-	if err != nil {
+	if err := c.findWhoAmI(canServer); err != nil {
 		return nil, err
 	}
 
 	if c.CanServer {
 		return c, nil
 	}
-	go c.keepAlive(natServ)
+	go c.keepAlive()
 	go c.readCmd()
+	go c.listenPing()
 	return c, nil
 
 }
 
-func (c *Client) findWhoAmI(canSever chan bool) (*net.UDPAddr, error) {
+func (c *Client) findWhoAmI(canSever chan bool) error {
 
 	for _, serverIp := range utils.GetConfig().NatServerIP {
 
@@ -76,21 +76,12 @@ func (c *Client) findWhoAmI(canSever chan bool) (*net.UDPAddr, error) {
 			IP:   net.ParseIP(serverIp),
 			Port: utils.GetConfig().NatServerPort,
 		}
-		l := &net.UDPAddr{
-			Port: utils.GetConfig().NatClientPort,
-		}
-		conn, err := net.DialUDP("udp4", l, natServerAddr)
+		conn, err := net.DialUDP("udp4", nil, natServerAddr)
 		if err != nil {
 			logger.Warning("this nat server is done:->", serverIp, err)
 			continue
 		}
-
-		err = conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
-		if err != nil {
-			logger.Warning("set dead line err:->", serverIp, err)
-			conn.Close()
-			continue
-		}
+		conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
 
 		localAddr := conn.LocalAddr().String()
 		host, port, err := nbsnet.SplitHostPort(localAddr)
@@ -148,19 +139,13 @@ func (c *Client) findWhoAmI(canSever chan bool) (*net.UDPAddr, error) {
 			}
 		}
 		c.CanServer = c.NatAddr.CanServe
-		lisAddr := conn.LocalAddr().(*net.UDPAddr)
-		conn.Close()
-
-		if c.listenConn, err = net.ListenUDP("udp4", lisAddr); err != nil {
-			logger.Warning(err)
-			continue
-		}
+		c.natConn = conn
 
 		logger.Info("create client success for network:->\n", c.NatAddr.String())
-		return natServerAddr, nil
+		return nil
 	}
 
-	return nil, fmt.Errorf("failed to find who am I")
+	return fmt.Errorf("failed to find who am I")
 }
 
 /************************************************************************
@@ -168,26 +153,24 @@ func (c *Client) findWhoAmI(canSever chan bool) (*net.UDPAddr, error) {
 *			client side
 *
 *************************************************************************/
-func (c *Client) keepAlive(natServer *net.UDPAddr) {
+func (c *Client) keepAlive() {
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
 			NodeId: c.networkId,
-			LAddr:  c.listenConn.LocalAddr().String(),
+			LAddr:  c.natConn.LocalAddr().String(),
 		},
 	}
-
 	requestData, _ := proto.Marshal(request)
-
 	for {
 		select {
 		case <-time.After(KeepAliveTime):
 
-			if no, err := c.listenConn.WriteToUDP(requestData, natServer); err != nil || no == 0 {
+			if no, err := c.natConn.Write(requestData); err != nil || no == 0 {
 				logger.Warning("failed to send keep alive channel message:", err)
 				c.errNo++
 			}
-			logger.Debug("send  keep alive to nat server:->", c.listenConn.LocalAddr().String(), natServer)
+			logger.Debug("send  keep alive to nat server:->", request.KeepAlive.LAddr)
 
 			if c.errNo > ErrNoBeforeRetry {
 				logger.Warning("too many times send errors")
@@ -222,11 +205,51 @@ func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
 }
 
 func (c *Client) listenPing() {
-	buffer := make([]byte, utils.NormalReadBuffer)
 
-	n, peerAddr, err := c.listenConn.ReadFromUDP(buffer)
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: utils.GetConfig().NatPrivatePingPort,
+	})
+	if err != nil {
+		logger.Warning("start private nat ping listener err:->", err)
+		return
+	}
 
-	logger.Warning(peerAddr, n, err)
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		if err != nil {
+			c.errNo++
+			logger.Warning("private ping listener err:->", err)
+			continue
+		}
+		msg := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
+			logger.Warning("private ping listener Unmarshal failed:->", err)
+			continue
+		}
+		logger.Debug("is it a private nat dig apply?:->", msg, peerAddr)
+		if msg.Typ != nbsnet.NatPriDigSyn {
+			logger.Warning("I can't this message:->", msg.Typ)
+			continue
+		}
+
+		res := &net_pb.NatMsg{
+			Typ: nbsnet.NatPriDigAck,
+			Seq: msg.Seq + 1,
+		}
+		data, _ := proto.Marshal(res)
+		if _, err := conn.WriteToUDP(data, peerAddr); err != nil {
+			logger.Warning("answer NatPriDigAck err:->", err)
+		}
+
+		select {
+		case <-c.Ctx.Done():
+			logger.Info("exit sending thread cause's of context close")
+			return
+		default:
+			logger.Info("Step 1-6:->answer dig in private:->", res)
+		}
+	}
 }
 
 func (c *Client) readCmd() {
@@ -234,7 +257,7 @@ func (c *Client) readCmd() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
-		n, peerAddr, err := c.listenConn.ReadFromUDP(buffer)
+		n, err := c.natConn.Read(buffer)
 		if err != nil {
 			if c.errNo++; c.errNo > ErrNoBeforeRetry {
 				logger.Warning("too many reading error:->")
@@ -251,7 +274,7 @@ func (c *Client) readCmd() {
 			continue
 		}
 
-		logger.Debug("KA c receive message:->", msg, peerAddr)
+		logger.Debug("KA c receive message:->", msg)
 
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
@@ -271,8 +294,6 @@ func (c *Client) readCmd() {
 				CmdType: CMDDigSetup,
 				Params:  msg.DigConfirm,
 			}
-		case nbsnet.NatPriDigSyn:
-			c.priDigAck(msg, peerAddr)
 		}
 
 		select {
@@ -281,18 +302,5 @@ func (c *Client) readCmd() {
 			return
 		default:
 		}
-	}
-}
-
-func (c *Client) priDigAck(syn *net_pb.NatMsg, peerAddr *net.UDPAddr) {
-
-	res := &net_pb.NatMsg{
-		Typ: nbsnet.NatPriDigAck,
-		Seq: syn.Seq + 1,
-	}
-	data, _ := proto.Marshal(res)
-	logger.Info("Step 1-6:->answer dig in private:->", res)
-	if _, err := c.listenConn.WriteToUDP(data, peerAddr); err != nil {
-		logger.Warning("answer NatPriDigAck err:->", err)
 	}
 }

@@ -9,30 +9,30 @@ import (
 )
 
 type Configure struct {
-	BaseDir           string
-	LevelDBDir        string
-	BlocksDir         string
-	ShardFun          string
-	LogFileName       string
-	CmdServicePort    string
-	CurrentVersion    string
-	SysTimeFormat     string
-	BootStrapPeers    []string
-	NatServerPort     int
-	NatClientPort     int
-	NatServerIP       []string
-	GossipBootStrapIP []string
-	GossipCtrlPort    int
+	BaseDir            string
+	LevelDBDir         string
+	BlocksDir          string
+	ShardFun           string
+	LogFileName        string
+	CmdServicePort     string
+	CurrentVersion     string
+	SysTimeFormat      string
+	BootStrapPeers     []string
+	NatServerPort      int
+	NatPrivatePingPort int
+	NatServerIP        []string
+	GossipBootStrapIP  []string
+	GossipCtrlPort     int
 }
 
 const (
-	currentVersion   = "0.1.4"
-	cmdServicePort   = 10001
-	natServerPort    = 11001
-	natChanSerPort   = 11002
-	gossipCtrlPort   = 12001
-	NormalReadBuffer = 1 << 11
-	AdditionalCopies = 1
+	currentVersion     = "0.1.4"
+	cmdServicePort     = 10001
+	natServerPort      = 11001
+	natChanPriPingPort = 11002
+	gossipCtrlPort     = 12001
+	NormalReadBuffer   = 1 << 11
+	AdditionalCopies   = 1
 )
 
 var (
@@ -84,20 +84,20 @@ func initConfig() *Configure {
 	logFileName := filepath.Join(baseDir, string(filepath.Separator), "nbs.log")
 
 	return &Configure{
-		BaseDir:           baseDir,
-		LevelDBDir:        levelDBDir,
-		BlocksDir:         blockStoreDir,
-		ShardFun:          "/repo/flatfs/shard/v1/next-to-last/2",
-		LogFileName:       logFileName,
-		CmdServicePort:    strconv.Itoa(cmdServicePort),
-		CurrentVersion:    currentVersion,
-		SysTimeFormat:     "2006-01-02 15:04:05",
-		BootStrapPeers:    defaultBootstrapAddresses,
-		NatServerPort:     natServerPort,
-		NatClientPort:     natChanSerPort,
-		NatServerIP:       natServerIP,
-		GossipBootStrapIP: gossipContracts,
-		GossipCtrlPort:    gossipCtrlPort,
+		BaseDir:            baseDir,
+		LevelDBDir:         levelDBDir,
+		BlocksDir:          blockStoreDir,
+		ShardFun:           "/repo/flatfs/shard/v1/next-to-last/2",
+		LogFileName:        logFileName,
+		CmdServicePort:     strconv.Itoa(cmdServicePort),
+		CurrentVersion:     currentVersion,
+		SysTimeFormat:      "2006-01-02 15:04:05",
+		BootStrapPeers:     defaultBootstrapAddresses,
+		NatServerPort:      natServerPort,
+		NatPrivatePingPort: natChanPriPingPort,
+		NatServerIP:        natServerIP,
+		GossipBootStrapIP:  gossipContracts,
+		GossipCtrlPort:     gossipCtrlPort,
 	}
 }
 
