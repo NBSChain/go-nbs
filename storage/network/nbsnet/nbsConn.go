@@ -64,7 +64,7 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 				return
 			}
 		case <-conn.ctx.Done():
-			logger.Debug("bye")
+			logger.Debug("hole closed, bye")
 			return
 		}
 	}
@@ -85,7 +85,6 @@ func (conn *NbsUdpConn) keepAlive() error {
 	conn.Lock()
 	defer conn.Unlock()
 	if now.Sub(conn.updateTime) < NatHoleKATime {
-		logger.Debug("no need right now")
 		return nil
 	}
 	if _, err := conn.RealConn.Write(data); err != nil {
