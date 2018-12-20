@@ -101,6 +101,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspWelcome)] = node.subAccepted
 	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck
 	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
+	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.noop
 	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
 	node.taskRouter[CheckItemInView] = node.checkItemInView
 	node.taskRouter[int(nbsnet.GspReplaceArc)] = node.replaceForUnsubPeer
@@ -372,4 +373,9 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 
 	logger.Debug("yeah, lucky enough, accept this introduce, I am always your backup")
 	return node.asSubAdapter(task.msg.Subscribe)
+}
+
+func (node *MemManager) noop(task *gossipTask) error {
+	logger.Debug("noop:->", *task)
+	return nil
 }
