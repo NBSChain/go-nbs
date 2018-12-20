@@ -180,14 +180,14 @@ func (node *MemManager) receivingCmd() {
 
 		logger.Debug("gossip server:->", peerAddr, message)
 
+		node.freshInputView(message.FromId)
+
 		task := &gossipTask{
 			taskType: int(message.MsgType),
 		}
 		task.msg = message
 		task.addr = peerAddr
 		node.taskQueue <- task
-
-		node.freshInputView(message.FromId)
 
 		select {
 		case <-node.ctx.Done():
