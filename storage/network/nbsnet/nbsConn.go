@@ -30,12 +30,11 @@ type NbsUdpConn struct {
 	ctx       context.Context
 	close     context.CancelFunc
 	RealConn  *net.UDPConn
-	LocAddr   *NbsUdpAddr
 	sync.Mutex
 	updateTime time.Time
 }
 
-func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUdpAddr) *NbsUdpConn {
+func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType) *NbsUdpConn {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &NbsUdpConn{
@@ -44,7 +43,6 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType, natAddr *NbsUd
 		RealConn:   c,
 		CType:      cType,
 		SessionID:  sessionID,
-		LocAddr:    natAddr,
 		updateTime: time.Now(),
 	}
 
@@ -140,10 +138,6 @@ func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
 	conn.updateTime = time.Now()
 	conn.Unlock()
 	return conn.RealConn.WriteToUDP(b, addr)
-}
-
-func (conn *NbsUdpConn) LocalAddr() *NbsUdpAddr {
-	return conn.LocAddr
 }
 
 /************************************************************************

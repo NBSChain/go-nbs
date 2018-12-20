@@ -2,6 +2,7 @@ package memership
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -88,14 +89,14 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 		logger.Warning("new node err:->", err)
 		return err
 	}
-
+	netId, nbsAddr := network.GetInstance().GetNatAddr()
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspReplaceAck,
 		ReplaceAck: &pb.Subscribe{
 			SeqNo:  1,
 			Expire: expT.Unix(),
-			NodeId: node.nodeID,
-			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+			NodeId: netId,
+			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 

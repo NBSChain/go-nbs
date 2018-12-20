@@ -3,6 +3,7 @@ package memership
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -67,13 +68,14 @@ func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {
 		return err
 	}
 	sub.SeqNo++
+	netId, nbsAddr := network.GetInstance().GetNatAddr()
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspVoteResult,
 		VoteResult: &pb.Subscribe{
 			Expire: sub.Expire,
 			NodeId: node.nodeID,
 			SeqNo:  sub.SeqNo,
-			Addr:   nbsnet.ConvertToGossipAddr(item.outConn.LocAddr, node.nodeID),
+			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 

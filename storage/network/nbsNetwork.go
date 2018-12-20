@@ -104,9 +104,8 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 	if err != nil {
 		return nil, err
 	}
-	natAddr := network.natClient.NatAddr
 	Sid := c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String()
-	conn := nbsnet.NewNbsConn(c, Sid, nbsnet.CTypeNormal, natAddr)
+	conn := nbsnet.NewNbsConn(c, Sid, nbsnet.CTypeNormal)
 	return conn, nil
 }
 
@@ -130,8 +129,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		cType = nbsnet.CTypeNatListen
 	}
 
-	natAddr := network.natClient.NatAddr
-	conn := nbsnet.NewNbsConn(realConn, lAddr.String(), cType, natAddr)
+	conn := nbsnet.NewNbsConn(realConn, lAddr.String(), cType)
 	return conn, nil
 }
 
@@ -165,8 +163,7 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 		connType = t
 		realConn = c
 	}
-	natAddr := network.natClient.NatAddr
-	conn := nbsnet.NewNbsConn(realConn, sessionID, connType, natAddr)
+	conn := nbsnet.NewNbsConn(realConn, sessionID, connType)
 	return conn, nil
 }
 func (network *nbsNetwork) runLoop() {

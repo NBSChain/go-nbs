@@ -69,13 +69,14 @@ func (node *MemManager) RegisterMySelf() error {
 }
 
 func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
+	netId, nbsAddr := network.GetInstance().GetNatAddr()
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
 			SeqNo:  1,
 			Expire: time.Now().Add(DefaultSubExpire).Unix(),
-			NodeId: node.nodeID,
-			Addr:   nbsnet.ConvertToGossipAddr(conn.LocAddr, node.nodeID),
+			NodeId: netId,
+			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 	msgData, err := proto.Marshal(msg)
@@ -130,12 +131,13 @@ func (node *MemManager) firstInitSub(task *gossipTask) error {
 	peerAddr := task.addr
 
 	subReq.SeqNo++
+	netId, nbsAddr := network.GetInstance().GetNatAddr()
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspSubACK,
 		SubAck: &pb.SynAck{
 			SeqNo:  subReq.SeqNo,
-			FromId: node.nodeID,
-			Addr:   nbsnet.ConvertToGossipAddr(node.serviceConn.LocAddr, node.nodeID),
+			FromId: netId,
+			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 

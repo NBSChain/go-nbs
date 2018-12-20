@@ -53,8 +53,7 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 	}
 
 	logger.Debug("Step6:make direct connection:->", c.LocalAddr().String(), c.RemoteAddr().String())
-	natAddr := network.natClient.NatAddr
-	conn := nbsnet.NewNbsConn(c, sessionID, nbsnet.CTypeNormal, natAddr)
+	conn := nbsnet.NewNbsConn(c, sessionID, nbsnet.CTypeNormal)
 	return conn, nil
 }
 
