@@ -139,6 +139,7 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 			}
 		}
 		c.CanServer = c.NatAddr.CanServe
+		conn.SetDeadline(NoTimeOut)
 		c.natConn = conn
 
 		logger.Info("create client success for network:->\n", c.NatAddr.String())
