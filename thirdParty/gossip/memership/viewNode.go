@@ -163,6 +163,7 @@ func (node *MemManager) removeIV(task *gossipTask) error {
 
 func (node *MemManager) freshInputView(nodeId string) {
 	if item, ok := node.InputView[nodeId]; ok {
+		logger.Debug("update input view item for msg receive :->", item.nodeId)
 		item.updateTime = time.Now()
 	}
 }
