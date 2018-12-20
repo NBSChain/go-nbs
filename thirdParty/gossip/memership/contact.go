@@ -199,16 +199,14 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspWelcome,
-		SubConfirm: &pb.SynAck{
-			FromId: node.nodeID,
-		},
+		FromId:  node.nodeID,
 	}
 
 	return node.send(item, msg)
 }
 
 func (node *MemManager) voteAck(task *gossipTask) error {
-	nodeId := task.msg.VoteAck.FromId
+	nodeId := task.msg.FromId
 	if _, ok := node.InputView[nodeId]; !ok {
 		logger.Warning("no such node in input view:->", task.msg)
 	}

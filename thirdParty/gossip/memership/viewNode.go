@@ -160,3 +160,9 @@ func (node *MemManager) removeIV(task *gossipTask) error {
 	node.removeFromView(item, node.InputView)
 	return nil
 }
+
+func (node *MemManager) freshInputView(nodeId string) {
+	if item, ok := node.InputView[nodeId]; ok {
+		item.updateTime = time.Now()
+	}
+}

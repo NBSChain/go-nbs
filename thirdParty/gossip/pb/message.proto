@@ -15,15 +15,14 @@ message BasicHost {
 }
 
 message Subscribe {
-    int64 SeqNo = 1;
-    int64 Expire = 2;
-    string nodeId = 3;
-    BasicHost Addr = 4;
+    int64 SeqNo     = 1;
+    int64 Expire    = 2;
+    string nodeId   = 3;
+    BasicHost Addr  = 4;
 }
 
 message SynAck {
     int64 SeqNo     = 1;
-    string FromId   = 2;
     BasicHost Addr  = 3;
 }
 
@@ -32,17 +31,9 @@ message VoteContact {
     Subscribe Subscribe = 2;
 }
 
-message HeartBeat {
-    string  FromID  = 1;
-}
-
 message ArcReplace {
-    string FromId   = 1;
     string ToId     = 2;
     BasicHost Addr  = 3;
-}
-message ArcDrop {
-    string nodeId   = 1;
 }
 
 message WeightUpdate {
@@ -53,16 +44,13 @@ message WeightUpdate {
 message gossip {
     net.pb.MsgType  MsgType     = 1;
     string          MsgId       = 2;
+    string          FromId      = 7;
     Subscribe       Subscribe   = 3;
     SynAck          SubAck      = 4;
     VoteContact     VoteContact = 5;
     Subscribe       VoteResult  = 6;
-    HeartBeat       HeartBeat   = 7;
-    SynAck          SubConfirm  = 8;
-    SynAck          VoteAck     = 9;
     ArcReplace      ArcReplace  = 10;
-    ArcDrop         ArcDrop     = 11;
     Subscribe       ReplaceAck  = 12;
-    WeightUpdate OVWeight = 13;
-    WeightUpdate IVWeight = 14;
+    WeightUpdate    OVWeight    = 13;
+    WeightUpdate    IVWeight    = 14;
 }

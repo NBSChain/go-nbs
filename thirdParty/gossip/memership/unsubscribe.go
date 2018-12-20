@@ -49,10 +49,10 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 
 		msg := &pb.Gossip{
 			MsgType: nbsnet.GspReplaceArc,
+			FromId:  node.nodeID,
 			ArcReplace: &pb.ArcReplace{
-				FromId: node.nodeID,
-				ToId:   outId,
-				Addr:   nbsnet.ConvertToGossipAddr(outItem.outAddr, outItem.nodeId),
+				ToId: outId,
+				Addr: nbsnet.ConvertToGossipAddr(outItem.outAddr, outItem.nodeId),
 			},
 		}
 
@@ -69,8 +69,7 @@ func (node *MemManager) replaceMeByMyOutView(lenIn, lenOut int, tempOut, tempIn 
 
 func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 	replace := task.msg.ArcReplace
-
-	item, ok := node.PartialView[replace.FromId]
+	item, ok := node.PartialView[task.msg.FromId]
 	if !ok {
 		return ItemNotFound
 	}
@@ -100,7 +99,7 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 		},
 	}
 
-	logger.Debug("replace node cause'of unsub:->", replace.FromId, replace.ToId)
+	logger.Debug("replace node cause'of unsub:->", task.msg.FromId, replace.ToId)
 
 	return node.send(item, msg)
 }
@@ -125,9 +124,7 @@ func (node *MemManager) removeMeFromOutView(lenIn int, tempIn []string) {
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspRemoveIVArc,
-		ArcDrop: &pb.ArcDrop{
-			NodeId: node.nodeID,
-		},
+		FromId:  node.nodeID,
 	}
 	data, _ := proto.Marshal(msg)
 
@@ -146,9 +143,7 @@ func (node *MemManager) removeMeFromOutView(lenIn int, tempIn []string) {
 func (node *MemManager) removeMeFromInView() {
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspRemoveOVAcr,
-		ArcDrop: &pb.ArcDrop{
-			NodeId: node.nodeID,
-		},
+		FromId:  node.nodeID,
 	}
 
 	for _, item := range node.PartialView {
@@ -160,8 +155,7 @@ func (node *MemManager) removeMeFromInView() {
 
 func (node *MemManager) removeUnsubPeerFromOut(task *gossipTask) error {
 
-	rm := task.msg.ArcDrop
-	nodeId := rm.NodeId
+	nodeId := task.msg.FromId
 	item, ok := node.PartialView[nodeId]
 	if !ok {
 		return ItemNotFound
@@ -174,8 +168,7 @@ func (node *MemManager) removeUnsubPeerFromOut(task *gossipTask) error {
 
 func (node *MemManager) removeUnsubPeerFromIn(task *gossipTask) error {
 
-	rm := task.msg.ArcDrop
-	nodeId := rm.NodeId
+	nodeId := task.msg.FromId
 	item, ok := node.InputView[nodeId]
 	if !ok {
 		return ItemNotFound

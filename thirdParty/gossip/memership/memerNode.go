@@ -187,6 +187,8 @@ func (node *MemManager) receivingCmd() {
 		task.addr = peerAddr
 		node.taskQueue <- task
 
+		node.freshInputView(message.FromId)
+
 		select {
 		case <-node.ctx.Done():
 			logger.Debug("mem manager finished")
@@ -289,9 +291,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspHeartBeat,
-		HeartBeat: &pb.HeartBeat{
-			FromID: node.nodeID,
-		},
+		FromId:  node.nodeID,
 	}
 
 	data, _ := proto.Marshal(msg)

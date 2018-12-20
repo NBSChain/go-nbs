@@ -110,7 +110,7 @@ func (node *MemManager) checkProxyValidation(conn *nbsnet.NbsUdpConn) error {
 		return fmt.Errorf("failed to send init sub request")
 	}
 
-	if msg.SubAck.FromId == node.nodeID {
+	if msg.FromId == node.nodeID {
 		node.isBootNode = true
 		return fmt.Errorf("it's yourself")
 	}
@@ -134,10 +134,10 @@ func (node *MemManager) firstInitSub(task *gossipTask) error {
 	netId, nbsAddr := network.GetInstance().GetNatAddr()
 	message := &pb.Gossip{
 		MsgType: nbsnet.GspSubACK,
+		FromId:  netId,
 		SubAck: &pb.SynAck{
-			SeqNo:  subReq.SeqNo,
-			FromId: netId,
-			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
+			SeqNo: subReq.SeqNo,
+			Addr:  nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 
@@ -179,17 +179,13 @@ func (node *MemManager) subToContract(task *gossipTask) error {
 	node.newInViewNode(nodeId, task.addr)
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspVoteResAck,
-		VoteAck: &pb.SynAck{
-			SeqNo:  result.SeqNo + 1,
-			FromId: node.nodeID,
-		},
+		FromId:  node.nodeID,
 	}
-
 	return node.send(item, msg)
 }
 
 func (node *MemManager) subAccepted(task *gossipTask) error {
-	ack := task.msg.SubConfirm
+	ack := task.msg
 	_, ok := node.InputView[ack.FromId]
 	if ok {
 		return fmt.Errorf("duplicated sub accepted")
@@ -227,7 +223,7 @@ func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
 	ack := task.msg.SubAck
 	logger.Debug("he will solve our reSub request:->", task.addr, ack)
 
-	item := node.PartialView[ack.FromId]
+	item := node.PartialView[task.msg.FromId]
 
 	if item.outAddr.NatServer != ack.Addr.NatServer {
 		item.outAddr = nbsnet.ConvertFromGossipAddr(ack.Addr)

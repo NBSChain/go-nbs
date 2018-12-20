@@ -38,10 +38,10 @@ func (node *MemManager) getHeartBeat(task *gossipTask) error {
 
 	node.updateTime = time.Now()
 
-	beat := task.msg.HeartBeat
-	item, ok := node.InputView[beat.FromID]
+	beat := task.msg
+	item, ok := node.InputView[beat.FromId]
 	if !ok {
-		err := fmt.Errorf("no such input view item:->%s", beat.FromID)
+		err := fmt.Errorf("no such input view item:->%s", beat.FromId)
 		logger.Warning(err)
 		return err
 	}
