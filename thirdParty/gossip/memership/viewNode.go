@@ -93,9 +93,15 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 		n, addr, err := item.outConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
-			node.removeFromView(item, node.InputView)
-			node.removeFromView(item, node.PartialView)
-			break
+			node.taskQueue <- &gossipTask{
+				taskType:  RemoveOutPutItem,
+				innerTask: innerTask{params: item},
+			}
+			node.taskQueue <- &gossipTask{
+				taskType:  RemoveInPutItem,
+				innerTask: innerTask{params: item},
+			}
+			return
 		}
 		msg := &pb.Gossip{}
 		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
@@ -141,4 +147,16 @@ func (item *ViewNode) String() string {
 		"outAddr",
 		outAddr,
 	)
+}
+
+func (node *MemManager) removeOV(task *gossipTask) error {
+	item := task.params.(*ViewNode)
+	node.removeFromView(item, node.PartialView)
+	return nil
+}
+
+func (node *MemManager) removeIV(task *gossipTask) error {
+	item := task.params.(*ViewNode)
+	node.removeFromView(item, node.InputView)
+	return nil
 }

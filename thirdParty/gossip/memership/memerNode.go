@@ -23,6 +23,8 @@ const (
 	GetOutputViews    = 6
 	ClearOutputViews  = 7
 	ClearInputViews   = 8
+	RemoveOutPutItem  = 9
+	RemoveInPutItem   = 10
 	MemShipHeartBeat  = time.Second * 100 //TODO::?? heart beat time interval.
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
@@ -43,7 +45,7 @@ type msgTask struct {
 	addr *net.UDPAddr
 }
 type innerTask struct {
-	params []interface{}
+	params interface{}
 	result chan interface{}
 }
 type gossipTask struct {
@@ -112,12 +114,14 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
 	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
+	node.taskRouter[RemoveOutPutItem] = node.removeOV
+	node.taskRouter[RemoveInPutItem] = node.removeIV
 
 	//TODO::refactor this debug command
 	node.taskRouter[GetOutputViews] = node.outputViewTask
 	node.taskRouter[GetInputViews] = node.inputViewTask
-	node.taskRouter[ClearOutputViews] = node.removeOV
-	node.taskRouter[ClearInputViews] = node.removeIV
+	node.taskRouter[ClearOutputViews] = node.clearOV
+	node.taskRouter[ClearInputViews] = node.clearIV
 
 	return node
 }

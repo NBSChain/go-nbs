@@ -32,7 +32,7 @@ func (node *MemManager) GetViewsInfo(typ int) []string {
 	return views
 }
 
-func (node *MemManager) removeOV(task *gossipTask) error {
+func (node *MemManager) clearOV(task *gossipTask) error {
 	lenV := len(node.PartialView)
 	for _, item := range node.PartialView {
 		node.removeFromView(item, node.PartialView)
@@ -41,7 +41,7 @@ func (node *MemManager) removeOV(task *gossipTask) error {
 	return nil
 }
 
-func (node *MemManager) removeIV(task *gossipTask) error {
+func (node *MemManager) clearIV(task *gossipTask) error {
 	lenV := len(node.InputView)
 	for _, item := range node.InputView {
 		node.removeFromView(item, node.InputView)
