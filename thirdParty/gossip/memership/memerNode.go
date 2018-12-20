@@ -220,37 +220,32 @@ func (node *MemManager) msgProcessor() {
 }
 
 func (node *MemManager) timer() {
+	var isolateCheck, heartBeat, msgCollect time.Duration
 	for {
-		var isolateCheck, heartBeat, msgCollect time.Duration
 		select {
-
 		case <-time.After(time.Second):
-			{
+			isolateCheck += time.Second
+			heartBeat += time.Second
+			msgCollect += time.Second
 
-				isolateCheck += time.Second
-				heartBeat += time.Second
-				msgCollect += time.Second
-
-				if isolateCheck >= IsolatedTime {
-					node.taskQueue <- &gossipTask{
-						taskType: CheckItemInView,
-					}
-					isolateCheck = 0
+			if isolateCheck >= IsolatedTime {
+				node.taskQueue <- &gossipTask{
+					taskType: CheckItemInView,
 				}
-				if heartBeat >= MemShipHeartBeat {
-					node.taskQueue <- &gossipTask{
-						taskType: SendHeartBeat,
-					}
-					heartBeat = 0
-				}
-				if msgCollect >= MSGTrashCollect { //TODO::need a test.
-					node.taskQueue <- &gossipTask{
-						taskType: MsgCounterCollect,
-					}
-					msgCollect = 0
-				}
+				isolateCheck = 0
 			}
-
+			if heartBeat >= MemShipHeartBeat {
+				node.taskQueue <- &gossipTask{
+					taskType: SendHeartBeat,
+				}
+				heartBeat = 0
+			}
+			if msgCollect >= MSGTrashCollect { //TODO::need a test.
+				node.taskQueue <- &gossipTask{
+					taskType: MsgCounterCollect,
+				}
+				msgCollect = 0
+			}
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
 			return
@@ -261,7 +256,7 @@ func (node *MemManager) timer() {
 func (node *MemManager) checkItemInView(task *gossipTask) error {
 	now := time.Now()
 	for _, item := range node.InputView {
-		if now.Sub(item.updateTime) > (MemShipHeartBeat + IsolatedTime) {
+		if now.Sub(item.updateTime) > (MemShipHeartBeat * 2) {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}

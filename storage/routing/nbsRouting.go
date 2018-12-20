@@ -27,7 +27,7 @@ func GetInstance() Routing {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("router start to run......\n")
+		logger.Info("router start to run......")
 		instance = router
 	})
 
