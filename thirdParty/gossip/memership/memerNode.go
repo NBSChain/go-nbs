@@ -333,13 +333,13 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 
 	subId := task.msg.Subscribe.NodeId
 	if subId == node.nodeID {
-		item := node.choseRandomInPartialView()
+		item := node.randomSelectItem()
 		logger.Debug("hey, don't introduce me to myself, forward:->", item.nodeId)
 		return node.send(item, task.msg)
 	}
 
 	if _, ok := node.PartialView[subId]; ok {
-		item := node.choseRandomInPartialView()
+		item := node.randomSelectItem()
 		if subId == item.nodeId {
 			logger.Debug("I think you have been introduced by yourself.")
 			return nil
@@ -353,7 +353,7 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 	logger.Debug("get introduced req:->", random, prob*100)
 
 	if random.Int64() > int64(prob*100) {
-		item := node.choseRandomInPartialView()
+		item := node.randomSelectItem()
 		logger.Debug("no lucky, forward you, sorry:->", item.nodeId)
 		return node.send(item, task.msg)
 	}

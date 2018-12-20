@@ -209,7 +209,7 @@ func (node *MemManager) reSubscribe() error {
 		return node.RegisterMySelf()
 	}
 
-	item := node.choseRandomInPartialView()
+	item := node.randomSelectItem()
 	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
 
 	if err := node.acquireProxy(item.outConn); err != nil {

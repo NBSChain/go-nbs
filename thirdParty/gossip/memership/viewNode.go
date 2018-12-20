@@ -94,6 +94,7 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
 			node.removeFromView(item, node.InputView)
+			node.removeFromView(item, node.PartialView)
 			break
 		}
 		msg := &pb.Gossip{}

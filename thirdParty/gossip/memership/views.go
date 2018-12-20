@@ -11,7 +11,7 @@ import (
 )
 
 //TODO:: make sure this random is ok
-func (node *MemManager) choseRandomInPartialView() *ViewNode {
+func (node *MemManager) randomSelectItem() *ViewNode {
 	count := len(node.PartialView)
 	j := 0
 	random, _ := rand.Int(rand.Reader, big.NewInt(int64(count)))

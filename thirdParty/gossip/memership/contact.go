@@ -45,7 +45,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
-		item := node.choseRandomInPartialView()
+		item := node.randomSelectItem()
 
 		logger.Debug("random chose target:->", item.nodeId)
 
