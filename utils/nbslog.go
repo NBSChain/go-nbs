@@ -42,7 +42,7 @@ func newLogIns() *logging.Logger {
 	cmdFormat := logging.MustStringFormatter(
 		`%{color}%{time:01-02/15:04:05} %{shortfile:-20.18s} %{shortfunc:-20.20s} [%{level:.4s}] %{message}%{color:reset}`,
 	)
-	cmdBackend := logging.NewLogBackend(os.Stderr, ">>>", 0)
+	cmdBackend := logging.NewLogBackend(os.Stderr, "\n>>>", 0)
 	formattedCmdBackend := logging.NewBackendFormatter(cmdBackend, cmdFormat)
 
 	logging.SetBackend(leveledFileBackend, formattedCmdBackend)
