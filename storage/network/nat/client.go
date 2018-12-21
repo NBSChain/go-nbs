@@ -20,7 +20,6 @@ const (
 	CmdTaskPoolSize  = 100
 	CMDAnswerInvite  = 1
 	CMDDigOut        = 2
-	CMDDigSetup      = 3
 )
 
 type CmdProcess func(interface{}) error
@@ -282,11 +281,6 @@ func (c *Client) readCmd() {
 			c.CmdTask <- &ClientCmd{
 				CmdType: CMDDigOut,
 				Params:  msg.DigApply,
-			}
-		case nbsnet.NatDigConfirm:
-			c.CmdTask <- &ClientCmd{
-				CmdType: CMDDigSetup,
-				Params:  msg.DigConfirm,
 			}
 		}
 
