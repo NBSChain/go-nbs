@@ -46,10 +46,10 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType) *NbsUdpConn {
 		updateTime: time.Now(),
 	}
 
-	//if cType == CTypeNatSimplex ||
-	//	cType == CTypeNatDuplex {
-	//	go conn.KeepHoleOpened()
-	//}
+	if cType == CTypeNatSimplex ||
+		cType == CTypeNatDuplex {
+		go conn.KeepHoleOpened()
+	}
 
 	return conn
 }
