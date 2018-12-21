@@ -45,6 +45,10 @@ func (peer *NatPeer) runLoop() {
 	go peer.sendKA()
 	go peer.Listening()
 
+	if len(os.Args) == 4 {
+		go peer.punchAHole(os.Args[3])
+	}
+
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, err := peer.keepAliveConn.Read(buffer)
@@ -188,19 +192,7 @@ func natTool() {
 		}
 
 		client := NewPeer()
-
-		if len(os.Args) == 4 {
-
-			go client.runLoop()
-
-			client.punchAHole(os.Args[3])
-
-			<-make(chan struct{})
-
-		} else if len(os.Args) == 3 {
-			client.runLoop()
-		}
-
+		client.runLoop()
 	} else if os.Args[1] == "-s" {
 		server := NewServer()
 		server.Processing()

@@ -54,7 +54,7 @@ func (s *NatServer) Processing() {
 			continue
 		}
 
-		fmt.Println("\nNat request:->", request)
+		fmt.Println("\nNat request:->", request, peerAddr)
 
 		switch request.Typ {
 		case nbsnet.NatKeepAlive:
