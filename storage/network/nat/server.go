@@ -20,9 +20,9 @@ var (
 )
 
 type HostBehindNat struct {
-	updateTIme time.Time
-	pubAddr    *net.UDPAddr
-	priAddr    string
+	UpdateTIme time.Time
+	PubAddr    *net.UDPAddr
+	PriAddr    string
 }
 
 type Task struct {

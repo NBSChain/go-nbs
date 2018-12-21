@@ -2,27 +2,19 @@ package main
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/gogo/protobuf/proto"
 	"net"
-	"strconv"
 	"time"
 )
 
 const NatServerTestPort = 8001
 
 type NatServer struct {
-	server   net.PacketConn
-	natCache map[string]*NatCacheItem
-}
-
-type NatCacheItem struct {
-	PeerId      string
-	PublicIp    string
-	PublicPort  string
-	PrivateIp   string
-	PrivatePort string
-	updateTime  time.Time
+	server   *net.UDPConn
+	natCache map[string]*nat.HostBehindNat
 }
 
 func NewServer() *NatServer {
@@ -38,7 +30,7 @@ func NewServer() *NatServer {
 
 	server := &NatServer{
 		server:   s,
-		natCache: make(map[string]*NatCacheItem),
+		natCache: make(map[string]*nat.HostBehindNat),
 	}
 
 	return server
@@ -50,13 +42,13 @@ func (s *NatServer) Processing() {
 
 	for {
 		data := make([]byte, 2048)
-		n, peerAddr, err := s.server.ReadFrom(data)
+		n, peerAddr, err := s.server.ReadFromUDP(data)
 		if err != nil {
-			fmt.Errorf(err.Error())
+			fmt.Println(err.Error())
 			continue
 		}
 
-		request := &net_pb.NatRequest{}
+		request := &net_pb.NatMsg{}
 		if err := proto.Unmarshal(data[:n], request); err != nil {
 			fmt.Println("can't parse the nat request", err)
 			continue
@@ -64,36 +56,67 @@ func (s *NatServer) Processing() {
 
 		fmt.Println("\nNat request:->", request)
 
-		if request.MsgType == net_pb.NatMsgType_BootStrapReg {
-			s.answerKA(peerAddr, request.BootRegReq)
-		} else if request.MsgType == net_pb.NatMsgType_Connect {
-			s.makeAMatch(peerAddr, request.ConnReq)
+		switch request.Typ {
+		case nbsnet.NatKeepAlive:
+			ack := request.KeepAlive
+			nodeId := ack.NodeId
+			item, ok := s.natCache[nodeId]
+			if !ok {
+				item := &nat.HostBehindNat{
+					UpdateTIme: time.Now(),
+					PubAddr:    peerAddr,
+					PriAddr:    request.KeepAlive.PriAddr,
+				}
+				s.natCache[nodeId] = item
+			} else {
+				item.UpdateTIme = time.Now()
+			}
+
+			ack.PubAddr = peerAddr.String()
+			data, _ := proto.Marshal(request)
+			if _, err := s.server.WriteToUDP(data, peerAddr); err != nil {
+				fmt.Println("keep alive ack err:->", err)
+			}
+		case nbsnet.NatDigApply:
+			app := request.DigApply
+			item, ok := s.natCache[app.TargetId]
+			if !ok {
+				panic(err)
+			}
+			app.Public = peerAddr.String()
+			data, _ := proto.Marshal(request)
+			if _, err := s.server.WriteToUDP(data, item.PubAddr); err != nil {
+				panic(err)
+			}
+		case nbsnet.NatDigConfirm:
+			ack := request.DigConfirm
+			item, ok := s.natCache[ack.TargetId]
+			if !ok {
+				panic(ok)
+			}
+			ack.Public = peerAddr.String()
+			data, _ := proto.Marshal(request)
+			if _, err := s.server.WriteToUDP(data, item.PubAddr); err != nil {
+				panic(err)
+			}
+		default:
+			fmt.Println("unknown msg type")
 		}
 	}
 }
 
-func (s *NatServer) answerKA(peerAddr net.Addr, request *net_pb.BootNatRegReq) error {
-
-	response := &net_pb.Response{
-		MsgType: net_pb.NatMsgType_BootStrapReg,
-	}
-
-	resKA := &net_pb.BootNatRegRes{}
+func (s *NatServer) answerKA(peerAddr *net.UDPAddr, request *net_pb.BootReg) error {
 
 	peerAddrStr := peerAddr.String()
-	host, port, err := net.SplitHostPort(peerAddrStr)
-
-	if host == request.PrivateIp {
-		resKA.NatType = net_pb.NatType_NoNatDevice
-		resKA.PublicIp = host
-		resKA.PublicPort = port
-	} else {
-		resKA.NatType = net_pb.NatType_BehindNat
-		resKA.PublicIp = host
-		resKA.PublicPort = port
+	host, port, err := nbsnet.SplitHostPort(peerAddrStr)
+	response := &net_pb.NatMsg{
+		Typ: nbsnet.NatBootAnswer,
+		BootAnswer: &net_pb.BootAnswer{
+			NatType:    net_pb.NatType_BehindNat,
+			PublicIp:   host,
+			PublicPort: port,
+		},
 	}
-
-	response.BootRegRes = resKA
 
 	responseData, err := proto.Marshal(response)
 	if err != nil {
@@ -105,84 +128,13 @@ func (s *NatServer) answerKA(peerAddr net.Addr, request *net_pb.BootNatRegReq) e
 		return fmt.Errorf(err.Error())
 	}
 
-	item := &NatCacheItem{
-		PeerId:      request.NodeId,
-		PublicIp:    resKA.PublicIp,
-		PublicPort:  resKA.PublicPort,
-		PrivateIp:   request.PrivateIp,
-		PrivatePort: request.PrivatePort,
-		updateTime:  time.Now(),
+	item := &nat.HostBehindNat{
+		UpdateTIme: time.Now(),
+		PubAddr:    peerAddr,
+		PriAddr:    nbsnet.JoinHostPort(request.PrivateIp, request.PrivatePort),
 	}
-
-	fmt.Println("Nat item cached:->", item)
-
-	s.natCache[item.PeerId] = item
-
-	return nil
-}
-
-func (s *NatServer) makeAMatch(peerAddr net.Addr, request *net_pb.NatConnect) error {
-
-	responseTo := &net_pb.NatResponse{
-		MsgType: net_pb.NatMsgType_Connect,
-	}
-
-	cacheItem := s.natCache[request.ToAddr.NetworkId]
-	cacheItemFrom := s.natCache[request.FromPeerId]
-	if cacheItem == nil || cacheItemFrom == nil {
-		return fmt.Errorf("some peer is not in the cache")
-	}
-
-	toInfo := &net_pb.NatConRes{
-		PeerId:      cacheItem.PeerId,
-		PublicIp:    cacheItem.PublicIp,
-		PublicPort:  cacheItem.PublicPort,
-		PrivateIp:   cacheItem.PrivateIp,
-		PrivatePort: cacheItem.PrivatePort,
-	}
-	responseTo.ConnRes = toInfo
-
-	responseToData, err := proto.Marshal(responseTo)
-	if err != nil {
-		fmt.Println("failed to marshal target which you want to connect to", err)
-		return err
-	}
-
-	if _, err := s.server.WriteTo(responseToData, peerAddr); err != nil {
-		fmt.Println("failed to send connection request to invitor", err)
-		return fmt.Errorf(err.Error())
-	}
-
-	//<<<<<<<-------------------------------------->>>>>>>>>>>>>
-	responseFrom := &net_pb.Response{
-		MsgType: net_pb.NatMsgType_Connect,
-	}
-
-	fromInfo := &net_pb.NatConRes{
-		PeerId:      cacheItemFrom.PeerId,
-		PublicIp:    cacheItemFrom.PublicIp,
-		PublicPort:  cacheItemFrom.PublicPort,
-		PrivateIp:   cacheItemFrom.PrivateIp,
-		PrivatePort: cacheItemFrom.PrivatePort,
-	}
-
-	responseFrom.ConnRes = fromInfo
-
-	responseFromData, err := proto.Marshal(responseFrom)
-	if err != nil {
-		fmt.Println("failed to marshal inviter's request data", err)
-		return err
-	}
-
-	port, _ := strconv.Atoi(toInfo.PublicPort)
-
-	if _, err := s.server.WriteTo(responseFromData, &net.UDPAddr{
-		IP:   net.ParseIP(toInfo.PublicIp),
-		Port: port,
-	}); err != nil {
-		fmt.Println("failed to send connection request to target", err)
-		return fmt.Errorf(err.Error())
-	}
+	s.natCache[request.NodeId] = item
+	fmt.Println("online:->", request.NodeId)
 
 	return nil
 }
