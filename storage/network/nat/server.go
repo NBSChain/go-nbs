@@ -74,7 +74,6 @@ func (nat *Server) initService() {
 	nat.router[nbsnet.NatKeepAlive] = nat.updateKATime
 	nat.router[nbsnet.NatReversInvite] = nat.forwardInvite
 	nat.router[nbsnet.NatDigApply] = nat.forwardDigApply
-	nat.router[nbsnet.NatDigConfirm] = nat.forwardDigConfirm
 	nat.router[nbsnet.NatPingPong] = nat.pong
 	nat.router[nbsnet.DrainOutOldKa] = nat.checkKaTunnel
 }

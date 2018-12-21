@@ -13,10 +13,8 @@ import (
 )
 
 type connTask struct {
-	err         error
-	lAddr       string
-	udpConn     chan *net.UDPConn
-	portCapConn *net.UDPConn
+	err     error
+	udpConn chan *net.UDPConn
 }
 
 func (task *connTask) finish(err error, conn *net.UDPConn) {
@@ -144,7 +142,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 					return nil, 0, pubConnTask.err
 				}
 			}
-		case <-time.After(HolePunchTimeOut / 2):
+		case <-time.After(HolePunchTimeOut):
 			return nil, 0, fmt.Errorf("time out")
 		}
 	}

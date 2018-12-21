@@ -2,10 +2,13 @@ package network
 
 import (
 	"fmt"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
+	"net"
 	"strconv"
 	"time"
 )
@@ -16,6 +19,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 
 	if err != nil {
+		logger.Warning("dial peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}
@@ -33,15 +37,59 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
+		logger.Warning("write application to peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}
 
-	task.lAddr = conn.LocalAddr().String()
-	task.portCapConn = conn
-	network.digTask[sid] = task
-	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
-	return
+	conn.SetDeadline(time.Now().Add(nat.BootStrapTimeOut))
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		logger.Warning("read ack from peer's nat server err:->", err)
+		task.finish(err, nil)
+		return
+	}
+	ack := &net_pb.NatMsg{}
+	proto.Unmarshal(buffer[:n], ack)
+	locAddr := conn.LocalAddr()
+	logger.Info("hole punch step2-1 tell peer's nat server to dig out and wait the answer:->", locAddr.String(), ack.DigACK.PublicAddr)
+	conn.Close()
+
+	lisConn, err := shareport.ListenUDP("udp4", locAddr.String())
+	if err != nil {
+		logger.Warning("listen on waiting port err:->", err)
+		task.finish(err, nil)
+		return
+	}
+
+	lisConn.SetDeadline(time.Now().Add(HolePunchTimeOut))
+	buffer = make([]byte, utils.NormalReadBuffer)
+	_, peerAddr, err := lisConn.ReadFromUDP(buffer)
+	if err != nil {
+		logger.Warning("read data from waiting port err:->", err)
+		task.finish(err, nil)
+		return
+	}
+	ack = &net_pb.NatMsg{}
+	proto.Unmarshal(buffer[:n], ack)
+	if ack.Typ != nbsnet.NatDigOut {
+		logger.Warning("this is not i am waiting:->", ack)
+		task.finish(fmt.Errorf("this is not i am waiting"), nil)
+		return
+	}
+
+	logger.Info("hole punch step2-1-2 peer dig out success:->", peerAddr)
+	lisConn.Close()
+
+	realConn, err := net.DialUDP("udp4", locAddr.(*net.UDPAddr), peerAddr)
+	if err != nil {
+		logger.Warning("the final dial up err:->", err)
+		task.finish(err, nil)
+		return
+	}
+
+	task.finish(nil, realConn)
 }
 
 /************************************************************************
@@ -56,7 +104,6 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 	if !ok {
 		return CmdTaskErr
 	}
-	go network.notifyCaller(req)
 
 	lPort := strconv.Itoa(int(req.TargetPort))
 	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, req.Public)
@@ -75,66 +122,9 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 			logger.Error(err)
 			return err
 		}
-
+		time.Sleep(time.Millisecond * 300)
 		logger.Info("hole punch step2-4  dig dig on peer's nat server:->", nbsnet.ConnString(conn))
 	}
-	return nil
-}
 
-func (network *nbsNetwork) notifyCaller(msg *net_pb.DigApply) {
-
-	lPort := strconv.Itoa(int(msg.TargetPort))
-	conn, err := shareport.DialUDP("udp4", "0.0.0.0:"+lPort, msg.NatServer)
-	if err != nil {
-		logger.Warning("dial err:->", err)
-		return
-	}
-	defer conn.Close()
-
-	confirmMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatDigConfirm,
-		DigConfirm: &net_pb.DigConfirm{
-			SessionId: msg.SessionId,
-			TargetId:  msg.FromId,
-		},
-	}
-
-	data, err := proto.Marshal(confirmMsg)
-	if err != nil {
-		logger.Warning("pack data err:->", err)
-		return
-	}
-
-	if _, err := conn.Write(data); err != nil {
-		logger.Warning("write data err:->", err)
-		return
-	}
-
-	logger.Info("hole punch step2-3 notify caller:->", conn.LocalAddr().String())
-}
-
-func (network *nbsNetwork) makeAHole(params interface{}) error {
-	ack, ok := params.(*net_pb.DigConfirm)
-	if !ok {
-		return CmdTaskErr
-	}
-	sid := ack.SessionId
-
-	task, ok := network.digTask[sid]
-	if !ok {
-		return fmt.Errorf("can't find the dig taskQueue")
-	}
-	defer delete(network.digTask, sid)
-	task.portCapConn.Close()
-
-	conn, err := shareport.DialUDP("udp4", task.lAddr, ack.Public)
-
-	if err != nil {
-		task.finish(err, nil)
-		return err
-	}
-	task.finish(nil, conn)
-	logger.Info("hole punch step2-7 create hole channel:->",
-		conn.LocalAddr().String(), ack.Public)
 	return nil
 }
