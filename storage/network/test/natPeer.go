@@ -62,6 +62,8 @@ func (peer *NatPeer) runLoop() {
 			fmt.Println("get keep alive ack:->", msg.KeepAlive)
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
+			fmt.Println("receive dig application:->", app)
+
 			go peer.digDig(app)
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
@@ -74,7 +76,9 @@ func (peer *NatPeer) runLoop() {
 				panic(err)
 			}
 		case nbsnet.NatDigConfirm:
+
 			ack := msg.DigConfirm
+			fmt.Println("dig confirmed:->", ack)
 			locAddr := peer.waitingConn.LocalAddr().(*net.UDPAddr)
 			peer.waitingConn.Close()
 			ip, port, _ := nbsnet.SplitHostPort(ack.Public)
@@ -168,7 +172,7 @@ func (peer *NatPeer) digDig(apply *net_pb.DigApply) {
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
-	for {
+	for i := 0; i < 10; i++ {
 		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
 		if _, err := conn.Write(data); err != nil {
 			panic(err)
