@@ -59,7 +59,6 @@ func (peer *NatPeer) runLoop() {
 		proto.Unmarshal(buffer[:n], msg)
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
-			fmt.Println("get keep alive ack:->", msg.KeepAlive)
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
@@ -101,7 +100,6 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) sendKA() {
 	locStr := peer.keepAliveConn.LocalAddr().String()
 	for {
-		fmt.Println("start to keep alive......")
 		request := &net_pb.NatMsg{
 			Typ: nbsnet.NatKeepAlive,
 			KeepAlive: &net_pb.KeepAlive{
@@ -142,6 +140,19 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	peer.waitingConn = conn
 }
 
+func (peer *NatPeer) Listening2(conn *net.UDPConn) {
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		if err != nil {
+			panic(err)
+		}
+		msg := &net_pb.NatMsg{}
+		proto.Unmarshal(buffer[:n], msg)
+		println("2222222hole punching success:->", msg, peerAddr)
+	}
+}
+
 func (peer *NatPeer) Listening() {
 
 	lisConn, err := shareport.ListenUDP("udp4", locServer)
@@ -172,6 +183,7 @@ func (peer *NatPeer) digDig(apply *net_pb.DigApply) {
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
+	go peer.Listening2(conn)
 	for i := 0; i < 10; i++ {
 		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
 		if _, err := conn.Write(data); err != nil {
