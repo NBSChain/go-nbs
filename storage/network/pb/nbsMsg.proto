@@ -9,13 +9,13 @@ enum MsgType {
     NatBootReg          = 1001;
     NatKeepAlive        = 1002;
     NatDigApply         = 1003;
-    NatDigAck           = 1005;
     NatPingPong         = 1004;
     NatDigOut           = 1006;
     NatReversInvite     = 1008;
     NatReversInviteAck  = 1009;
     NatPriDigSyn        = 1010;
     NatPriDigAck        = 1011;
+    NatDigConfirm       = 1012;
     NatBootAnswer       = 1013;
     NatBlankKA          = 1014;
     NatInnerBase        = 1500;

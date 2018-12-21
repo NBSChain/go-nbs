@@ -13,8 +13,10 @@ import (
 )
 
 type connTask struct {
-	err     error
-	udpConn chan *net.UDPConn
+	err         error
+	lAddr       string
+	udpConn     chan *net.UDPConn
+	portCapConn *net.UDPConn
 }
 
 func (task *connTask) finish(err error, conn *net.UDPConn) {

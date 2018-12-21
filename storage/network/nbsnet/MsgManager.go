@@ -9,13 +9,13 @@ const (
 	NatBootReg         = net_pb.MsgType_NatBootReg
 	NatKeepAlive       = net_pb.MsgType_NatKeepAlive
 	NatDigApply        = net_pb.MsgType_NatDigApply
-	NatDigAck          = net_pb.MsgType_NatDigAck
 	NatPingPong        = net_pb.MsgType_NatPingPong
 	NatDigOut          = net_pb.MsgType_NatDigOut
 	NatReversInvite    = net_pb.MsgType_NatReversInvite
 	NatReversInviteAck = net_pb.MsgType_NatReversInviteAck
 	NatPriDigSyn       = net_pb.MsgType_NatPriDigSyn
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
+	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
 	NatBlankKA         = net_pb.MsgType_NatBlankKA
 	DrainOutOldKa      = net_pb.MsgType_NatInnerBase + 1

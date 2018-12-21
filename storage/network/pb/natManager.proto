@@ -33,8 +33,10 @@ message DigApply {
     string FromId       = 6;
 }
 
-message DigACK {
-    string PublicAddr   = 1;
+message DigConfirm {
+    string Public       = 1;
+    string sessionId    = 2;
+    string targetId     = 3;
 }
 
 message KeepAlive {
@@ -72,7 +74,7 @@ message NatMsg {
     BootReg BootReg         = 3;
     KeepAlive KeepAlive     = 4;
     DigApply DigApply       = 5;
-    DigACK DigACK           = 6;
+    DigConfirm DigConfirm   = 6;
     PingPong PingPong       = 7;
     ReverseInvite ReverseInvite         = 8;
     ReverseInviteAck ReverseInviteAck = 9;

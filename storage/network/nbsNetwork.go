@@ -25,8 +25,8 @@ type nbsNetwork struct {
 }
 
 const (
-	HolePunchTimeOut    = 6 * time.Second
-	DigTryTimesOnNat    = 6
+	HolePunchTimeOut    = 4 * time.Second
+	DigTryTimesOnNat    = 3
 	ConnectionSeparator = "-"
 )
 
@@ -169,6 +169,7 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 func (network *nbsNetwork) runLoop() {
 	network.cmdRouter[nat.CMDAnswerInvite] = network.answerInvite
 	network.cmdRouter[nat.CMDDigOut] = network.digOut
+	network.cmdRouter[nat.CMDDigSetup] = network.makeAHole
 
 	for {
 		select {

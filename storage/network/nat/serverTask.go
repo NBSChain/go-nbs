@@ -146,31 +146,44 @@ func (nat *Server) forwardDigApply(t *Task) error {
 	if !ok {
 		return NotFundErr
 	}
+
 	req.Public = peerAddr.String()
 
-	logger.Info("step2-2 :hole punch forward dig out message:->", task.message.DigApply.Public)
+	logger.Info("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
 	data, _ := proto.Marshal(task.message)
 	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.pubAddr); err != nil {
-		logger.Warning("forward the dig apply err:->", err)
 		return err
 	}
-
-	digAck := &net_pb.NatMsg{
-		Typ: nbsnet.NatDigAck,
-		DigACK: &net_pb.DigACK{
-			PublicAddr: peerAddr.String(),
-		},
-	}
-
-	logger.Info("step2-6-1 :let the applier be sure:->", task.message.DigApply)
-	data, _ = proto.Marshal(digAck)
-	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
-		logger.Warning("response the dig ack err:->", err)
-		return err
-	}
-
 	return nil
 }
+
+func (nat *Server) forwardDigConfirm(t *Task) error {
+	task, ok := t.Param.(*msgTask)
+	if !ok {
+		return MsgConvertErr
+	}
+
+	ack := task.message.DigConfirm
+	addr := task.addr
+
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	item, ok := nat.cache[ack.TargetId]
+	if !ok {
+		return NotFundErr
+	}
+
+	ack.Public = addr.String()
+
+	logger.Info("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
+	data, _ := proto.Marshal(task.message)
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (nat *Server) pong(t *Task) error {
 	nat.CanServe <- true
 	logger.Debug("I can serve as in public network.")
