@@ -185,7 +185,9 @@ func (node *MemManager) subToContract(task *gossipTask) error {
 }
 
 func (node *MemManager) subAccepted(task *gossipTask) error {
+
 	ack := task.msg
+	logger.Debug("thanks to your welcome:->", ack.FromId)
 	_, ok := node.InputView[ack.FromId]
 	if ok {
 		return fmt.Errorf("duplicated sub accepted")

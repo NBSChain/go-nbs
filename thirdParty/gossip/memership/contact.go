@@ -201,7 +201,7 @@ func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
 		MsgType: nbsnet.GspWelcome,
 		FromId:  node.nodeID,
 	}
-
+	logger.Debug("welcome you:->", sub.NodeId)
 	return node.send(item, msg)
 }
 

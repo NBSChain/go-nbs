@@ -16,7 +16,7 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	NatHoleKATime          = time.Second * 20
+	NatHoleKATime          = time.Second * 18
 	_             ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex

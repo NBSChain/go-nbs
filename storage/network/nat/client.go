@@ -16,7 +16,7 @@ var NoTimeOut = time.Time{}
 const (
 	KeepAliveTime    = time.Second * 100
 	KeepAliveTimeOut = KeepAliveTime * 3
-	BootStrapTimeOut = time.Second * 2
+	BootStrapTimeOut = time.Second * 4
 	CmdTaskPoolSize  = 100
 	CMDAnswerInvite  = 1
 	CMDDigOut        = 2
