@@ -16,6 +16,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 
 	if err != nil {
+		logger.Debug("dial up peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}
@@ -33,6 +34,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
+		logger.Debug("write msg to peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}

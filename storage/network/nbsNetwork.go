@@ -25,7 +25,7 @@ type nbsNetwork struct {
 }
 
 const (
-	HolePunchTimeOut    = 4 * time.Second
+	HolePunchTimeOut    = 6 * time.Second
 	DigTryTimesOnNat    = 3
 	ConnectionSeparator = "-"
 )
