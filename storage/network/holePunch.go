@@ -6,7 +6,6 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/golang/protobuf/proto"
-	"net"
 	"strconv"
 	"time"
 )
@@ -14,11 +13,7 @@ import (
 func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	sid string, toPort int, task *connTask) {
 
-	host, rPort, _ := nbsnet.SplitHostPort(rAddr.NatServer)
-	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP(host),
-		Port: int(rPort),
-	})
+	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 
 	if err != nil {
 		task.finish(err, nil)
@@ -42,7 +37,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 		return
 	}
 
-	task.locPort = conn.LocalAddr().(*net.UDPAddr).Port
+	task.lAddr = conn.LocalAddr().String()
 	task.portCapConn = conn
 	network.digTask[sid] = task
 	logger.Info("hole punch step2-1 tell peer's nat server to dig out:->", conn.LocalAddr().String())
@@ -132,13 +127,7 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 	defer delete(network.digTask, sid)
 	task.portCapConn.Close()
 
-	host, rPort, _ := nbsnet.SplitHostPort(ack.Public)
-	conn, err := net.DialUDP("udp4", &net.UDPAddr{
-		Port: task.locPort,
-	}, &net.UDPAddr{
-		IP:   net.ParseIP(host),
-		Port: int(rPort),
-	})
+	conn, err := shareport.DialUDP("udp4", task.lAddr, ack.Public)
 
 	if err != nil {
 		task.finish(err, nil)
