@@ -81,7 +81,7 @@ func (s *NatServer) Processing() {
 			app := request.DigApply
 			item, ok := s.natCache[app.TargetId]
 			if !ok {
-				panic(err)
+				panic(app.TargetId)
 			}
 			app.Public = peerAddr.String()
 			data, _ := proto.Marshal(request)
