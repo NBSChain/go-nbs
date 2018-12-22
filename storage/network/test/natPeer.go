@@ -136,13 +136,13 @@ func (peer *NatPeer) punchAHole(targetId string) {
 func (peer *NatPeer) Listening2(conn *net.UDPConn) {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		n, err := conn.Read(buffer)
 		if err != nil {
 			panic(err)
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		println("2222222hole punching success:->", msg, peerAddr)
+		println("2222222hole punching success:->", msg)
 	}
 }
 
