@@ -9,10 +9,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
 type NatPeer struct {
+	sync.Mutex
 	peerID        string
 	keepAliveConn *net.UDPConn
 	isApplier     bool
@@ -41,7 +43,6 @@ func NewPeer() *NatPeer {
 func (peer *NatPeer) runLoop() {
 
 	go peer.sendKA()
-	go peer.Listening()
 
 	if len(os.Args) == 4 {
 		go peer.punchAHole(os.Args[3])
@@ -76,7 +77,9 @@ func (peer *NatPeer) runLoop() {
 
 			ack := msg.DigConfirm
 			fmt.Println("dig confirmed:->", ack)
+			peer.Lock()
 			locAddr := peer.waitingConn.LocalAddr().(*net.UDPAddr)
+			peer.Unlock()
 			peer.waitingConn.Close()
 			ip, port, _ := nbsnet.SplitHostPort(ack.Public)
 			conn, err := net.DialUDP("udp4", locAddr, &net.UDPAddr{
@@ -134,7 +137,8 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		fmt.Println(err)
 		return
 	}
-
+	peer.Lock()
+	defer peer.Unlock()
 	peer.waitingConn = conn
 }
 
@@ -166,7 +170,7 @@ func (peer *NatPeer) Listening() {
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		println("hole punching success:->", msg, peerAddr)
+		println("111111111hole punching success:->", msg, peerAddr)
 	}
 }
 
@@ -182,6 +186,9 @@ func (peer *NatPeer) digDig(apply *net_pb.DigApply) {
 	}
 	data, _ := proto.Marshal(digMsg)
 	go peer.Listening2(conn)
+	locServer = conn.LocalAddr().String()
+	go peer.Listening()
+
 	for i := 0; i < 10; i++ {
 		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
 		if _, err := conn.Write(data); err != nil {
