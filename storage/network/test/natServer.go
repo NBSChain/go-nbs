@@ -99,6 +99,7 @@ func (s *NatServer) Processing() {
 			if _, err := s.server.WriteToUDP(data, item.PubAddr); err != nil {
 				panic(err)
 			}
+			fmt.Println("forward this confirm to target:->", ack.TargetId, item.PubAddr, ack)
 		default:
 			fmt.Println("unknown msg type")
 		}

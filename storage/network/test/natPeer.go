@@ -9,16 +9,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
-	"sync"
 	"time"
 )
 
 type NatPeer struct {
-	sync.Mutex
 	peerID        string
 	keepAliveConn *net.UDPConn
 	isApplier     bool
-	waitingConn   *net.UDPConn
+	waitStr       string
 }
 
 var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
@@ -42,7 +40,7 @@ func NewPeer() *NatPeer {
 
 func (peer *NatPeer) runLoop() {
 
-	go peer.sendKA()
+	go peer.sendKA(peer.keepAliveConn)
 
 	if len(os.Args) == 4 {
 		go peer.punchAHole(os.Args[3])
@@ -77,19 +75,12 @@ func (peer *NatPeer) runLoop() {
 
 			ack := msg.DigConfirm
 			fmt.Println("dig confirmed:->", ack)
-			peer.Lock()
-			locAddr := peer.waitingConn.LocalAddr().(*net.UDPAddr)
-			peer.Unlock()
-			peer.waitingConn.Close()
-			ip, port, _ := nbsnet.SplitHostPort(ack.Public)
-			conn, err := net.DialUDP("udp4", locAddr, &net.UDPAddr{
-				IP:   net.ParseIP(ip),
-				Port: int(port),
-			})
-
+			locAddr := peer.waitStr
+			conn, err := shareport.DialUDP("udp4", locAddr, ack.Public)
 			if err != nil {
 				panic(err)
 			}
+			fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
 
 			if _, err := conn.Write(buffer[:n]); err != nil {
 				panic(err)
@@ -98,8 +89,8 @@ func (peer *NatPeer) runLoop() {
 	}
 }
 
-func (peer *NatPeer) sendKA() {
-	locStr := peer.keepAliveConn.LocalAddr().String()
+func (peer *NatPeer) sendKA(conn *net.UDPConn) {
+	locStr := conn.LocalAddr().String()
 	for {
 		request := &net_pb.NatMsg{
 			Typ: nbsnet.NatKeepAlive,
@@ -110,7 +101,7 @@ func (peer *NatPeer) sendKA() {
 		}
 		requestData, _ := proto.Marshal(request)
 
-		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
+		if no, err := conn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
 			panic(err)
 		}
@@ -137,9 +128,9 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		fmt.Println(err)
 		return
 	}
-	peer.Lock()
-	defer peer.Unlock()
-	peer.waitingConn = conn
+	peer.waitStr = conn.LocalAddr().String()
+
+	fmt.Println("tel peer I want to make a connection:->", nbsnet.ConnString(conn))
 }
 
 func (peer *NatPeer) Listening2(conn *net.UDPConn) {
