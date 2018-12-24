@@ -6,9 +6,11 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -16,6 +18,7 @@ type NatPeer struct {
 	peerID        string
 	keepAliveConn *net.UDPConn
 	isApplier     bool
+	startLock     sync.Mutex
 	startConn     *net.UDPConn
 }
 
@@ -52,6 +55,7 @@ func (peer *NatPeer) runLoop() {
 		proto.Unmarshal(buffer[:n], msg)
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
+			fmt.Println("get keep alive:->")
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
@@ -74,16 +78,41 @@ func (peer *NatPeer) runLoop() {
 				panic(err)
 			}
 
+			buf := make([]byte, utils.NormalReadBuffer)
+			nn, err := conn.Read(buf)
+			if err != nil {
+				panic(err)
+			}
+
+			confirmAck := &net_pb.NatMsg{}
+			proto.Unmarshal(buf[:nn], confirmAck)
+			fmt.Println("my confirm message confirmed.", confirmAck)
+
 			go peer.digDig(app.Public)
 
 			go func() {
+				keepAlive := &net_pb.NatMsg{
+					Typ: nbsnet.NatBlankKA,
+					ConnKA: &net_pb.ConnKA{
+						KA: crypto.MD5SS(time.Now().String()),
+					},
+				}
+				kaData, _ := proto.Marshal(keepAlive)
+				if _, err := conn.Write(kaData); err != nil {
+					panic(err)
+				}
+				time.Sleep(time.Second * 5)
+				fmt.Println("keep the punch confirm channel alive:->", nbsnet.ConnString(conn))
+			}()
+			go func() {
 				buffer := make([]byte, utils.NormalReadBuffer)
-				if _, err := conn.Read(buffer[:n]); err != nil {
+				n, err := conn.Read(buffer[:n])
+				if err != nil {
 					panic(err)
 				}
 
 				readMsg := &net_pb.NatMsg{}
-				proto.Unmarshal(buffer, readMsg)
+				proto.Unmarshal(buffer[:n], readMsg)
 				fmt.Println("222222211122212->", readMsg)
 
 				conn.Close()
@@ -93,7 +122,11 @@ func (peer *NatPeer) runLoop() {
 
 			ack := msg.DigConfirm
 			fmt.Println("dig confirmed:->", ack)
+			peer.startLock.Lock()
 			locAddr := peer.startConn.LocalAddr().String()
+			peer.startConn.Close()
+			peer.startLock.Unlock()
+
 			conn, err := shareport.DialUDP("udp4", locAddr, ack.Public)
 			if err != nil {
 				panic(err)
@@ -143,8 +176,6 @@ func (peer *NatPeer) sendKA() {
 			panic(err)
 		}
 
-		fmt.Println("send keep alive:->", no, nbsnet.ConnString(peer.keepAliveConn))
-
 		time.Sleep(time.Second * 5)
 	}
 }
@@ -167,20 +198,35 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		fmt.Println(err)
 		return
 	}
+	peer.startLock.Lock()
 	peer.startConn = conn
-
-	go func() {
-		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			panic(err)
-		}
-		readMsg := &net_pb.NatMsg{}
-		proto.Unmarshal(buffer[:n], readMsg)
-		fmt.Println("55555->", readMsg)
-	}()
+	peer.startLock.Unlock()
 
 	fmt.Println("tel peer I want to make a connection:->", nbsnet.ConnString(conn))
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		panic(err)
+	}
+	readMsg := &net_pb.NatMsg{}
+	proto.Unmarshal(buffer[:n], readMsg)
+	fmt.Println("The server answer me:->", readMsg)
+
+	for {
+		keepAlive := &net_pb.NatMsg{
+			Typ: nbsnet.NatBlankKA,
+			ConnKA: &net_pb.ConnKA{
+				KA: crypto.MD5SS(time.Now().String()),
+			},
+		}
+		kaData, _ := proto.Marshal(keepAlive)
+		if _, err := conn.Write(kaData); err != nil {
+			panic(err)
+		}
+		time.Sleep(time.Second * 5)
+		fmt.Println("keep the punch apply channel alive:->", nbsnet.ConnString(conn))
+	}
 }
 
 func (peer *NatPeer) ListenHoleMsg() {
@@ -196,7 +242,7 @@ func (peer *NatPeer) ListenHoleMsg() {
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		fmt.Println("111111111hole punching success:->", peerAddr, msg)
+		fmt.Println("111111111---hole punching success:->", peerAddr, msg)
 	}
 }
 

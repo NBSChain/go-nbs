@@ -89,6 +89,11 @@ func (s *NatServer) Processing() {
 				panic(err)
 			}
 			fmt.Println("forward apply from:->", app.Public)
+
+			if _, err := s.server.WriteToUDP(data, peerAddr); err != nil {
+				panic(err)
+			}
+
 		case nbsnet.NatDigConfirm:
 			ack := request.DigConfirm
 			item, ok := s.natCache[ack.TargetId]
@@ -101,6 +106,16 @@ func (s *NatServer) Processing() {
 				panic(err)
 			}
 			fmt.Println("forward this confirm to target:->", ack.TargetId, item.PubAddr, ack)
+
+			if _, err := s.server.WriteToUDP(data, peerAddr); err != nil {
+				panic(err)
+			}
+
+		case nbsnet.NatBlankKA:
+			if _, err := s.server.WriteToUDP(data[:n], peerAddr); err != nil {
+				panic(err)
+			}
+
 		default:
 			fmt.Println("unknown msg type")
 		}
