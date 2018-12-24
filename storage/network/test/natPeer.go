@@ -62,8 +62,6 @@ func (peer *NatPeer) runLoop() {
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
 
-			go peer.digDig(app.Public)
-
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
@@ -81,6 +79,10 @@ func (peer *NatPeer) runLoop() {
 			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
+
+			conn.Close()
+
+			go peer.digDig(app.Public)
 
 		case nbsnet.NatDigConfirm:
 
@@ -190,9 +192,8 @@ func (peer *NatPeer) digDig(targetHost string) {
 	data, _ := proto.Marshal(digMsg)
 
 	go peer.Listening2(conn)
-	locServer = conn.LocalAddr().String()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
 		if _, err := conn.Write(data); err != nil {
 			panic(err)
