@@ -42,6 +42,7 @@ func NewPeer() *NatPeer {
 func (peer *NatPeer) runLoop() {
 
 	go peer.sendKA(peer.keepAliveConn)
+	go peer.Listening()
 
 	if len(os.Args) == 4 {
 		go peer.punchAHole(os.Args[3])
@@ -60,10 +61,8 @@ func (peer *NatPeer) runLoop() {
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
-			conn, err := shareport.DialUDP("udp4", locServer, app.Public)
-			if err != nil {
-				panic(err)
-			}
+
+			go peer.digDig(app.Public)
 
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
@@ -73,16 +72,15 @@ func (peer *NatPeer) runLoop() {
 			}
 
 			data, _ := proto.Marshal(ack)
-			if _, err := conn.Write(data); err != nil {
+			conn, err := shareport.DialUDP("udp4", locServer, natServer.String())
+			if err != nil {
+				fmt.Println("send dig confirm:->", nbsnet.ConnString(conn))
 				panic(err)
 			}
 
-			digMsg := &net_pb.NatMsg{
-				Typ: nbsnet.NatDigOut,
-				Seq: time.Now().Unix(),
+			if _, err := conn.Write(data); err != nil {
+				panic(err)
 			}
-			data, _ = proto.Marshal(digMsg)
-			go peer.digDig(conn, data)
 
 		case nbsnet.NatDigConfirm:
 
@@ -178,11 +176,21 @@ func (peer *NatPeer) Listening() {
 	}
 }
 
-func (peer *NatPeer) digDig(conn *net.UDPConn, data []byte) {
+func (peer *NatPeer) digDig(targetHost string) {
+
+	conn, err := shareport.DialUDP("udp4", locServer, targetHost)
+	if err != nil {
+		panic(err)
+	}
+
+	digMsg := &net_pb.NatMsg{
+		Typ: nbsnet.NatDigOut,
+		Seq: time.Now().Unix(),
+	}
+	data, _ := proto.Marshal(digMsg)
 
 	go peer.Listening2(conn)
 	locServer = conn.LocalAddr().String()
-	go peer.Listening()
 
 	for i := 0; i < 10; i++ {
 		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
