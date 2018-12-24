@@ -54,9 +54,9 @@ func (nat *Server) checkWhoIsHe(t *Task) error {
 		response.NatType == net_pb.NatType_ToBeChecked {
 		priAddr := nbsnet.JoinHostPort(request.PrivateIp, request.PrivatePort)
 		item := &HostBehindNat{
-			updateTIme: time.Now(),
-			pubAddr:    peerAddr,
-			priAddr:    priAddr,
+			UpdateTIme: time.Now(),
+			PubAddr:    peerAddr,
+			PriAddr:    priAddr,
 		}
 		nat.cache[request.NodeId] = item
 	}
@@ -78,14 +78,14 @@ func (nat *Server) updateKATime(t *Task) error {
 	defer nat.cacheLock.Unlock()
 
 	if item, ok := nat.cache[nodeId]; ok {
-		item.updateTIme = time.Now()
-		item.pubAddr = peerAddr
-		item.priAddr = req.LAddr
+		item.UpdateTIme = time.Now()
+		item.PubAddr = peerAddr
+		item.PriAddr = req.PriAddr
 	} else {
 		item := &HostBehindNat{
-			updateTIme: time.Now(),
-			pubAddr:    peerAddr,
-			priAddr:    req.LAddr,
+			UpdateTIme: time.Now(),
+			PubAddr:    peerAddr,
+			PriAddr:    req.PriAddr,
 		}
 		nat.cache[nodeId] = item
 	}
@@ -94,8 +94,7 @@ func (nat *Server) updateKATime(t *Task) error {
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
 			NodeId:  req.NodeId,
-			PubIP:   peerAddr.IP.String(),
-			PubPort: int32(peerAddr.Port),
+			PubAddr: peerAddr.String(),
 		},
 	}
 	data, _ := proto.Marshal(res)
@@ -122,9 +121,9 @@ func (nat *Server) forwardInvite(t *Task) error {
 		return NotFundErr
 	}
 
-	logger.Debug("Step3: forward notification to applier:", item.pubAddr)
+	logger.Debug("Step3: forward notification to applier:", item.PubAddr)
 	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.PubAddr); err != nil {
 		return err
 	}
 	return nil
@@ -151,7 +150,7 @@ func (nat *Server) forwardDigApply(t *Task) error {
 
 	logger.Info("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
 	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.pubAddr); err != nil {
+	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.PubAddr); err != nil {
 		return err
 	}
 	return nil
@@ -178,7 +177,7 @@ func (nat *Server) forwardDigConfirm(t *Task) error {
 
 	logger.Info("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
 	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, item.pubAddr); err != nil {
+	if _, err := nat.sysNatServer.WriteToUDP(data, item.PubAddr); err != nil {
 		return err
 	}
 	return nil
@@ -197,7 +196,7 @@ func (nat *Server) checkKaTunnel(t *Task) error {
 
 	currentClock := time.Now()
 	for nodeId, item := range nat.cache {
-		if currentClock.Sub(item.updateTIme) > KeepAliveTimeOut {
+		if currentClock.Sub(item.UpdateTIme) > KeepAliveTimeOut {
 			logger.Warning("the nat item has been removed:->", nodeId)
 			delete(nat.cache, nodeId)
 		}

@@ -40,10 +40,9 @@ message DigConfirm {
 }
 
 message KeepAlive {
-    string nodeId  = 1;
-    string lAddr   = 2;
-    string PubIP   = 3;
-    int32 PubPort  = 4;
+    string NodeId  = 1;
+    string PriAddr = 2;
+    string PubAddr   = 3;
 }
 
 message PingPong {

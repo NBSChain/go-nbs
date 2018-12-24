@@ -156,8 +156,8 @@ func (c *Client) keepAlive() {
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId: c.networkId,
-			LAddr:  c.natConn.LocalAddr().String(),
+			NodeId:  c.networkId,
+			PriAddr: c.natConn.LocalAddr().String(),
 		},
 	}
 	requestData, _ := proto.Marshal(request)
@@ -170,7 +170,7 @@ func (c *Client) keepAlive() {
 				c.closeCtx()
 				return
 			}
-			logger.Debug("send  keep alive to nat server:->", request.KeepAlive.LAddr)
+			logger.Debug("send  keep alive to nat server:->", request.KeepAlive.PriAddr)
 
 		case <-c.Ctx.Done():
 			logger.Info("exit sending thread cause's of context close")
@@ -188,12 +188,11 @@ func (c *Client) keepAlive() {
 func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
 	//TODO::
 	c.updateTime = time.Now()
-
-	if c.NatAddr.NatIp != alive.PubIP &&
-		c.NatAddr.NatPort != alive.PubPort {
-
-		c.NatAddr.NatIp = alive.PubIP
-		c.NatAddr.NatPort = alive.PubPort
+	oriNatInfo := nbsnet.JoinHostPort(c.NatAddr.NatIp, c.NatAddr.NatPort)
+	if oriNatInfo != alive.PubAddr {
+		pubIp, pubPort, _ := nbsnet.SplitHostPort(alive.PubAddr)
+		c.NatAddr.NatIp = pubIp
+		c.NatAddr.NatPort = pubPort
 		logger.Warning("node's nat info changed.", alive)
 	}
 }
