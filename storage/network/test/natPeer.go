@@ -76,16 +76,18 @@ func (peer *NatPeer) runLoop() {
 
 			go peer.digDig(app.Public)
 
-			buffer := make([]byte, utils.NormalReadBuffer)
-			if _, err := conn.Read(buffer[:n]); err != nil {
-				panic(err)
-			}
+			go func() {
+				buffer := make([]byte, utils.NormalReadBuffer)
+				if _, err := conn.Read(buffer[:n]); err != nil {
+					panic(err)
+				}
 
-			readMsg := &net_pb.NatMsg{}
-			proto.Unmarshal(buffer, readMsg)
-			fmt.Println("222222211122212->", readMsg)
+				readMsg := &net_pb.NatMsg{}
+				proto.Unmarshal(buffer, readMsg)
+				fmt.Println("222222211122212->", readMsg)
 
-			conn.Close()
+				conn.Close()
+			}()
 
 		case nbsnet.NatDigConfirm:
 
