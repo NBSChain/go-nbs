@@ -42,12 +42,6 @@ func NewPeer() *NatPeer {
 
 func (peer *NatPeer) runLoop() {
 
-	go peer.sendKA(peer.keepAliveConn)
-
-	if len(os.Args) == 4 {
-		peer.punchAHole(os.Args[3])
-	}
-
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, err := peer.keepAliveConn.Read(buffer)
@@ -70,47 +64,50 @@ func (peer *NatPeer) runLoop() {
 			}
 
 			data, _ := proto.Marshal(ack)
-
 			conn, err := shareport.DialUDP("udp4", locServer, natServer.String())
 			if err != nil {
 				panic(err)
 			}
 
-			if _, err := conn.Write(data); err != nil {
+			n, err := conn.Write(data)
+			if err != nil {
 				panic(err)
 			}
 
-			go peer.digDig(conn, app.Public)
+			go peer.digDig(app.Public)
 
-			go peer.Listening(conn)
+			buffer := make([]byte, utils.NormalReadBuffer)
+			if _, err := conn.Read(buffer[:n]); err != nil {
+				panic(err)
+			}
+
+			readMsg := &net_pb.NatMsg{}
+			proto.Unmarshal(buffer, readMsg)
+			fmt.Println("222222211122212->", readMsg)
+
+			conn.Close()
 
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
 			fmt.Println("dig confirmed:->", ack)
 			locAddr := peer.startConn.LocalAddr().String()
-			peer.startConn.Close()
 			conn, err := shareport.DialUDP("udp4", locAddr, ack.Public)
 			if err != nil {
 				panic(err)
 			}
+			ka := &net_pb.NatMsg{
+				Typ: nbsnet.NatBlankKA,
+				ConnKA: &net_pb.ConnKA{
+					KA: "=========this is a keep alive for nat connection:=>----------",
+				},
+			}
 
-			go func() {
-				ka := &net_pb.NatMsg{
-					Typ: nbsnet.NatBlankKA,
-					ConnKA: &net_pb.ConnKA{
-						KA: "=========this is a keep alive for nat connection:=>----------",
-					},
-				}
-				data, _ := proto.Marshal(ka)
-				for {
-					fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
-					if _, err := conn.Write(data); err != nil {
-						panic(err)
-					}
-					time.Sleep(time.Second * 5)
-				}
-			}()
+			data, _ := proto.Marshal(ka)
+			fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
+			if _, err := conn.Write(data); err != nil {
+				panic(err)
+			}
 
 			go func() {
 				buffer := make([]byte, utils.NormalReadBuffer)
@@ -126,19 +123,19 @@ func (peer *NatPeer) runLoop() {
 	}
 }
 
-func (peer *NatPeer) sendKA(conn *net.UDPConn) {
-	locStr := conn.LocalAddr().String()
-	for {
-		request := &net_pb.NatMsg{
-			Typ: nbsnet.NatKeepAlive,
-			KeepAlive: &net_pb.KeepAlive{
-				NodeId:  peer.peerID,
-				PriAddr: locStr,
-			},
-		}
-		requestData, _ := proto.Marshal(request)
+func (peer *NatPeer) sendKA() {
+	locStr := peer.keepAliveConn.LocalAddr().String()
+	request := &net_pb.NatMsg{
+		Typ: nbsnet.NatKeepAlive,
+		KeepAlive: &net_pb.KeepAlive{
+			NodeId:  peer.peerID,
+			PriAddr: locStr,
+		},
+	}
+	requestData, _ := proto.Marshal(request)
 
-		if no, err := conn.Write(requestData); err != nil || no == 0 {
+	for {
+		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
 			panic(err)
 		}
@@ -167,26 +164,43 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	}
 	peer.startConn = conn
 
+	go func() {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			panic(err)
+		}
+		readMsg := &net_pb.NatMsg{}
+		proto.Unmarshal(buffer[:n], readMsg)
+		fmt.Println("55555->", readMsg)
+	}()
+
 	fmt.Println("tel peer I want to make a connection:->", nbsnet.ConnString(conn))
 }
 
-func (peer *NatPeer) Listening(lisConn *net.UDPConn) {
-
+func (peer *NatPeer) ListenHoleMsg() {
+	conn, err := shareport.ListenUDP("udp4", locServer)
+	if err != nil {
+		panic(err)
+	}
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, peerAddr, err := lisConn.ReadFromUDP(buffer)
+		n, peerAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		println("111111111hole punching success:->", msg, peerAddr)
-
-		lisConn.WriteToUDP(buffer[:n], peerAddr)
+		fmt.Println("111111111hole punching success:->", peerAddr, msg)
 	}
 }
 
-func (peer *NatPeer) digDig(conn *net.UDPConn, targetHost string) {
+func (peer *NatPeer) digDig(targetHost string) {
+
+	conn, err := shareport.DialUDP("udp4", locServer, targetHost)
+	if err != nil {
+		panic(err)
+	}
 
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
@@ -194,17 +208,22 @@ func (peer *NatPeer) digDig(conn *net.UDPConn, targetHost string) {
 	}
 	data, _ := proto.Marshal(digMsg)
 
-	host, port, _ := nbsnet.SplitHostPort(targetHost)
-	addr := &net.UDPAddr{
-		IP:   net.ParseIP(host),
-		Port: int(port),
-	}
-	for i := 0; i < 5; i++ {
-		println("dig a hole on peer's nat server:->", addr.String())
-		if _, err := conn.WriteToUDP(data, addr); err != nil {
+	for i := 0; i < 3; i++ {
+		fmt.Println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
+		if _, err := conn.Write(data); err != nil {
 			panic(err)
 		}
 	}
+	buffer := make([]byte, utils.NormalReadBuffer)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		panic(err)
+	}
+
+	readMsg := &net_pb.NatMsg{}
+	proto.Unmarshal(buffer[:n], readMsg)
+	fmt.Println("3333333333->", readMsg)
+	conn.Close()
 }
 
 func natTool() {
@@ -222,7 +241,18 @@ func natTool() {
 		}
 
 		client := NewPeer()
-		client.runLoop()
+
+		go client.sendKA()
+		go client.runLoop()
+
+		go client.ListenHoleMsg()
+
+		if len(os.Args) == 4 {
+			client.punchAHole(os.Args[3])
+		}
+
+		<-make(chan struct{})
+
 	} else if os.Args[1] == "-s" {
 		server := NewServer()
 		server.Processing()
