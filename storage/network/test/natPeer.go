@@ -19,7 +19,8 @@ type NatPeer struct {
 	waitStr       string
 }
 
-var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
+//var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
+var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("192.168.103.101")}
 var locServer = "0.0.0.0:7001"
 
 func NewPeer() *NatPeer {
@@ -59,16 +60,27 @@ func (peer *NatPeer) runLoop() {
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
+			conn, err := shareport.DialUDP("udp4", locServer, app.Public)
+			if err != nil {
+				panic(err)
+			}
 
-			go peer.digDig(app)
+			digMsg := &net_pb.NatMsg{
+				Typ: nbsnet.NatDigOut,
+				Seq: time.Now().Unix(),
+			}
+			data, _ := proto.Marshal(digMsg)
+			go peer.digDig(conn, data)
+
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
 					TargetId: app.FromId,
 				},
 			}
-			data, _ := proto.Marshal(ack)
-			if _, err := peer.keepAliveConn.Write(data); err != nil {
+
+			data, _ = proto.Marshal(ack)
+			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
 		case nbsnet.NatDigConfirm:
@@ -165,17 +177,8 @@ func (peer *NatPeer) Listening() {
 	}
 }
 
-func (peer *NatPeer) digDig(apply *net_pb.DigApply) {
-	conn, err := shareport.DialUDP("udp4", locServer, apply.Public)
-	if err != nil {
-		panic(err)
-	}
+func (peer *NatPeer) digDig(conn *net.UDPConn, data []byte) {
 
-	digMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatDigOut,
-		Seq: time.Now().Unix(),
-	}
-	data, _ := proto.Marshal(digMsg)
 	go peer.Listening2(conn)
 	locServer = conn.LocalAddr().String()
 	go peer.Listening()
