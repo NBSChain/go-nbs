@@ -17,6 +17,7 @@ type NatPeer struct {
 	keepAliveConn *net.UDPConn
 	isApplier     bool
 	waitStr       string
+	listenConn    *net.UDPConn
 }
 
 var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
@@ -71,17 +72,10 @@ func (peer *NatPeer) runLoop() {
 			}
 
 			data, _ := proto.Marshal(ack)
-			conn, err := shareport.DialUDP("udp4", locServer, natServer.String())
-			if err != nil {
-				fmt.Println("send dig confirm:->", nbsnet.ConnString(conn))
+
+			if _, err := peer.listenConn.WriteToUDP(data, natServer); err != nil {
 				panic(err)
 			}
-
-			if _, err := conn.Write(data); err != nil {
-				panic(err)
-			}
-
-			conn.Close()
 
 			go peer.digDig(app.Public)
 
@@ -183,6 +177,8 @@ func (peer *NatPeer) Listening() {
 		panic(err)
 	}
 
+	peer.listenConn = lisConn
+
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := lisConn.ReadFromUDP(buffer)
@@ -197,22 +193,20 @@ func (peer *NatPeer) Listening() {
 
 func (peer *NatPeer) digDig(targetHost string) {
 
-	conn, err := shareport.DialUDP("udp4", locServer, targetHost)
-	if err != nil {
-		panic(err)
-	}
-
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
 
-	go peer.Listening2(conn)
-
+	host, port, _ := nbsnet.SplitHostPort(targetHost)
+	addr := &net.UDPAddr{
+		IP:   net.ParseIP(host),
+		Port: int(port),
+	}
 	for i := 0; i < 5; i++ {
-		println("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
-		if _, err := conn.Write(data); err != nil {
+		println("dig a hole on peer's nat server:->", peer.listenConn.LocalAddr().String())
+		if _, err := peer.listenConn.WriteToUDP(data, addr); err != nil {
 			panic(err)
 		}
 		time.Sleep(time.Millisecond * 500)

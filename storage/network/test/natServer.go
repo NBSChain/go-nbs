@@ -88,6 +88,7 @@ func (s *NatServer) Processing() {
 			if _, err := s.server.WriteToUDP(data, item.PubAddr); err != nil {
 				panic(err)
 			}
+			fmt.Println("forward apply from:->", app.Public)
 		case nbsnet.NatDigConfirm:
 			ack := request.DigConfirm
 			item, ok := s.natCache[ack.TargetId]
