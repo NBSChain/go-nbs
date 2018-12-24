@@ -144,7 +144,7 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 					return nil, 0, pubConnTask.err
 				}
 			}
-		case <-time.After(HolePunchTimeOut / 2):
+		case <-time.After(HolePunchTimeOut):
 			return nil, 0, fmt.Errorf("time out")
 		}
 	}

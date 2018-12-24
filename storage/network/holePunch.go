@@ -5,6 +5,8 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
 	"strconv"
 	"time"
@@ -16,6 +18,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	conn, err := shareport.DialUDP("udp4", "", rAddr.NatServer)
 
 	if err != nil {
+		logger.Debug("dial up peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}
@@ -33,6 +36,7 @@ func (network *nbsNetwork) noticePeerAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr,
 
 	data, _ := proto.Marshal(msg)
 	if _, err := conn.Write(data); err != nil {
+		logger.Debug("write msg to peer's nat server err:->", err)
 		task.finish(err, nil)
 		return
 	}
@@ -128,13 +132,39 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 	task.portCapConn.Close()
 
 	conn, err := shareport.DialUDP("udp4", task.lAddr, ack.Public)
-
 	if err != nil {
+		logger.Debug("dial up when make a hole:->", err)
 		task.finish(err, nil)
 		return err
 	}
+
+	now := time.Now()
+	msg := &net_pb.NatMsg{
+		Typ: nbsnet.NatEnd,
+		ConnKA: &net_pb.ConnKA{
+			KA: crypto.MD5SS(now.String()),
+		},
+	}
+	data, _ := proto.Marshal(msg)
+
+	if _, err := conn.Write(data); err != nil {
+		logger.Debug("make a hole write err:->", err)
+		task.finish(err, nil)
+		return err
+	}
+
+	conn.SetDeadline(time.Now().Add(HolePunchTimeOut))
+
+	buffer := make([]byte, utils.NormalReadBuffer)
+	if _, err := conn.Read(buffer); err != nil {
+		logger.Debug("make a hole read err:->", err)
+		task.finish(err, nil)
+		return err
+	}
+
 	task.finish(nil, conn)
 	logger.Info("hole punch step2-7 create hole channel:->",
 		conn.LocalAddr().String(), ack.Public)
+
 	return nil
 }
