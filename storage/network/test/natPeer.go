@@ -137,12 +137,15 @@ func (peer *NatPeer) sendKA() {
 	requestData, _ := proto.Marshal(request)
 
 	for {
-		if no, err := peer.keepAliveConn.Write(requestData); err != nil || no == 0 {
+		no, err := peer.keepAliveConn.Write(requestData)
+		if err != nil || no == 0 {
 			fmt.Println("---gun1 write---->", err, no)
 			panic(err)
 		}
 
-		time.Sleep(time.Second * 10)
+		fmt.Println("send keep alive:->", no, nbsnet.ConnString(peer.keepAliveConn))
+
+		time.Sleep(time.Second * 5)
 	}
 }
 
