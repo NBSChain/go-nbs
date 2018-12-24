@@ -55,7 +55,6 @@ func (peer *NatPeer) runLoop() {
 		proto.Unmarshal(buffer[:n], msg)
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
-			fmt.Println("get keep alive:->")
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
