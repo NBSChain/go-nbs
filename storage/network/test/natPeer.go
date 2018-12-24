@@ -93,10 +93,15 @@ func (peer *NatPeer) runLoop() {
 				panic(err)
 			}
 
+			host, port, _ := nbsnet.SplitHostPort(ack.Public)
+			addr := &net.UDPAddr{
+				IP:   net.ParseIP(host),
+				Port: int(port),
+			}
 			go func() {
 				for i := 3; i > 0; i-- {
 					fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
-					if _, err := conn.Write(buffer[:n]); err != nil {
+					if _, err := conn.WriteToUDP(buffer[:n], addr); err != nil {
 						panic(err)
 					}
 					time.Sleep(time.Second)
@@ -105,10 +110,12 @@ func (peer *NatPeer) runLoop() {
 
 			go func() {
 				buffer := make([]byte, utils.NormalReadBuffer)
-				if _, err := conn.Read(buffer); err != nil {
+				_, peerAddr, err := conn.ReadFromUDP(buffer)
+
+				if err != nil {
 					panic(err)
 				}
-				fmt.Println("-0---0000000-", buffer)
+				fmt.Println("-0---0000000-", peerAddr, buffer)
 			}()
 
 		}
@@ -211,7 +218,7 @@ func (peer *NatPeer) digDig(targetHost string) {
 	}
 	peer.Lock()
 	for i := 0; i < 5; i++ {
-		println("dig a hole on peer's nat server:->", peer.listenConn.LocalAddr().String())
+		println("dig a hole on peer's nat server:->", addr.String())
 		if _, err := peer.listenConn.WriteToUDP(data, addr); err != nil {
 			panic(err)
 		}
