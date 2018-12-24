@@ -65,13 +65,6 @@ func (peer *NatPeer) runLoop() {
 				panic(err)
 			}
 
-			digMsg := &net_pb.NatMsg{
-				Typ: nbsnet.NatDigOut,
-				Seq: time.Now().Unix(),
-			}
-			data, _ := proto.Marshal(digMsg)
-			go peer.digDig(conn, data)
-
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
@@ -79,10 +72,18 @@ func (peer *NatPeer) runLoop() {
 				},
 			}
 
-			data, _ = proto.Marshal(ack)
+			data, _ := proto.Marshal(ack)
 			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
+
+			digMsg := &net_pb.NatMsg{
+				Typ: nbsnet.NatDigOut,
+				Seq: time.Now().Unix(),
+			}
+			data, _ = proto.Marshal(digMsg)
+			go peer.digDig(conn, data)
+
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
