@@ -94,11 +94,25 @@ func (peer *NatPeer) runLoop() {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
 
-			if _, err := conn.Write(buffer[:n]); err != nil {
-				panic(err)
-			}
+			go func() {
+				for {
+					fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
+					if _, err := conn.Write(buffer[:n]); err != nil {
+						panic(err)
+					}
+					time.Sleep(time.Second)
+				}
+			}()
+
+			go func() {
+				buffer := make([]byte, utils.NormalReadBuffer)
+				if _, err := conn.Read(buffer); err != nil {
+					panic(err)
+				}
+				fmt.Println(buffer)
+			}()
+
 		}
 	}
 }
@@ -157,6 +171,8 @@ func (peer *NatPeer) Listening2(conn *net.UDPConn) {
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
 		println("2222222hole punching success:->", msg)
+
+		conn.Write(buffer)
 	}
 }
 
