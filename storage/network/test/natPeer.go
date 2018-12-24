@@ -9,7 +9,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -17,9 +16,7 @@ type NatPeer struct {
 	peerID        string
 	keepAliveConn *net.UDPConn
 	isApplier     bool
-	waitStr       string
-	listenConn    *net.UDPConn
-	sync.Mutex
+	startConn     *net.UDPConn
 }
 
 var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
@@ -46,10 +43,9 @@ func NewPeer() *NatPeer {
 func (peer *NatPeer) runLoop() {
 
 	go peer.sendKA(peer.keepAliveConn)
-	go peer.Listening()
 
 	if len(os.Args) == 4 {
-		go peer.punchAHole(os.Args[3])
+		peer.punchAHole(os.Args[3])
 	}
 
 	for {
@@ -75,36 +71,44 @@ func (peer *NatPeer) runLoop() {
 
 			data, _ := proto.Marshal(ack)
 
-			peer.Lock()
-			if _, err := peer.listenConn.WriteToUDP(data, natServer); err != nil {
+			conn, err := shareport.DialUDP("udp4", locServer, natServer.String())
+			if err != nil {
 				panic(err)
 			}
-			peer.Unlock()
 
-			go peer.digDig(app.Public)
+			if _, err := conn.Write(data); err != nil {
+				panic(err)
+			}
+
+			go peer.digDig(conn, app.Public)
+
+			go peer.Listening(conn)
 
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
 			fmt.Println("dig confirmed:->", ack)
-			locAddr := peer.waitStr
+			locAddr := peer.startConn.LocalAddr().String()
+			peer.startConn.Close()
 			conn, err := shareport.DialUDP("udp4", locAddr, ack.Public)
 			if err != nil {
 				panic(err)
 			}
 
-			host, port, _ := nbsnet.SplitHostPort(ack.Public)
-			addr := &net.UDPAddr{
-				IP:   net.ParseIP(host),
-				Port: int(port),
-			}
 			go func() {
-				for i := 3; i > 0; i-- {
+				ka := &net_pb.NatMsg{
+					Typ: nbsnet.NatBlankKA,
+					ConnKA: &net_pb.ConnKA{
+						KA: "=========this is a keep alive for nat connection:=>----------",
+					},
+				}
+				data, _ := proto.Marshal(ka)
+				for {
 					fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
-					if _, err := conn.WriteToUDP(buffer[:n], addr); err != nil {
+					if _, err := conn.Write(data); err != nil {
 						panic(err)
 					}
-					time.Sleep(time.Second)
+					time.Sleep(time.Second * 5)
 				}
 			}()
 
@@ -153,7 +157,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	}
 	requestData, _ := proto.Marshal(msg)
 
-	conn, err := net.DialUDP("udp4", nil, natServer)
+	conn, err := shareport.DialUDP("udp4", "", natServer.String())
 	if err != nil {
 		panic(err)
 	}
@@ -161,36 +165,13 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		fmt.Println(err)
 		return
 	}
-	peer.waitStr = conn.LocalAddr().String()
+	peer.startConn = conn
 
 	fmt.Println("tel peer I want to make a connection:->", nbsnet.ConnString(conn))
 }
 
-func (peer *NatPeer) Listening2(conn *net.UDPConn) {
-	for {
-		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			panic(err)
-		}
-		msg := &net_pb.NatMsg{}
-		proto.Unmarshal(buffer[:n], msg)
-		println("2222222hole punching success:->", msg)
+func (peer *NatPeer) Listening(lisConn *net.UDPConn) {
 
-		conn.Write(buffer)
-	}
-}
-
-func (peer *NatPeer) Listening() {
-
-	lisConn, err := shareport.ListenUDP("udp4", locServer)
-	if err != nil {
-		panic(err)
-	}
-
-	peer.Lock()
-	peer.listenConn = lisConn
-	peer.Unlock()
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := lisConn.ReadFromUDP(buffer)
@@ -200,10 +181,12 @@ func (peer *NatPeer) Listening() {
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
 		println("111111111hole punching success:->", msg, peerAddr)
+
+		lisConn.WriteToUDP(buffer[:n], peerAddr)
 	}
 }
 
-func (peer *NatPeer) digDig(targetHost string) {
+func (peer *NatPeer) digDig(conn *net.UDPConn, targetHost string) {
 
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
@@ -216,14 +199,12 @@ func (peer *NatPeer) digDig(targetHost string) {
 		IP:   net.ParseIP(host),
 		Port: int(port),
 	}
-	peer.Lock()
 	for i := 0; i < 5; i++ {
 		println("dig a hole on peer's nat server:->", addr.String())
-		if _, err := peer.listenConn.WriteToUDP(data, addr); err != nil {
+		if _, err := conn.WriteToUDP(data, addr); err != nil {
 			panic(err)
 		}
 	}
-	peer.Unlock()
 }
 
 func natTool() {
