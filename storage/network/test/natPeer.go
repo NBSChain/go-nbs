@@ -110,7 +110,7 @@ func (peer *NatPeer) runLoop() {
 				if _, err := conn.Read(buffer); err != nil {
 					panic(err)
 				}
-				fmt.Println(buffer)
+				fmt.Println("-0-----", buffer)
 			}()
 
 		}
