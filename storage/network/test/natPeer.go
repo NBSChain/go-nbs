@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type NatPeer struct {
 	isApplier     bool
 	waitStr       string
 	listenConn    *net.UDPConn
+	sync.Mutex
 }
 
 var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
@@ -73,9 +75,11 @@ func (peer *NatPeer) runLoop() {
 
 			data, _ := proto.Marshal(ack)
 
+			peer.Lock()
 			if _, err := peer.listenConn.WriteToUDP(data, natServer); err != nil {
 				panic(err)
 			}
+			peer.Unlock()
 
 			go peer.digDig(app.Public)
 
@@ -90,7 +94,7 @@ func (peer *NatPeer) runLoop() {
 			}
 
 			go func() {
-				for {
+				for i := 3; i > 0; i-- {
 					fmt.Println("dial hole in back :->", nbsnet.ConnString(conn))
 					if _, err := conn.Write(buffer[:n]); err != nil {
 						panic(err)
@@ -104,7 +108,7 @@ func (peer *NatPeer) runLoop() {
 				if _, err := conn.Read(buffer); err != nil {
 					panic(err)
 				}
-				fmt.Println("-0-----", buffer)
+				fmt.Println("-0---0000000-", buffer)
 			}()
 
 		}
@@ -177,8 +181,9 @@ func (peer *NatPeer) Listening() {
 		panic(err)
 	}
 
+	peer.Lock()
 	peer.listenConn = lisConn
-
+	peer.Unlock()
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := lisConn.ReadFromUDP(buffer)
@@ -204,13 +209,14 @@ func (peer *NatPeer) digDig(targetHost string) {
 		IP:   net.ParseIP(host),
 		Port: int(port),
 	}
+	peer.Lock()
 	for i := 0; i < 5; i++ {
 		println("dig a hole on peer's nat server:->", peer.listenConn.LocalAddr().String())
 		if _, err := peer.listenConn.WriteToUDP(data, addr); err != nil {
 			panic(err)
 		}
-		time.Sleep(time.Millisecond * 500)
 	}
+	peer.Unlock()
 }
 
 func natTool() {
