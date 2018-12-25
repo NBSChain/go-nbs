@@ -143,7 +143,7 @@ func (s *NatServer) connThread(conn *net.TCPConn) {
 		n, err := conn.Read(buffer)
 		if err != nil {
 			fmt.Println("read data from socket err:->", err)
-			continue
+			return
 		}
 
 		request := &net_pb.NatMsg{}

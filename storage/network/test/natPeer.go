@@ -22,10 +22,9 @@ type NatPeer struct {
 	startConn     *net.UDPConn
 }
 
-//var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
-var natServer = &net.TCPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
+var natServer = &net.TCPAddr{Port: NatServerTestPort, IP: net.ParseIP("103.45.98.72")}
 
-//var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("192.168.103.101")}
+//var natServer = &net.TCPAddr{Port: NatServerTestPort, IP: net.ParseIP("192.168.103.101")}
 var locServer = "0.0.0.0:7001"
 
 func NewPeer() *NatPeer {
@@ -40,7 +39,6 @@ func NewPeer() *NatPeer {
 		keepAliveConn: c1,
 		peerID:        os.Args[2],
 	}
-
 	return client
 }
 
