@@ -16,20 +16,21 @@ import (
 
 type NatPeer struct {
 	peerID        string
-	keepAliveConn *net.UDPConn
+	keepAliveConn *net.TCPConn
 	isApplier     bool
 	startLock     sync.Mutex
 	startConn     *net.UDPConn
 }
 
-var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
+//var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
+var natServer = &net.TCPAddr{Port: NatServerTestPort, IP: net.ParseIP("52.8.190.235")}
 
 //var natServer = &net.UDPAddr{Port: NatServerTestPort, IP: net.ParseIP("192.168.103.101")}
 var locServer = "0.0.0.0:7001"
 
 func NewPeer() *NatPeer {
 
-	c1, err := net.DialUDP("udp4", nil, natServer)
+	c1, err := net.DialTCP("tcp4", nil, natServer)
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +45,6 @@ func NewPeer() *NatPeer {
 }
 
 func (peer *NatPeer) runLoop() {
-
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, err := peer.keepAliveConn.Read(buffer)
@@ -55,6 +55,7 @@ func (peer *NatPeer) runLoop() {
 		proto.Unmarshal(buffer[:n], msg)
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
+			fmt.Println("get keep alive ack:->", msg)
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 			fmt.Println("receive dig application:->", app)
@@ -167,7 +168,6 @@ func (peer *NatPeer) sendKA() {
 		},
 	}
 	requestData, _ := proto.Marshal(request)
-
 	for {
 		no, err := peer.keepAliveConn.Write(requestData)
 		if err != nil || no == 0 {
