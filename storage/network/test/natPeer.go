@@ -30,7 +30,7 @@ var locServer = "0.0.0.0:7001"
 
 func NewPeer() *NatPeer {
 
-	c1, err := net.DialTCP("tcp", nil, natServer)
+	c1, err := net.DialTCP("tcp4", nil, natServer)
 	if err != nil {
 		panic(err)
 	}

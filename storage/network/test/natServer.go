@@ -26,9 +26,8 @@ type NatServer struct {
 
 func NewServer() *NatServer {
 
-	s, err := net.ListenTCP("tcp", &net.TCPAddr{
+	s, err := net.ListenTCP("tcp4", &net.TCPAddr{
 		Port: NatServerTestPort,
-		//IP:net.ParseIP("192.168.103.101"),
 	})
 	if err != nil {
 		panic(err)
