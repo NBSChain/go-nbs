@@ -233,6 +233,10 @@ var probeServer = []*net.UDPAddr{
 		IP:   net.ParseIP("47.52.172.234"),
 		Port: 8002,
 	},
+	&net.UDPAddr{
+		IP:   net.ParseIP("13.57.241.215"),
+		Port: 8002,
+	},
 }
 
 type Probe struct {
