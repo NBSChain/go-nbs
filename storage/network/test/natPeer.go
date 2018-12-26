@@ -98,8 +98,8 @@ func NewPeer() *NatPeer {
 		}
 
 		pubHost := msg.KeepAlive.PubAddr
-		ip, _, _ := nbsnet.SplitHostPort(pubHost)
-		logger.Debug("get ip success:->", ip)
+		ip, port, _ := nbsnet.SplitHostPort(pubHost)
+		logger.Debug("get ip success:->", ip, port)
 		client.allMyHosts[ip] = struct{}{}
 	}
 
