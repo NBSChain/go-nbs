@@ -6,6 +6,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type HostBehindNat struct {
 type NatServer struct {
 	server     *net.TCPListener
 	HoleHelper *net.UDPConn
+	cacheLock  sync.Mutex
 	natCache   map[string]*HostBehindNat
 }
 
@@ -62,6 +64,7 @@ func (s *NatServer) HoleDigger() {
 
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
+		s.cacheLock.Lock()
 
 		switch msg.Typ {
 		case nbsnet.NatDigApply:
@@ -91,6 +94,8 @@ func (s *NatServer) HoleDigger() {
 			}
 			logger.Debug("forward confirm :->", ack.Public)
 		}
+
+		s.cacheLock.Unlock()
 	}
 }
 
@@ -187,9 +192,10 @@ func (s *NatServer) connThread(conn *net.TCPConn) {
 		}
 
 		logger.Debug("\nNat request:->", request, nbsnet.ConnString(conn))
-
+		s.cacheLock.Lock()
 		if err := s.processMsg(request, conn); err != nil {
 			logger.Debug("process err:->", err)
 		}
+		s.cacheLock.Unlock()
 	}
 }
