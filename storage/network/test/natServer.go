@@ -61,6 +61,7 @@ func (s *NatServer) HoleDigger() {
 
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
+		logger.Debug("nat helper get msg:->", msg, peerAddr.String())
 		s.cacheLock.Lock()
 
 		switch msg.Typ {
