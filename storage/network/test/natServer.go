@@ -99,6 +99,13 @@ func (s *NatServer) HoleDigger() {
 			//if _, err := s.HoleHelper.WriteToUDP(buffer[:n], peerAddr); err != nil {
 			//	panic(err)
 			//}
+		case nbsnet.NatKeepAlive:
+			ack := msg.KeepAlive
+			ack.PubAddr = peerAddr.String()
+			data, _ := proto.Marshal(msg)
+			if _, err := s.HoleHelper.Write(data); err != nil {
+				logger.Debug("keep alive ack err:->", err)
+			}
 		}
 
 		s.cacheLock.Unlock()

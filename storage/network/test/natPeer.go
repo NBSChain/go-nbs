@@ -7,6 +7,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -219,6 +220,79 @@ func (peer *NatPeer) udpKA(conn *net.UDPConn) {
 	}
 }
 
+var probeServer = []*net.UDPAddr{
+	&net.UDPAddr{
+		IP:   net.ParseIP("103.45.98.72"),
+		Port: 8002,
+	},
+	&net.UDPAddr{
+		IP:   net.ParseIP("52.8.190.235"),
+		Port: 8002,
+	},
+	&net.UDPAddr{
+		IP:   net.ParseIP("47.52.172.234"),
+		Port: 8002,
+	},
+}
+
+type Probe struct {
+	probeConn *net.UDPConn
+}
+
+func NewProbe() *Probe {
+	return &Probe{}
+}
+
+func (p *Probe) Probe() {
+
+	idx_1, _ := strconv.Atoi(os.Args[2])
+	s_1 := probeServer[idx_1]
+
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: 7002,
+	})
+	if err != nil {
+		panic(err)
+	}
+	p.probeConn = conn
+
+	go p.Reading()
+
+	locStr := conn.LocalAddr().String()
+	request := &net_pb.NatMsg{
+		Typ: nbsnet.NatKeepAlive,
+		KeepAlive: &net_pb.KeepAlive{
+			NodeId:  "xxx---probe---XXX",
+			PriAddr: locStr,
+		},
+	}
+	requestData, _ := proto.Marshal(request)
+
+	if _, err := conn.WriteToUDP(requestData, s_1); err != nil {
+		panic(err)
+	}
+	if len(os.Args) > 3 {
+		idx_2, _ := strconv.Atoi(os.Args[3])
+		s_2 := probeServer[idx_2]
+		if _, err := conn.WriteToUDP(requestData, s_2); err != nil {
+			panic(err)
+		}
+	}
+}
+func (p *Probe) Reading() {
+
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, peerAdd, err := p.probeConn.ReadFromUDP(buffer)
+		if err != nil {
+			panic(err)
+		}
+		msg := &net_pb.NatMsg{}
+		proto.Unmarshal(buffer[:n], msg)
+		logger.Debug("probe reading :->", peerAdd, msg)
+	}
+}
+
 func natTool() {
 
 	if len(os.Args) < 2 {
@@ -249,6 +323,11 @@ func natTool() {
 	} else if os.Args[1] == "-s" {
 		server := NewServer()
 		server.CtlMsg()
+
+	} else if os.Args[1] == "-p" {
+		probe := NewProbe()
+		probe.Probe()
+		<-make(chan struct{})
 
 	} else {
 		logger.Debug("unknown action")
