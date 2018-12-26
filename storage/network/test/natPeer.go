@@ -76,11 +76,12 @@ func NewPeer() *NatPeer {
 	requestData, _ := proto.Marshal(request)
 
 	for _, addr := range ipHelpers {
+		conn.SetDeadline(time.Now().Add(time.Second * 2))
+
 		if _, err := conn.WriteToUDP(requestData, addr); err != nil {
 			logger.Error("get all my ips err:->", err)
 			continue
 		}
-		conn.SetDeadline(time.Now().Add(time.Second * 2))
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -163,22 +164,40 @@ func (peer *NatPeer) dididididid(conn *net.UDPConn, public string, allIps []stri
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
-	for {
-		for _, ip := range allIps {
 
-			_, port, _ := nbsnet.SplitHostPort(public)
+	ppIP, port, _ := nbsnet.SplitHostPort(public)
+
+	if len(allIps) == 1 {
+
+		for i := 10000; i < 65535; i++ {
 			target := &net.UDPAddr{
-				IP:   net.ParseIP(ip),
-				Port: int(port),
+				IP:   net.ParseIP(ppIP),
+				Port: int(i),
 			}
-
-			logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
 			if _, err := conn.WriteToUDP(data, target); err != nil {
-				panic(err)
+				logger.Warning(err)
+				continue
 			}
+			time.Sleep(time.Millisecond * 20)
+			logger.Debug("write to target:->", target.String())
 		}
+	} else {
+		for {
+			for _, ip := range allIps {
 
-		time.Sleep(time.Second * 2)
+				target := &net.UDPAddr{
+					IP:   net.ParseIP(ip),
+					Port: int(port),
+				}
+
+				logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
+				if _, err := conn.WriteToUDP(data, target); err != nil {
+					panic(err)
+				}
+			}
+
+			time.Sleep(time.Second * 2)
+		}
 	}
 }
 
