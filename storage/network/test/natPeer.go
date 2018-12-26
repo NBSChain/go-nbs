@@ -254,6 +254,7 @@ func (p *Probe) Probe() {
 	if err != nil {
 		panic(err)
 	}
+	logger.Debug("start liten:->", conn.LocalAddr().String())
 	p.probeConn = conn
 
 	go p.Reading()
@@ -271,12 +272,15 @@ func (p *Probe) Probe() {
 	if _, err := conn.WriteToUDP(requestData, s_1); err != nil {
 		panic(err)
 	}
+	logger.Debug("write one server:->", s_1.String())
 	if len(os.Args) > 3 {
 		idx_2, _ := strconv.Atoi(os.Args[3])
 		s_2 := probeServer[idx_2]
 		if _, err := conn.WriteToUDP(requestData, s_2); err != nil {
 			panic(err)
 		}
+		logger.Debug("write second server:->", s_2.String())
+
 	}
 }
 func (p *Probe) Reading() {

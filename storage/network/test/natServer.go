@@ -103,7 +103,7 @@ func (s *NatServer) HoleDigger() {
 			ack := msg.KeepAlive
 			ack.PubAddr = peerAddr.String()
 			data, _ := proto.Marshal(msg)
-			if _, err := s.HoleHelper.Write(data); err != nil {
+			if _, err := s.HoleHelper.WriteToUDP(data, peerAddr); err != nil {
 				logger.Debug("keep alive ack err:->", err)
 			}
 		}
