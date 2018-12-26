@@ -165,40 +165,25 @@ func (peer *NatPeer) dididididid(conn *net.UDPConn, public string, allIps []stri
 	}
 	data, _ := proto.Marshal(digMsg)
 
-	ppIP, port, _ := nbsnet.SplitHostPort(public)
+	_, port, _ := nbsnet.SplitHostPort(public)
 
-	if len(allIps) == 1 {
+	for {
+		for _, ip := range allIps {
 
-		for i := 10000; i < 65535; i++ {
 			target := &net.UDPAddr{
-				IP:   net.ParseIP(ppIP),
-				Port: int(i),
+				IP:   net.ParseIP(ip),
+				Port: int(port),
 			}
+
+			logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
 			if _, err := conn.WriteToUDP(data, target); err != nil {
-				logger.Warning(err)
-				continue
+				panic(err)
 			}
-			time.Sleep(time.Millisecond * 20)
-			logger.Debug("write to target:->", target.String())
 		}
-	} else {
-		for {
-			for _, ip := range allIps {
 
-				target := &net.UDPAddr{
-					IP:   net.ParseIP(ip),
-					Port: int(port),
-				}
-
-				logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
-				if _, err := conn.WriteToUDP(data, target); err != nil {
-					panic(err)
-				}
-			}
-
-			time.Sleep(time.Second * 2)
-		}
+		time.Sleep(time.Second * 2)
 	}
+
 }
 
 func (peer *NatPeer) sendKA() {
