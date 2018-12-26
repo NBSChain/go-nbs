@@ -179,6 +179,7 @@ func (peer *NatPeer) digDig(fromHost, targetHost string) {
 	if err != nil {
 		panic(err)
 	}
+	go peer.readingDigOut(conn, "[333333]")
 
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
@@ -186,14 +187,13 @@ func (peer *NatPeer) digDig(fromHost, targetHost string) {
 	}
 	data, _ := proto.Marshal(digMsg)
 
-	for i := 0; i < 3; i++ {
+	for {
 		logger.Debug("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
 		if _, err := conn.Write(data); err != nil {
 			panic(err)
 		}
+		time.Sleep(time.Second * 2)
 	}
-
-	go peer.readingDigOut(conn, "[333333]")
 }
 
 func natTool() {
