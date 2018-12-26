@@ -8,20 +8,20 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 )
 
 var logger = utils.GetLogInstance()
 
+const CtrlMsgPort = 8001
+const HoleHelpPort = 8002
+
 type NatPeer struct {
-	peerID        string
-	keepAliveConn *net.TCPConn
-	isApplier     bool
-	startLock     sync.Mutex
-	startConn     *net.UDPConn
-	lisLock       sync.Mutex
-	lisConn       *net.UDPConn
+	peerID      string
+	ctrlChannel *net.TCPConn
+	startConn   *net.UDPConn
+	lisConn     *net.UDPConn
+	allMyHosts  map[string]struct{}
 }
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
@@ -29,6 +29,11 @@ type NatPeer struct {
 
 var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("103.45.98.72")}
 var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.72")}
+
+var ipHelpers = []*net.UDPAddr{&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.72")},
+	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("52.8.190.235")},
+	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("47.52.172.234")},
+	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("13.57.241.215")}}
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("192.168.103.101")}
 //var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("192.168.103.101")}
@@ -44,16 +49,44 @@ func NewPeer() *NatPeer {
 
 	logger.Debug("dialed----1--->", c1.LocalAddr().String(), c1.RemoteAddr())
 	client := &NatPeer{
-		keepAliveConn: c1.(*net.TCPConn),
-		peerID:        os.Args[2],
+		ctrlChannel: c1.(*net.TCPConn),
+		peerID:      os.Args[2],
+		allMyHosts:  make(map[string]struct{}),
 	}
+
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: 7001,
+	})
+	if err != nil {
+		panic(err)
+	}
+	client.lisConn = conn
+	logger.Debug("listen at:->", client.lisConn.LocalAddr().String())
+	go client.ListenService()
+	locStr := client.lisConn.LocalAddr().String()
+	request := &net_pb.NatMsg{
+		Typ: nbsnet.NatKeepAlive,
+		KeepAlive: &net_pb.KeepAlive{
+			NodeId:  client.peerID,
+			PriAddr: locStr,
+		},
+	}
+	requestData, _ := proto.Marshal(request)
+
+	for _, addr := range ipHelpers {
+		if _, err := conn.WriteToUDP(requestData, addr); err != nil {
+			logger.Error("get all my ips err:->", err)
+			continue
+		}
+	}
+
 	return client
 }
 
 func (peer *NatPeer) runLoop() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := peer.keepAliveConn.Read(buffer)
+		n, err := peer.ctrlChannel.Read(buffer)
 		if err != nil {
 			panic(err)
 		}
@@ -66,10 +99,15 @@ func (peer *NatPeer) runLoop() {
 			app := msg.DigApply
 			logger.Debug("receive dig application:->", app)
 
+			ips := make([]string, 0)
+			for ip := range peer.allMyHosts {
+				ips = append(ips, ip)
+			}
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
 					TargetId: app.FromId,
+					AllIps:   ips,
 				},
 			}
 
@@ -79,41 +117,45 @@ func (peer *NatPeer) runLoop() {
 			}
 			go peer.udpKA(peer.lisConn)
 
-			go peer.dididididid(peer.lisConn, app.Public)
+			go peer.dididididid(peer.lisConn, app.Public, app.AllIps)
 
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
 			logger.Debug("dig confirmed:->", ack)
 
-			go peer.dididididid(peer.startConn, ack.Public)
+			go peer.dididididid(peer.startConn, ack.Public, ack.AllIps)
 		}
 	}
 }
-func (peer *NatPeer) dididididid(conn *net.UDPConn, public string) {
+func (peer *NatPeer) dididididid(conn *net.UDPConn, public string, allIps []string) {
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
-	ip, port, _ := nbsnet.SplitHostPort(public)
-	target := &net.UDPAddr{
-		IP:   net.ParseIP(ip),
-		Port: int(port),
-	}
 
-	for {
-		logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
-		if _, err := conn.WriteToUDP(data, target); err != nil {
-			panic(err)
+	for _, ip := range allIps {
+
+		_, port, _ := nbsnet.SplitHostPort(public)
+		target := &net.UDPAddr{
+			IP:   net.ParseIP(ip),
+			Port: int(port),
 		}
 
-		time.Sleep(time.Second * 2)
+		for {
+			logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
+			if _, err := conn.WriteToUDP(data, target); err != nil {
+				panic(err)
+			}
+
+			time.Sleep(time.Second * 2)
+		}
 	}
 }
 
 func (peer *NatPeer) sendKA() {
-	locStr := peer.keepAliveConn.LocalAddr().String()
+	locStr := peer.ctrlChannel.LocalAddr().String()
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
@@ -123,7 +165,7 @@ func (peer *NatPeer) sendKA() {
 	}
 	requestData, _ := proto.Marshal(request)
 	for {
-		no, err := peer.keepAliveConn.Write(requestData)
+		no, err := peer.ctrlChannel.Write(requestData)
 		if err != nil || no == 0 {
 			logger.Debug("---gun1 write---->", err, no)
 			panic(err)
@@ -134,11 +176,16 @@ func (peer *NatPeer) sendKA() {
 }
 
 func (peer *NatPeer) punchAHole(targetId string) {
+	ips := make([]string, 0)
+	for ip := range peer.allMyHosts {
+		ips = append(ips, ip)
+	}
 	msg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigApply,
 		DigApply: &net_pb.DigApply{
 			TargetId: targetId,
 			FromId:   peer.peerID,
+			AllIps:   ips,
 		},
 	}
 	requestData, _ := proto.Marshal(msg)
@@ -154,9 +201,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		panic(err)
 	}
 
-	peer.startLock.Lock()
 	peer.startConn = sConn
-	peer.startLock.Unlock()
 
 	go peer.udpKA(sConn)
 	go peer.readingDigOut(sConn, "[111111]")
@@ -183,23 +228,24 @@ func (peer *NatPeer) readingDigOut(conn *net.UDPConn, socketId string) {
 }
 
 func (peer *NatPeer) ListenService() {
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: 7001,
-	})
-	if err != nil {
-		panic(err)
-	}
-	peer.lisConn = conn
-	logger.Debug("listen at:->", peer.lisConn.LocalAddr().String())
+
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		n, peerAddr, err := peer.lisConn.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		logger.Warning("----listening service---hole punching success:->", peerAddr, msg)
+		logger.Debug("----listening service---hole punching success:->", peerAddr, msg)
+		switch msg.Typ {
+		case nbsnet.NatKeepAlive:
+			ka := msg.KeepAlive
+			ip, _, _ := nbsnet.SplitHostPort(ka.PubAddr)
+			peer.allMyHosts[ip] = struct{}{}
+		default:
+			logger.Warning("maybe success:--->")
+		}
 	}
 }
 
@@ -320,7 +366,6 @@ func natTool() {
 		go client.sendKA()
 		go client.runLoop()
 		go client.ListenService()
-		//go client.ListenServiceBehindNat()
 
 		if len(os.Args) == 4 {
 			client.punchAHole(os.Args[3])

@@ -10,9 +10,6 @@ import (
 	"time"
 )
 
-const CtrlMsgPort = 8001
-const HoleHelpPort = 8002
-
 type HostBehindNat struct {
 	UpdateTIme time.Time
 	PubAddr    net.Addr
