@@ -20,6 +20,8 @@ type NatPeer struct {
 	isApplier     bool
 	startLock     sync.Mutex
 	startConn     *net.UDPConn
+	lisLock       sync.Mutex
+	lisConn       *net.UDPConn
 }
 
 var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
@@ -79,17 +81,50 @@ func (peer *NatPeer) runLoop() {
 
 			go peer.readingDigOut(conn, "[222222]")
 
-			go peer.digDig(locServer, app.Public)
+			ip, port, _ := nbsnet.SplitHostPort(app.Public)
+			target := &net.UDPAddr{
+				IP:   net.ParseIP(ip),
+				Port: int(port),
+			}
+			go func() {
+				for {
+					logger.Debug("write to applier's peer:->", target)
+					if _, err := peer.lisConn.WriteToUDP(data, target); err != nil {
+						panic(err)
+					}
+					time.Sleep(time.Second * 2)
+				}
+			}()
 
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
 			logger.Debug("dig confirmed:->", ack)
-			peer.startLock.Lock()
-			locAddr := peer.startConn.LocalAddr().String()
-			peer.startLock.Unlock()
+			//peer.startLock.Lock()
+			//locAddr := peer.startConn.LocalAddr().String()
+			//peer.startLock.Unlock()
 
-			go peer.digDig(locAddr, ack.Public)
+			go func() {
+				digMsg := &net_pb.NatMsg{
+					Typ: nbsnet.NatDigOut,
+					Seq: time.Now().Unix(),
+				}
+				data, _ := proto.Marshal(digMsg)
+				ip, port, _ := nbsnet.SplitHostPort(ack.Public)
+				target := &net.UDPAddr{
+					IP:   net.ParseIP(ip),
+					Port: int(port),
+				}
+				for {
+					logger.Debug("send direct from me:->", target, peer.startConn.LocalAddr().String())
+					if _, err := peer.startConn.WriteToUDP(data, target); err != nil {
+						panic(err)
+					}
+
+					time.Sleep(time.Second * 2)
+				}
+			}()
+
 		}
 	}
 }
@@ -133,11 +168,17 @@ func (peer *NatPeer) punchAHole(targetId string) {
 		logger.Debug(err)
 		return
 	}
+	sConn, err := shareport.ListenUDP("udp4", conn.LocalAddr().String())
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
+
 	peer.startLock.Lock()
-	peer.startConn = conn
+	peer.startConn = sConn
 	peer.startLock.Unlock()
 
-	go peer.readingDigOut(conn, "[111111]")
+	go peer.readingDigOut(sConn, "[111111]")
 
 	logger.Debug("tel peer I want to make a connection:->", nbsnet.ConnString(conn))
 }
@@ -161,6 +202,8 @@ func (peer *NatPeer) ListenServiceBehindNat() {
 	if err != nil {
 		panic(err)
 	}
+	peer.lisConn = conn
+	logger.Debug("listen at:->", peer.lisConn.LocalAddr().String())
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := conn.ReadFromUDP(buffer)
