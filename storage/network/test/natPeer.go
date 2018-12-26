@@ -145,14 +145,14 @@ func (peer *NatPeer) punchAHole(targetId string) {
 func (peer *NatPeer) readingDigOut(conn *net.UDPConn, socketId string) {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
-		n, err := conn.Read(buffer)
+		n, peerAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Error("reading dig out err:->", err)
 			return
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		logger.Infof("----%s-->get reading out message:%V->", socketId, msg)
+		logger.Infof("----%s-->get reading out message:%V->", socketId, peerAddr, msg)
 	}
 }
 
