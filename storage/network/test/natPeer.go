@@ -174,6 +174,10 @@ func (peer *NatPeer) readingDigOut(conn *net.UDPConn, socketId string) {
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
 		logger.Infof("----%s-->get reading out message:%s->", socketId, peerAddr, msg)
+
+		if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
+			panic(err)
+		}
 	}
 }
 
