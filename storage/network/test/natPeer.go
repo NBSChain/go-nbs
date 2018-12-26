@@ -175,9 +175,9 @@ func (peer *NatPeer) readingDigOut(conn *net.UDPConn, socketId string) {
 		proto.Unmarshal(buffer[:n], msg)
 		logger.Infof("----%s-->get reading out message:%s->", socketId, peerAddr, msg)
 
-		if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
-			panic(err)
-		}
+		//if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
+		//	panic(err)
+		//}
 	}
 }
 
@@ -198,7 +198,7 @@ func (peer *NatPeer) ListenService() {
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		logger.Debug("----listening service---hole punching success:->", peerAddr, msg)
+		logger.Warning("----listening service---hole punching success:->", peerAddr, msg)
 	}
 }
 
