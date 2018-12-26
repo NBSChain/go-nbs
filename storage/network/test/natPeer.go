@@ -64,7 +64,9 @@ func NewPeer() *NatPeer {
 	}
 	client.lisConn = conn
 	logger.Debug("listen at:->", client.lisConn.LocalAddr().String())
+
 	go client.ListenService()
+
 	locStr := client.lisConn.LocalAddr().String()
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
@@ -80,6 +82,25 @@ func NewPeer() *NatPeer {
 			logger.Error("get all my ips err:->", err)
 			continue
 		}
+		conn.SetDeadline(time.Now().Add(time.Second * 2))
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		if err != nil {
+			logger.Error("get ip err:->", err)
+			continue
+		}
+
+		msg := &net_pb.NatMsg{}
+		proto.Unmarshal(buffer[:n], msg)
+
+		if msg.KeepAlive == nil {
+			logger.Error("this is not my want:->", msg, peerAddr)
+			continue
+		}
+
+		pubHost := msg.KeepAlive.PubAddr
+		ip, _, _ := nbsnet.SplitHostPort(pubHost)
+		client.allMyHosts[ip] = struct{}{}
 	}
 
 	return client
@@ -243,16 +264,16 @@ func (peer *NatPeer) ListenService() {
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
 		logger.Debug("----listening service---hole punching success:->", peerAddr, msg)
-		switch msg.Typ {
-		case nbsnet.NatKeepAlive:
-			ka := msg.KeepAlive
-			ip, _, _ := nbsnet.SplitHostPort(ka.PubAddr)
-			peer.hostLock.Lock()
-			peer.allMyHosts[ip] = struct{}{}
-			peer.hostLock.Unlock()
-		default:
-			logger.Warning("maybe success:--->")
-		}
+		//switch msg.Typ {
+		//case nbsnet.NatKeepAlive:
+		//	ka := msg.KeepAlive
+		//	ip, _, _ := nbsnet.SplitHostPort(ka.PubAddr)
+		//	peer.hostLock.Lock()
+		//	peer.allMyHosts[ip] = struct{}{}
+		//	peer.hostLock.Unlock()
+		//default:
+		//	logger.Warning("maybe success:--->")
+		//}
 	}
 }
 
@@ -372,7 +393,6 @@ func natTool() {
 
 		go client.sendKA()
 		go client.runLoop()
-		go client.ListenService()
 
 		if len(os.Args) == 4 {
 			client.punchAHole(os.Args[3])
