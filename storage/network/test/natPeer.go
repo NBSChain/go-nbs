@@ -75,6 +75,7 @@ func (peer *NatPeer) runLoop() {
 			if _, err := peer.lisConn.WriteToUDP(data, natHelpServer); err != nil {
 				panic(err)
 			}
+			go peer.udpKA(peer.lisConn)
 
 			go peer.dididididid(peer.lisConn, app.Public)
 
@@ -155,6 +156,7 @@ func (peer *NatPeer) punchAHole(targetId string) {
 	peer.startConn = sConn
 	peer.startLock.Unlock()
 
+	go peer.udpKA(sConn)
 	go peer.readingDigOut(sConn, "[111111]")
 
 	logger.Debug("tel peer I want to make a connection:->", sConn.LocalAddr().String())
