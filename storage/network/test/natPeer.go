@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -62,10 +63,7 @@ func NewPeer() *NatPeer {
 	if err != nil {
 		panic(err)
 	}
-	client.lisConn = conn
-	logger.Debug("listen at:->", client.lisConn.LocalAddr().String())
-
-	go client.ListenService()
+	logger.Debug("listen at:->", conn.LocalAddr().String())
 
 	locStr := client.lisConn.LocalAddr().String()
 	request := &net_pb.NatMsg{
@@ -102,6 +100,11 @@ func NewPeer() *NatPeer {
 		ip, _, _ := nbsnet.SplitHostPort(pubHost)
 		client.allMyHosts[ip] = struct{}{}
 	}
+
+	conn.SetDeadline(nat.NoTimeOut)
+	client.lisConn = conn
+
+	go client.ListenService()
 
 	return client
 }
