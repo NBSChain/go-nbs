@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -101,7 +100,7 @@ func (peer *NatPeer) dididididid(conn *net.UDPConn, public string) {
 	}
 
 	for {
-		logger.Debug("send direct from me:->", target, peer.startConn.LocalAddr().String())
+		logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
 		if _, err := conn.WriteToUDP(data, target); err != nil {
 			panic(err)
 		}
@@ -196,23 +195,17 @@ func (peer *NatPeer) ListenService() {
 	}
 }
 
-func (peer *NatPeer) digDig(fromHost, targetHost string) {
-
-	conn, err := shareport.DialUDP("udp4", fromHost, targetHost)
-	if err != nil {
-		panic(err)
-	}
-	go peer.readingDigOut(conn, "[333333]")
+func (peer *NatPeer) udpKA(conn *net.UDPConn) {
 
 	digMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatDigOut,
+		Typ: nbsnet.NatBlankKA,
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
 
 	for {
-		logger.Debug("dig a hole on peer's nat server:->", nbsnet.ConnString(conn))
-		if _, err := conn.Write(data); err != nil {
+		logger.Debug("udp ka:->")
+		if _, err := conn.WriteToUDP(data, natHelpServer); err != nil {
 			panic(err)
 		}
 		time.Sleep(time.Second * 2)

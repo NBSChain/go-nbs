@@ -93,6 +93,9 @@ func (s *NatServer) HoleDigger() {
 				panic(err)
 			}
 			logger.Debug("forward confirm :->", ack.Public)
+
+		case nbsnet.NatBlankKA:
+			logger.Debug("get udp ka:->", peerAddr)
 		}
 
 		s.cacheLock.Unlock()
