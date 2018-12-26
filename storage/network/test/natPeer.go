@@ -65,7 +65,7 @@ func NewPeer() *NatPeer {
 	}
 	logger.Debug("listen at:->", conn.LocalAddr().String())
 
-	locStr := client.lisConn.LocalAddr().String()
+	locStr := conn.LocalAddr().String()
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatKeepAlive,
 		KeepAlive: &net_pb.KeepAlive{
@@ -84,7 +84,7 @@ func NewPeer() *NatPeer {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, peerAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			logger.Error("get ip err:->", err)
+			logger.Error("get ip err:->", err, addr.String())
 			continue
 		}
 
@@ -98,6 +98,7 @@ func NewPeer() *NatPeer {
 
 		pubHost := msg.KeepAlive.PubAddr
 		ip, _, _ := nbsnet.SplitHostPort(pubHost)
+		logger.Debug("get ip success:->", ip)
 		client.allMyHosts[ip] = struct{}{}
 	}
 
