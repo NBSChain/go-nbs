@@ -96,9 +96,9 @@ func (s *NatServer) HoleDigger() {
 
 		case nbsnet.NatBlankKA:
 			logger.Debug("get udp ka:->", peerAddr)
-			if _, err := s.HoleHelper.WriteToUDP(buffer[:n], peerAddr); err != nil {
-				panic(err)
-			}
+			//if _, err := s.HoleHelper.WriteToUDP(buffer[:n], peerAddr); err != nil {
+			//	panic(err)
+			//}
 		}
 
 		s.cacheLock.Unlock()
