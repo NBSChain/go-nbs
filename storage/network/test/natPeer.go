@@ -211,7 +211,7 @@ func (peer *NatPeer) udpKA(conn *net.UDPConn) {
 	data, _ := proto.Marshal(digMsg)
 
 	for {
-		logger.Debug("udp ka:->")
+		logger.Debug("udp ka:->", conn.LocalAddr().String())
 		if _, err := conn.WriteToUDP(data, natHelpServer); err != nil {
 			panic(err)
 		}
