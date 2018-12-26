@@ -23,11 +23,11 @@ type NatPeer struct {
 	lisConn       *net.UDPConn
 }
 
-var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
-var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("52.8.190.235")}
+//var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
+//var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("52.8.190.235")}
 
-//var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("103.45.98.72")}
-//var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.72")}
+var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("103.45.98.72")}
+var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.72")}
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("192.168.103.101")}
 //var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("192.168.103.101")}
