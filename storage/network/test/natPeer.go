@@ -138,23 +138,22 @@ func (peer *NatPeer) dididididid(conn *net.UDPConn, public string, allIps []stri
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
+	for {
+		for _, ip := range allIps {
 
-	for _, ip := range allIps {
+			_, port, _ := nbsnet.SplitHostPort(public)
+			target := &net.UDPAddr{
+				IP:   net.ParseIP(ip),
+				Port: int(port),
+			}
 
-		_, port, _ := nbsnet.SplitHostPort(public)
-		target := &net.UDPAddr{
-			IP:   net.ParseIP(ip),
-			Port: int(port),
-		}
-
-		for {
 			logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
 			if _, err := conn.WriteToUDP(data, target); err != nil {
 				panic(err)
 			}
-
-			time.Sleep(time.Second * 2)
 		}
+
+		time.Sleep(time.Second * 2)
 	}
 }
 
