@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type NatPeer struct {
 	ctrlChannel *net.TCPConn
 	startConn   *net.UDPConn
 	lisConn     *net.UDPConn
+	hostLock    sync.Mutex
 	allMyHosts  map[string]struct{}
 }
 
@@ -100,9 +102,11 @@ func (peer *NatPeer) runLoop() {
 			logger.Debug("receive dig application:->", app)
 
 			ips := make([]string, 0)
+			peer.hostLock.Lock()
 			for ip := range peer.allMyHosts {
 				ips = append(ips, ip)
 			}
+			peer.hostLock.Unlock()
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
@@ -177,9 +181,11 @@ func (peer *NatPeer) sendKA() {
 
 func (peer *NatPeer) punchAHole(targetId string) {
 	ips := make([]string, 0)
+	peer.hostLock.Lock()
 	for ip := range peer.allMyHosts {
 		ips = append(ips, ip)
 	}
+	peer.hostLock.Unlock()
 	msg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigApply,
 		DigApply: &net_pb.DigApply{
@@ -242,7 +248,9 @@ func (peer *NatPeer) ListenService() {
 		case nbsnet.NatKeepAlive:
 			ka := msg.KeepAlive
 			ip, _, _ := nbsnet.SplitHostPort(ka.PubAddr)
+			peer.hostLock.Lock()
 			peer.allMyHosts[ip] = struct{}{}
+			peer.hostLock.Unlock()
 		default:
 			logger.Warning("maybe success:--->")
 		}
