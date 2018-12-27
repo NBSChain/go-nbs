@@ -214,7 +214,8 @@ func (peer *NatPeer) runLoop() {
 func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPConn) {
 	conn, err := shareport.DialUDP("udp4", fromAddr, toAddr)
 	if err != nil {
-		panic(err)
+		logger.Warning("dial up a bad conn:->", toAddr)
+		return
 	}
 	msg := net_pb.NatMsg{
 		Typ: nbsnet.NatBlankKA,
