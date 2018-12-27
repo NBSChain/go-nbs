@@ -9,6 +9,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/golang/protobuf/proto"
 	"net"
 	"time"
 )
