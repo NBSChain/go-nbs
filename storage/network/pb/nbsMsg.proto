@@ -38,3 +38,9 @@ enum MsgType {
     GspInnerBase    = 2500;
     GspEnd          = 2999;
 }
+
+enum NetWorkType{
+    SigIpSigPort = 0;
+    MulIpSigPort = 1;
+    MultiPort    = 2;
+}

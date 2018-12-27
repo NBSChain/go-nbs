@@ -4,6 +4,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -17,21 +18,15 @@ var logger = utils.GetLogInstance()
 
 const CtrlMsgPort = 8001
 const HoleHelpPort = 8002
-const (
-	SigIpSigPort int = 1
-	SigIpMulPort int = 1 << 1
-	MulIpSigPort int = 1 << 2
-	MulIpMulPort     = SigIpMulPort + MulIpSigPort
-)
 
 type NatPeer struct {
-	peerID      string
+	peerID string
+	sync.Mutex
 	ctrlChannel *net.TCPConn
-	startConn   *net.UDPConn
+	holeConn    *net.UDPConn
 	lisConn     *net.UDPConn
-	hostLock    sync.Mutex
-	allMyHosts  map[string]struct{}
-	netType     int
+	allMyHosts  []string
+	netType     net_pb.NetWorkType
 }
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
@@ -61,12 +56,10 @@ func NewPeer() *NatPeer {
 	client := &NatPeer{
 		ctrlChannel: c1.(*net.TCPConn),
 		peerID:      os.Args[2],
-		allMyHosts:  make(map[string]struct{}),
+		allMyHosts:  make([]string, 0),
 	}
 
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: 7001,
-	})
+	conn, err := shareport.ListenUDP("udp4", locServer)
 	if err != nil {
 		panic(err)
 	}
@@ -118,20 +111,16 @@ func NewPeer() *NatPeer {
 		panic("too small server to contact")
 	}
 
-	var networkType = SigIpSigPort
-	if len(hosts) == 1 {
-		if len(ports) == 1 {
-			networkType = SigIpSigPort
-		} else {
-			networkType = SigIpMulPort
+	var networkType = nbsnet.SigIpSigPort
+	if len(ports) == 1 {
+		if len(hosts) > 1 {
+			networkType = nbsnet.MulIpSigPort
+			for ip := range hosts {
+				client.allMyHosts = append(client.allMyHosts, ip)
+			}
 		}
 	} else {
-		if len(ports) == 1 {
-			networkType = MulIpSigPort
-		} else {
-			networkType = MulIpMulPort
-		}
-		client.allMyHosts = hosts
+		panic("we don't support multi port model right now.")
 	}
 
 	client.netType = networkType
@@ -158,65 +147,142 @@ func (peer *NatPeer) runLoop() {
 			logger.Debug("get keep alive ack:->", msg)
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
-			logger.Debug("receive dig application:->", app)
 
-			ips := make([]string, 0)
-			peer.hostLock.Lock()
-			for ip := range peer.allMyHosts {
-				ips = append(ips, ip)
+			conn, err := shareport.DialUDP("udp4", locServer, natHelpServer.String())
+			if err != nil {
+				panic(err)
 			}
-			peer.hostLock.Unlock()
+			go peer.digOut(conn, app)
+
+			logger.Debug("receive dig application:->", app)
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
 				DigConfirm: &net_pb.DigConfirm{
 					TargetId: app.FromId,
-					AllIps:   ips,
+					NtType:   peer.netType,
+					PubIps:   peer.allMyHosts,
 				},
 			}
 
 			data, _ := proto.Marshal(ack)
-			if _, err := peer.lisConn.WriteToUDP(data, natHelpServer); err != nil {
+
+			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
-			go peer.udpKA(peer.lisConn)
-
-			go peer.dididididid(peer.lisConn, app.Public, app.AllIps)
-
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
 			logger.Debug("dig confirmed:->", ack)
 
-			go peer.dididididid(peer.startConn, ack.Public, ack.AllIps)
+			peer.Lock()
+			digAddr := peer.holeConn.LocalAddr().(*net.UDPAddr)
+			peer.Unlock()
+
+			ip, port, _ := nbsnet.SplitHostPort(ack.Public)
+			if ack.NtType == nbsnet.SigIpSigPort {
+				conn, err := net.DialUDP("udp4", digAddr, &net.UDPAddr{
+					IP:   net.ParseIP(ip),
+					Port: int(port),
+				})
+				if err != nil {
+					panic(err)
+				}
+
+				go peer.blankKeepAlvie(conn)
+				continue
+			}
+
+			ch := make(chan *net.UDPConn)
+			for _, ips := range ack.PubIps {
+
+				go peer.findTheWrightConn(digAddr, &net.UDPAddr{
+					IP:   net.ParseIP(ips),
+					Port: int(port),
+				}, ch)
+			}
+
+			select {
+			case c := <-ch:
+				go peer.blankKeepAlvie(c)
+
+			case <-time.After(time.Second * 4):
+				panic("failed dial up:->")
+			}
 		}
 	}
 }
-func (peer *NatPeer) dididididid(conn *net.UDPConn, public string, allIps []string) {
+
+func (peer *NatPeer) findTheWrightConn(fromAddr, toAddr *net.UDPAddr, ch chan *net.UDPConn) {
+	conn, err := net.DialUDP("udp4", fromAddr, toAddr)
+	if err != nil {
+		panic(err)
+	}
+	msg := net_pb.NatMsg{
+		Typ: nbsnet.NatBlankKA,
+		Seq: time.Now().Unix(),
+	}
+	data, _ := proto.Marshal(&msg)
+	if _, err := conn.Write(data); err != nil {
+		logger.Warning("find a bad conn:->", toAddr.String())
+		return
+	}
+
+}
+
+func (peer *NatPeer) blankKeepAlvie(conn *net.UDPConn) {
+
+	for {
+		msg := net_pb.NatMsg{
+			Typ: nbsnet.NatBlankKA,
+			Seq: time.Now().Unix(),
+		}
+		data, _ := proto.Marshal(&msg)
+
+		if _, err := conn.Write(data); err != nil {
+			panic(err)
+		}
+		logger.Debug("blank keep alive for hole tunnel:->", nbsnet.ConnString(conn))
+		time.Sleep(time.Second * 5)
+	}
+}
+func (peer *NatPeer) digOut(conn *net.UDPConn, apply *net_pb.DigApply) {
+	defer conn.Close()
+
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
+	ip, port, _ := nbsnet.SplitHostPort(apply.Public)
 
-	_, port, _ := nbsnet.SplitHostPort(public)
-
-	for {
-		for _, ip := range allIps {
-
-			target := &net.UDPAddr{
-				IP:   net.ParseIP(ip),
-				Port: int(port),
-			}
-
-			logger.Debug("send direct from me:->", target, conn.LocalAddr().String())
+	if apply.NtType == nbsnet.SigIpSigPort {
+		target := &net.UDPAddr{
+			IP:   net.ParseIP(ip),
+			Port: int(port),
+		}
+		for i := 0; i < 3; i++ {
+			logger.Debug("signal ip send direct from me:->", target, conn.LocalAddr().String())
 			if _, err := conn.WriteToUDP(data, target); err != nil {
 				panic(err)
 			}
 		}
-
-		time.Sleep(time.Second * 2)
+		return
 	}
 
+	for _, ip := range apply.PubIps {
+
+		target := &net.UDPAddr{
+			IP:   net.ParseIP(ip),
+			Port: int(port),
+		}
+
+		for i := 0; i < 3; i++ {
+			logger.Debug("multi ips send direct from me:->", target, conn.LocalAddr().String())
+			if _, err := conn.WriteToUDP(data, target); err != nil {
+				panic(err)
+			}
+		}
+	}
 }
 
 func (peer *NatPeer) sendKA() {
@@ -241,57 +307,31 @@ func (peer *NatPeer) sendKA() {
 }
 
 func (peer *NatPeer) punchAHole(targetId string) {
-	ips := make([]string, 0)
-	peer.hostLock.Lock()
-	for ip := range peer.allMyHosts {
-		ips = append(ips, ip)
-	}
-	peer.hostLock.Unlock()
+
 	msg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigApply,
 		DigApply: &net_pb.DigApply{
 			TargetId: targetId,
 			FromId:   peer.peerID,
-			AllIps:   ips,
+			NtType:   peer.netType,
+			PubIps:   peer.allMyHosts,
 		},
 	}
-	requestData, _ := proto.Marshal(msg)
 
-	sConn, err := net.ListenUDP("udp4", &net.UDPAddr{
-		Port: 11223,
-	})
+	requestData, _ := proto.Marshal(msg)
+	sConn, err := net.DialUDP("udp4", nil, natHelpServer)
 	if err != nil {
 		panic(err)
 	}
 
-	if _, err := sConn.WriteToUDP(requestData, natHelpServer); err != nil {
+	if _, err := sConn.Write(requestData); err != nil {
 		panic(err)
 	}
+	peer.Lock()
+	peer.holeConn = sConn
+	peer.Unlock()
 
-	peer.startConn = sConn
-
-	go peer.udpKA(sConn)
-	go peer.readingDigOut(sConn, "[111111]")
-
-	logger.Debug("tel peer I want to make a connection:->", sConn.LocalAddr().String())
-}
-
-func (peer *NatPeer) readingDigOut(conn *net.UDPConn, socketId string) {
-	for {
-		buffer := make([]byte, utils.NormalReadBuffer)
-		n, peerAddr, err := conn.ReadFromUDP(buffer)
-		if err != nil {
-			logger.Error("reading dig out err:->", err)
-			return
-		}
-		msg := &net_pb.NatMsg{}
-		proto.Unmarshal(buffer[:n], msg)
-		logger.Infof("----%s-->get reading out message:%s->", socketId, peerAddr, msg)
-
-		//if _, err := conn.WriteToUDP(buffer[:n], peerAddr); err != nil {
-		//	panic(err)
-		//}
-	}
+	logger.Debug("tel peer I want to make a connection:->", nbsnet.ConnString(sConn))
 }
 
 func (peer *NatPeer) ListenService() {
@@ -304,34 +344,10 @@ func (peer *NatPeer) ListenService() {
 		}
 		msg := &net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], msg)
-		logger.Debug("----listening service---hole punching success:->", peerAddr, msg)
-		//switch msg.Typ {
-		//case nbsnet.NatKeepAlive:
-		//	ka := msg.KeepAlive
-		//	ip, _, _ := nbsnet.SplitHostPort(ka.PubAddr)
-		//	peer.hostLock.Lock()
-		//	peer.allMyHosts[ip] = struct{}{}
-		//	peer.hostLock.Unlock()
-		//default:
-		//	logger.Warning("maybe success:--->")
-		//}
-	}
-}
-
-func (peer *NatPeer) udpKA(conn *net.UDPConn) {
-
-	digMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatBlankKA,
-		Seq: time.Now().Unix(),
-	}
-	data, _ := proto.Marshal(digMsg)
-
-	for {
-		logger.Debug("udp ka:->", conn.LocalAddr().String())
-		if _, err := conn.WriteToUDP(data, natHelpServer); err != nil {
+		logger.Debug("----listening service--punching success:->", peerAddr, msg)
+		if _, err := peer.lisConn.WriteToUDP(buffer[:n], peerAddr); err != nil {
 			panic(err)
 		}
-		time.Sleep(time.Second * 2)
 	}
 }
 

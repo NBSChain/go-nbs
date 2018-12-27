@@ -38,4 +38,8 @@ const (
 	GspUpdateIVWei = net_pb.MsgType_GspUpdateIVWei
 	GspInnerBase   = net_pb.MsgType_GspInnerBase
 	GspEnd         = net_pb.MsgType_GspEnd
+
+	SigIpSigPort = net_pb.NetWorkType_SigIpSigPort
+	MulIpSigPort = net_pb.NetWorkType_MulIpSigPort
+	MultiPort    = net_pb.NetWorkType_MultiPort
 )

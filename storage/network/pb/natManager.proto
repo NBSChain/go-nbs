@@ -31,14 +31,16 @@ message DigApply {
     int32 TargetPort    = 4;
     string SessionId    = 5;
     string FromId       = 6;
-    repeated string AllIps = 7;
+    NetWorkType ntType  = 7;
+    repeated string PubIps = 8;
 }
 
 message DigConfirm {
     string Public       = 1;
     string sessionId    = 2;
     string targetId     = 3;
-    repeated string AllIps = 4;
+    NetWorkType ntType  = 4;
+    repeated string PubIps = 5;
 }
 
 message KeepAlive {
