@@ -194,7 +194,10 @@ func (peer *NatPeer) runLoop() {
 				continue
 			}
 
-			c := peer.dialMultiTarget(ack, port, digAddr.String())
+			c, err := peer.dialMultiTarget(ack, port, digAddr)
+			if err != nil {
+				panic(err)
+			}
 			go peer.blankKeepAlvie(c)
 
 		}

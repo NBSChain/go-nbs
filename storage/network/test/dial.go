@@ -13,12 +13,12 @@ import (
 	"time"
 )
 
-func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAddr string) (*net.UDPConn, error) {
+func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAddr *net.UDPAddr) (*net.UDPConn, error) {
 
 	ch := make(chan *net.UDPConn)
 	for _, ips := range ack.PubIps {
 		tarAddr := nbsnet.JoinHostPort(ips, port)
-		go peer.findTheRightConn(localAddr, tarAddr, ch)
+		go peer.findTheRightConn(localAddr.String(), tarAddr, ch)
 	}
 
 	select {

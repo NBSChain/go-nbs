@@ -1,6 +1,15 @@
 package main
 
-func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAddr string) (*net.UDPConn, error) {
+import (
+	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
+	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/utils"
+	"github.com/golang/protobuf/proto"
+	"net"
+	"time"
+)
+
+func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAddr *net.UDPAddr) (*net.UDPConn, error) {
 	lis, err := net.ListenUDP("udp", localAddr)
 	if err != nil {
 		return nil, err
@@ -28,7 +37,7 @@ func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAd
 	}
 	logger.Info("get answer:->", n, p)
 	lis.Close()
-	conn, err := net.DialUDP("udp", digAddr, p)
+	conn, err := net.DialUDP("udp", localAddr, p)
 	if err != nil {
 		return nil, err
 	}
