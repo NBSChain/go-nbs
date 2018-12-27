@@ -17,6 +17,12 @@ var logger = utils.GetLogInstance()
 
 const CtrlMsgPort = 8001
 const HoleHelpPort = 8002
+const (
+	SigIpSigPort int = 1
+	SigIpMulPort int = 1 << 1
+	MulIpSigPort int = 1 << 2
+	MulIpMulPort     = SigIpMulPort + MulIpSigPort
+)
 
 type NatPeer struct {
 	peerID      string
@@ -25,6 +31,7 @@ type NatPeer struct {
 	lisConn     *net.UDPConn
 	hostLock    sync.Mutex
 	allMyHosts  map[string]struct{}
+	netType     int
 }
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("52.8.190.235")}
@@ -75,6 +82,8 @@ func NewPeer() *NatPeer {
 	}
 	requestData, _ := proto.Marshal(request)
 
+	hosts, ports := make(map[string]struct{}, 0), make(map[string]struct{}, 0)
+	successHlepers := 0
 	for _, addr := range ipHelpers {
 		conn.SetDeadline(time.Now().Add(time.Second * 2))
 
@@ -98,11 +107,35 @@ func NewPeer() *NatPeer {
 		}
 
 		pubHost := msg.KeepAlive.PubAddr
-		ip, port, _ := nbsnet.SplitHostPort(pubHost)
+		ip, port, _ := net.SplitHostPort(pubHost)
 		logger.Debug("get ip success:->", ip, port)
-		client.allMyHosts[ip] = struct{}{}
+		hosts[ip] = struct{}{}
+		ports[port] = struct{}{}
+		successHlepers++
 	}
 
+	if successHlepers < 2 {
+		panic("too small server to contact")
+	}
+
+	var networkType = SigIpSigPort
+	if len(hosts) == 1 {
+		if len(ports) == 1 {
+			networkType = SigIpSigPort
+		} else {
+			networkType = SigIpMulPort
+		}
+	} else {
+		if len(ports) == 1 {
+			networkType = MulIpSigPort
+		} else {
+			networkType = MulIpMulPort
+		}
+		client.allMyHosts = hosts
+	}
+
+	client.netType = networkType
+	logger.Info("network type:->", networkType)
 	conn.SetDeadline(nat.NoTimeOut)
 	client.lisConn = conn
 
