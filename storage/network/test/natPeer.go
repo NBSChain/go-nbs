@@ -198,13 +198,13 @@ func (peer *NatPeer) runLoop() {
 			for _, ips := range ack.PubIps {
 				tarAddr := nbsnet.JoinHostPort(ips, port)
 				go peer.findTheRightConn(digAddr.String(), tarAddr, ch)
-				close(ch)
 			}
 
 			select {
 			case c := <-ch:
 				logger.Debug("pick out the right conn and send ka:->", nbsnet.ConnString(c))
 				go peer.blankKeepAlvie(c)
+				close(ch)
 
 			case <-time.After(time.Second * 6):
 				panic("failed dial up:->")
