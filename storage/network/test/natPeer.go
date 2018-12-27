@@ -148,12 +148,12 @@ func (peer *NatPeer) runLoop() {
 		case nbsnet.NatDigApply:
 			app := msg.DigApply
 
+			go peer.digOut(app)
+
 			conn, err := shareport.DialUDP("udp4", locServer, natHelpServer.String())
 			if err != nil {
 				panic(err)
 			}
-			go peer.digOut(conn, app)
-
 			logger.Debug("receive dig application:->", app)
 			ack := &net_pb.NatMsg{
 				Typ: nbsnet.NatDigConfirm,
@@ -169,6 +169,7 @@ func (peer *NatPeer) runLoop() {
 			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
+			conn.Close()
 		case nbsnet.NatDigConfirm:
 
 			ack := msg.DigConfirm
@@ -187,22 +188,20 @@ func (peer *NatPeer) runLoop() {
 				if err != nil {
 					panic(err)
 				}
-
+				logger.Debug("dial up success and send ka")
 				go peer.blankKeepAlvie(conn)
 				continue
 			}
 
 			ch := make(chan *net.UDPConn)
 			for _, ips := range ack.PubIps {
-
-				go peer.findTheWrightConn(digAddr, &net.UDPAddr{
-					IP:   net.ParseIP(ips),
-					Port: int(port),
-				}, ch)
+				tarAddr := nbsnet.JoinHostPort(ips, port)
+				go peer.findTheRightConn(digAddr.String(), tarAddr, ch)
 			}
 
 			select {
 			case c := <-ch:
+				logger.Debug("pick out the right conn and send ka:->", nbsnet.ConnString(c))
 				go peer.blankKeepAlvie(c)
 
 			case <-time.After(time.Second * 4):
@@ -212,8 +211,8 @@ func (peer *NatPeer) runLoop() {
 	}
 }
 
-func (peer *NatPeer) findTheWrightConn(fromAddr, toAddr *net.UDPAddr, ch chan *net.UDPConn) {
-	conn, err := net.DialUDP("udp4", fromAddr, toAddr)
+func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPConn) {
+	conn, err := shareport.DialUDP("udp4", fromAddr, toAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -223,10 +222,18 @@ func (peer *NatPeer) findTheWrightConn(fromAddr, toAddr *net.UDPAddr, ch chan *n
 	}
 	data, _ := proto.Marshal(&msg)
 	if _, err := conn.Write(data); err != nil {
-		logger.Warning("find a bad conn:->", toAddr.String())
+		logger.Warning("find a bad conn:->", toAddr)
+		return
+	}
+	conn.SetDeadline(time.Now().Add(time.Second * 3))
+	buffer := make([]byte, utils.NormalReadBuffer)
+	if _, err := conn.Read(buffer); err != nil {
+		logger.Warning("this conn failed:->", nbsnet.ConnString(conn), err)
 		return
 	}
 
+	conn.SetDeadline(nat.NoTimeOut)
+	ch <- conn
 }
 
 func (peer *NatPeer) blankKeepAlvie(conn *net.UDPConn) {
@@ -245,43 +252,50 @@ func (peer *NatPeer) blankKeepAlvie(conn *net.UDPConn) {
 		time.Sleep(time.Second * 5)
 	}
 }
-func (peer *NatPeer) digOut(conn *net.UDPConn, apply *net_pb.DigApply) {
-	defer conn.Close()
+func (peer *NatPeer) digOut(apply *net_pb.DigApply) {
 
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
 		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
-	ip, port, _ := nbsnet.SplitHostPort(apply.Public)
 
 	if apply.NtType == nbsnet.SigIpSigPort {
-		target := &net.UDPAddr{
-			IP:   net.ParseIP(ip),
-			Port: int(port),
+
+		conn, err := shareport.DialUDP("udp4", locServer, apply.Public)
+		if err != nil {
+			panic(err)
 		}
+
 		for i := 0; i < 3; i++ {
-			logger.Debug("signal ip send direct from me:->", target, conn.LocalAddr().String())
-			if _, err := conn.WriteToUDP(data, target); err != nil {
+			logger.Debug("signal ip send direct from me:->", nbsnet.ConnString(conn))
+			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
 		}
+
+		conn.Close()
 		return
 	}
 
+	_, port, _ := nbsnet.SplitHostPort(apply.Public)
 	for _, ip := range apply.PubIps {
 
-		target := &net.UDPAddr{
-			IP:   net.ParseIP(ip),
-			Port: int(port),
+		target := nbsnet.JoinHostPort(ip, port)
+
+		conn, err := shareport.DialUDP("udp4", locServer, target)
+		if err != nil {
+			logger.Warning("dig out for multi ip target err:->", err)
+			continue
 		}
 
 		for i := 0; i < 3; i++ {
-			logger.Debug("multi ips send direct from me:->", target, conn.LocalAddr().String())
-			if _, err := conn.WriteToUDP(data, target); err != nil {
+			logger.Debug("multi ips send direct from me:->", nbsnet.ConnString(conn))
+			if _, err := conn.Write(data); err != nil {
 				panic(err)
 			}
 		}
+		conn.Close()
 	}
 }
 
