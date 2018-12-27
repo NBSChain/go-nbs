@@ -194,53 +194,11 @@ func (peer *NatPeer) runLoop() {
 				continue
 			}
 
-			ch := make(chan *net.UDPConn)
-			for _, ips := range ack.PubIps {
-				tarAddr := nbsnet.JoinHostPort(ips, port)
-				go peer.findTheRightConn(digAddr.String(), tarAddr, ch)
-			}
+			c := peer.dialMultiTarget(ack, port, digAddr.String())
+			go peer.blankKeepAlvie(c)
 
-			select {
-			case c := <-ch:
-				logger.Debug("pick out the right conn and send ka:->", nbsnet.ConnString(c))
-				go peer.blankKeepAlvie(c)
-				close(ch)
-
-			case <-time.After(time.Second * 6):
-				panic("failed dial up:->")
-			}
 		}
 	}
-}
-
-func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPConn) {
-	conn, err := shareport.DialUDP("udp4", fromAddr, toAddr)
-	if err != nil {
-		logger.Warning("dial up a bad conn:->", toAddr)
-		return
-	}
-	msg := net_pb.NatMsg{
-		Typ: nbsnet.NatBlankKA,
-		Seq: time.Now().Unix(),
-	}
-	data, _ := proto.Marshal(&msg)
-	if _, err := conn.Write(data); err != nil {
-		logger.Warning("find a bad conn:->", toAddr)
-		return
-	}
-
-	logger.Debug("write to one channel:->", toAddr)
-
-	conn.SetDeadline(time.Now().Add(time.Second * 6))
-	buffer := make([]byte, utils.NormalReadBuffer)
-	if _, err := conn.Read(buffer); err != nil {
-		logger.Warning("this conn failed:->", nbsnet.ConnString(conn), err)
-		return
-	}
-	logger.Debug("get response from the channel:->", toAddr)
-
-	conn.SetDeadline(nat.NoTimeOut)
-	ch <- conn
 }
 
 func (peer *NatPeer) blankKeepAlvie(conn *net.UDPConn) {
