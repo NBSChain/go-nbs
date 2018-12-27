@@ -78,7 +78,7 @@ func NewPeer() *NatPeer {
 	hosts, ports := make(map[string]struct{}, 0), make(map[string]struct{}, 0)
 	successHlepers := 0
 	for _, addr := range ipHelpers {
-		conn.SetDeadline(time.Now().Add(time.Second * 2))
+		conn.SetDeadline(time.Now().Add(time.Second * 4))
 
 		if _, err := conn.WriteToUDP(requestData, addr); err != nil {
 			logger.Error("get all my ips err:->", err)
@@ -205,7 +205,7 @@ func (peer *NatPeer) runLoop() {
 				logger.Debug("pick out the right conn and send ka:->", nbsnet.ConnString(c))
 				go peer.blankKeepAlvie(c)
 
-			case <-time.After(time.Second * 4):
+			case <-time.After(time.Second * 6):
 				panic("failed dial up:->")
 			}
 		}
@@ -227,7 +227,7 @@ func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPC
 		logger.Warning("find a bad conn:->", toAddr)
 		return
 	}
-	conn.SetDeadline(time.Now().Add(time.Second * 3))
+	conn.SetDeadline(time.Now().Add(time.Second * 6))
 	buffer := make([]byte, utils.NormalReadBuffer)
 	if _, err := conn.Read(buffer); err != nil {
 		logger.Warning("this conn failed:->", nbsnet.ConnString(conn), err)
