@@ -177,6 +177,7 @@ func (peer *NatPeer) runLoop() {
 
 			peer.Lock()
 			digAddr := peer.holeConn.LocalAddr().(*net.UDPAddr)
+			peer.holeConn.Close()
 			peer.Unlock()
 
 			ip, port, _ := nbsnet.SplitHostPort(ack.Public)
