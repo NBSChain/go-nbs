@@ -198,6 +198,7 @@ func (peer *NatPeer) runLoop() {
 			for _, ips := range ack.PubIps {
 				tarAddr := nbsnet.JoinHostPort(ips, port)
 				go peer.findTheRightConn(digAddr.String(), tarAddr, ch)
+				close(ch)
 			}
 
 			select {
@@ -227,12 +228,16 @@ func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPC
 		logger.Warning("find a bad conn:->", toAddr)
 		return
 	}
+
+	logger.Debug("write to one channel:->", toAddr)
+
 	conn.SetDeadline(time.Now().Add(time.Second * 6))
 	buffer := make([]byte, utils.NormalReadBuffer)
 	if _, err := conn.Read(buffer); err != nil {
 		logger.Warning("this conn failed:->", nbsnet.ConnString(conn), err)
 		return
 	}
+	logger.Debug("get response from the channel:->", toAddr)
 
 	conn.SetDeadline(nat.NoTimeOut)
 	ch <- conn
