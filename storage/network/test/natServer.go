@@ -136,7 +136,7 @@ func (s *NatServer) processMsg(msg *net_pb.NatMsg, conn *net.TCPConn) error {
 	switch msg.Typ {
 	case nbsnet.NatKeepAlive:
 		ack := msg.KeepAlive
-		nodeId := ack.NodeId
+		nodeId := msg.NetID
 		item, ok := s.natCache[nodeId]
 		if !ok {
 			item := &HostBehindNat{

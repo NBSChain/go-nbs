@@ -25,12 +25,12 @@ type nbsNetwork struct {
 }
 
 const (
-	HolePunchTimeOut    = 6 * time.Second
-	DigTryTimesOnNat    = 3
-	ConnectionSeparator = "-"
+	HolePunchTimeOut = 4 * time.Second
+	DigTryTimesOnNat = 3
 )
 
 var (
+	NTSportErr = fmt.Errorf("can't support this wetwork type to punch hole")
 	CmdTaskErr = fmt.Errorf("convert cmmond task parameter err:->")
 	once       sync.Once
 	instance   *nbsNetwork
@@ -104,9 +104,8 @@ func (network *nbsNetwork) DialUDP(nt string, localAddr, remoteAddr *net.UDPAddr
 	if err != nil {
 		return nil, err
 	}
-	Sid := c.LocalAddr().String() + ConnectionSeparator + remoteAddr.String()
-	conn := nbsnet.NewNbsConn(c, Sid, nbsnet.CTypeNormal)
-	return conn, nil
+
+	return nbsnet.NewNbsConn(c, nbsnet.CTypeNormal), nil
 }
 
 func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.NbsUdpConn, error) {
@@ -129,8 +128,7 @@ func (network *nbsNetwork) ListenUDP(nt string, lAddr *net.UDPAddr) (*nbsnet.Nbs
 		cType = nbsnet.CTypeNatListen
 	}
 
-	conn := nbsnet.NewNbsConn(realConn, lAddr.String(), cType)
-	return conn, nil
+	return nbsnet.NewNbsConn(realConn, cType), nil
 }
 
 //TODO::bind local port and ip can't support right now.
@@ -144,29 +142,27 @@ func (network *nbsNetwork) Connect(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) 
 		return network.makeDirectConn(lAddr, rAddr, toPort)
 	}
 
-	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
-
 	var realConn *net.UDPConn
 	var connType nbsnet.ConnType
 	if lAddr.CanServe {
 		connType = nbsnet.CTypeNatSimplex
-		c, err := network.invitePeerBehindNat(lAddr, rAddr, sessionID, toPort)
+		c, err := network.invitePeerBehindNat(lAddr, rAddr, toPort)
 		if err != nil {
 			return nil, err
 		}
 		realConn = c
 	} else {
-		c, t, err := network.punchANatHole(lAddr, rAddr, sessionID, toPort)
+		c, t, err := network.punchANatHole(lAddr, rAddr, toPort)
 		if err != nil {
 			return nil, err
 		}
 		connType = t
 		realConn = c
 	}
-	conn := nbsnet.NewNbsConn(realConn, sessionID, connType)
-	return conn, nil
+	return nbsnet.NewNbsConn(realConn, connType), nil
 }
 func (network *nbsNetwork) runLoop() {
+
 	network.cmdRouter[nat.CMDAnswerInvite] = network.answerInvite
 	network.cmdRouter[nat.CMDDigOut] = network.digOut
 	network.cmdRouter[nat.CMDDigSetup] = network.makeAHole
@@ -187,7 +183,7 @@ func (network *nbsNetwork) runLoop() {
 		case <-network.natClient.Ctx.Done():
 			logger.Warning("nat client process quit")
 			network.natServer.CanServe = make(chan bool)
-			go network.setupNatClient(network.networkId)
+			go network.setupNatClient(network.networkId) //TODO::check
 			return
 		}
 	}

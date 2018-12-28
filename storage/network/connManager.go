@@ -36,8 +36,6 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 		return nil, fmt.Errorf("remote address can't be nil")
 	}
 
-	var sessionID = lAddr.NetworkId + ConnectionSeparator + rAddr.NetworkId
-
 	rUdpAddr := &net.UDPAddr{
 		Port: toPort,
 		IP:   net.ParseIP(rAddr.PubIp),
@@ -53,21 +51,24 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 	}
 
 	logger.Debug("Step6:make direct connection:->", c.LocalAddr().String(), c.RemoteAddr().String())
-	conn := nbsnet.NewNbsConn(c, sessionID, nbsnet.CTypeNormal)
-	return conn, nil
+	return nbsnet.NewNbsConn(c, nbsnet.CTypeNormal), nil
 }
 
-func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
-	connId string, toPort int) (*net.UDPConn, error) {
+func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*net.UDPConn, error) {
 
-	ip, port, _ := nbsnet.SplitHostPort(rAddr.NatServer)
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP(ip),
-		Port: int(port),
+		IP:   net.ParseIP(rAddr.NatServerIP),
+		Port: utils.GetConfig().HolePuncherPort,
 	})
+
 	if err != nil {
 		return nil, err
 	}
+
+	connChan := &connTask{
+		udpConn: make(chan *net.UDPConn),
+	}
+	go network.waitInviteAnswer(conn.LocalAddr().(*net.UDPAddr), connChan)
 
 	localHost := conn.LocalAddr().String()
 	_, fromPort, _ := net.SplitHostPort(localHost)
@@ -75,26 +76,20 @@ func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	req := &net_pb.NatMsg{
 		Typ: nbsnet.NatReversInvite,
 		ReverseInvite: &net_pb.ReverseInvite{
-			SessionId: connId,
-			PubIp:     lAddr.PubIp,
-			ToPort:    int32(toPort),
-			PeerId:    rAddr.NetworkId,
-			FromPort:  fromPort,
+			PubIp:    lAddr.PubIp,
+			ToPort:   int32(toPort),
+			PeerId:   rAddr.NetworkId,
+			FromPort: fromPort,
 		},
 	}
+
 	reqData, _ := proto.Marshal(req)
 	if _, err := conn.Write(reqData); err != nil {
 		conn.Close()
 		return nil, err
 	}
-
-	connChan := &connTask{
-		udpConn: make(chan *net.UDPConn),
-	}
-
-	logger.Debug("Step1: notify applier's nat server:", req)
+	logger.Debug("Step1: notify applier's nat server:->", req)
 	conn.Close()
-	go network.waitInviteAnswer(conn.LocalAddr().(*net.UDPAddr), connId, connChan)
 
 	select {
 	case conn := <-connChan.udpConn:
@@ -108,18 +103,17 @@ func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr,
 	}
 }
 
-func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
-	connId string, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
+func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*net.UDPConn, nbsnet.ConnType, error) {
 
 	priConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
 
-	go network.directDialInPriNet(lAddr, rAddr, priConnTask, toPort, connId)
+	go network.directDialInPriNet(lAddr, rAddr, priConnTask, toPort)
 	pubConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
-	go network.noticePeerAndWait(lAddr, rAddr, connId, toPort, pubConnTask)
+	go network.noticePeerAndWait(lAddr, rAddr, toPort, pubConnTask)
 
 	var pubFail, priFail bool
 	for i := 2; i > 0; i-- {
@@ -144,14 +138,14 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr,
 					return nil, 0, pubConnTask.err
 				}
 			}
-		case <-time.After(HolePunchTimeOut):
+		case <-time.After(HolePunchTimeOut / 2):
 			return nil, 0, fmt.Errorf("time out")
 		}
 	}
 	return nil, 0, fmt.Errorf("time out")
 }
 
-func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string, task *connTask) {
+func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, task *connTask) {
 
 	lisConn, err := net.ListenUDP("udp4", host)
 	if err != nil {
@@ -175,6 +169,7 @@ func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string,
 	lisConn.Close()
 
 	logger.Debug("step5-1: get data:->", res)
+
 	conn, err := net.DialUDP("udp4", host, peerAddr)
 	if err != nil {
 		task.finish(err, nil)
@@ -185,48 +180,17 @@ func (network *nbsNetwork) waitInviteAnswer(host *net.UDPAddr, sessionID string,
 	logger.Debug("Step5: get answer and make a connection:->", host, peerAddr.String())
 }
 
-func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *connTask, toPort int, sessionID string) {
+func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, task *connTask, toPort int) {
 
-	pingConn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
-		IP:   net.ParseIP(rAddr.PriIp),
-		Port: utils.GetConfig().NatPrivatePingPort,
-	})
+	priHost := nbsnet.JoinHostPort(rAddr.PriIp, int32(utils.GetConfig().NatPrivatePingPort))
+	pingConn, err := net.DialTimeout("tcp4", priHost, HolePunchTimeOut/2)
 	defer pingConn.Close()
-
 	if err != nil {
 		logger.Info("Step 1-1:can't dial by private network.", err)
 		task.finish(err, nil)
 		return
 	}
-
-	logger.Debug("ping nat client port in private network:->", nbsnet.ConnString(pingConn))
-
-	holeMsg := &net_pb.NatMsg{
-		Typ: nbsnet.NatPriDigSyn,
-		Seq: time.Now().Unix(),
-	}
-
-	data, _ := proto.Marshal(holeMsg)
-	if _, err := pingConn.Write(data); err != nil {
-		logger.Info("Step 1-3:private network dig dig failed:->", err)
-		task.finish(err, nil)
-		return
-	}
-
-	if err := pingConn.SetReadDeadline(time.Now().Add(HolePunchTimeOut / 2)); err != nil {
-		logger.Info("set ping time err:->", err)
-		task.finish(err, nil)
-		return
-	}
-
-	buffer := make([]byte, utils.NormalReadBuffer)
-	_, peerAddr, err := pingConn.ReadFromUDP(buffer)
-	if err != nil {
-		logger.Warning("Step 1-5:private network reading dig result err:->", err)
-		task.finish(err, nil)
-		return
-	}
-	logger.Info("create connection in private network success:->", peerAddr)
+	logger.Debug("create connection in private network success:->", nbsnet.ConnString(pingConn))
 
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP: net.ParseIP(lAddr.PriIp),
@@ -254,14 +218,12 @@ func (network *nbsNetwork) answerInvite(params interface{}) error {
 	defer conn.Close()
 
 	req := &net_pb.NatMsg{
-		Typ: nbsnet.NatReversInviteAck,
-		ReverseInviteAck: &net_pb.ReverseInviteAck{
-			SessionId: invite.SessionId,
-		},
+		Typ:   nbsnet.NatReversInviteAck,
+		NetID: network.networkId,
 	}
 
 	reqData, _ := proto.Marshal(req)
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String(), invite.SessionId)
+	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String())
 
 	for i := 0; i < DigTryTimesOnNat; i++ {
 		if _, err := conn.Write(reqData); err != nil {

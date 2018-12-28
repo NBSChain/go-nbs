@@ -18,7 +18,7 @@ enum MsgType {
     NatDigConfirm       = 1012;
     NatBootAnswer       = 1013;
     NatBlankKA          = 1014;
-    NatInnerBase        = 1500;
+    NatCheckNetType     = 1015;
     NatEnd              = 1999;
     GspBase         = 2000;
     GspSub          = 2001;

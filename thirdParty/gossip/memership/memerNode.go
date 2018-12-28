@@ -179,9 +179,11 @@ func (node *MemManager) receivingCmd() {
 
 		task := &gossipTask{
 			taskType: int(message.MsgType),
+			msgTask: msgTask{
+				msg:  message,
+				addr: peerAddr,
+			},
 		}
-		task.msg = message
-		task.addr = peerAddr
 		node.taskQueue <- task
 
 		select {

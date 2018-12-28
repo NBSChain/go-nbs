@@ -9,20 +9,9 @@ import (
 	"time"
 )
 
-type msgTask struct {
-	addr    *net.UDPAddr
-	message *net_pb.NatMsg
-}
+func (nat *Server) checkWhoIsHe(conn *net.TCPConn, request *net_pb.BootReg, nodeId string) error {
 
-func (nat *Server) checkWhoIsHe(t *Task) error {
-	task, ok := t.Param.(*msgTask)
-	if !ok {
-		return MsgConvertErr
-	}
-
-	peerAddr := task.addr
-	request := task.message.BootReg
-
+	peerAddr := conn.LocalAddr().(*net.TCPAddr)
 	response := &net_pb.BootAnswer{}
 	response.PublicIp = peerAddr.IP.String()
 	response.PublicPort = int32(peerAddr.Port)
@@ -30,12 +19,12 @@ func (nat *Server) checkWhoIsHe(t *Task) error {
 	if peerAddr.IP.Equal(net.ParseIP(request.PrivateIp)) {
 		response.NatType = net_pb.NatType_NoNatDevice
 	} else if peerAddr.Port == int(request.PrivatePort) {
-		if nat.networkId == request.NodeId {
+		if nat.networkId == nodeId {
 			logger.Info("yeah, I'm the bootstrap node:->")
 			response.NatType = net_pb.NatType_CanBeNatServer
 		} else {
 			response.NatType = net_pb.NatType_ToBeChecked
-			go nat.ping(peerAddr, request.NodeId)
+			go nat.ping(peerAddr, nodeId)
 		}
 	} else {
 		response.NatType = net_pb.NatType_BehindNat
@@ -45,182 +34,78 @@ func (nat *Server) checkWhoIsHe(t *Task) error {
 		Typ:        nbsnet.NatBootAnswer,
 		BootAnswer: response,
 	}
-	data, _ := proto.Marshal(pbRes)
-	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
+
+	resData, _ := proto.Marshal(pbRes)
+	if _, err := conn.Write(resData); err != nil {
 		return err
 	}
 
 	if response.NatType == net_pb.NatType_BehindNat ||
 		response.NatType == net_pb.NatType_ToBeChecked {
+
 		priAddr := nbsnet.JoinHostPort(request.PrivateIp, request.PrivatePort)
 		item := &HostBehindNat{
 			UpdateTIme: time.Now(),
-			PubAddr:    peerAddr,
+			Conn:       conn,
 			PriAddr:    priAddr,
 		}
-		nat.cache[request.NodeId] = item
-	}
 
+		nat.cacheLock.Lock()
+		defer nat.cacheLock.Unlock()
+		nat.cache[nodeId] = item
+	}
 	return nil
 }
 
-func (nat *Server) updateKATime(t *Task) error {
-	task, ok := t.Param.(*msgTask)
-	if !ok {
-		return MsgConvertErr
-	}
-
-	req := task.message.KeepAlive
-	peerAddr := task.addr
-	nodeId := req.NodeId
+func (nat *Server) updateKATime(req *net_pb.KeepAlive, conn *net.TCPConn, nodeId string) error {
 
 	nat.cacheLock.Lock()
 	defer nat.cacheLock.Unlock()
 
 	if item, ok := nat.cache[nodeId]; ok {
 		item.UpdateTIme = time.Now()
-		item.PubAddr = peerAddr
+		item.Conn = conn
 		item.PriAddr = req.PriAddr
 	} else {
 		item := &HostBehindNat{
 			UpdateTIme: time.Now(),
-			PubAddr:    peerAddr,
+			Conn:       conn,
 			PriAddr:    req.PriAddr,
 		}
 		nat.cache[nodeId] = item
 	}
 
 	res := &net_pb.NatMsg{
-		Typ: nbsnet.NatKeepAlive,
+		Typ:   nbsnet.NatKeepAlive,
+		NetID: nodeId,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId:  req.NodeId,
-			PubAddr: peerAddr.String(),
+			PubAddr: conn.RemoteAddr().String(),
 		},
 	}
-	data, _ := proto.Marshal(res)
-	if _, err := nat.sysNatServer.WriteToUDP(data, peerAddr); err != nil {
+
+	resData, _ := proto.Marshal(res)
+	if _, err := conn.Write(resData); err != nil {
+		delete(nat.cache, nodeId)
 		return err
 	}
 
 	return nil
 }
 
-func (nat *Server) forwardInvite(t *Task) error {
-	task, ok := t.Param.(*msgTask)
-	if !ok {
-		return MsgConvertErr
-	}
+func (nat *Server) ping(peerAddr *net.TCPAddr, reqNodeId string) {
 
-	invite := task.message.ReverseInvite
-
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	item, ok := nat.cache[invite.PeerId]
-	if !ok {
-		return NotFundErr
-	}
-
-	logger.Debug("Step3: forward notification to applier:", item.PubAddr)
-	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, item.PubAddr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (nat *Server) forwardDigApply(t *Task) error {
-	task, ok := t.Param.(*msgTask)
-	if !ok {
-		return MsgConvertErr
-	}
-
-	req := task.message.DigApply
-	peerAddr := task.addr
-
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	toItem, ok := nat.cache[req.TargetId]
-	if !ok {
-		return NotFundErr
-	}
-
-	req.Public = peerAddr.String()
-
-	logger.Info("hole punch step2-2 forward dig out message:->", task.message.DigApply.Public)
-	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, toItem.PubAddr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (nat *Server) forwardDigConfirm(t *Task) error {
-	task, ok := t.Param.(*msgTask)
-	if !ok {
-		return MsgConvertErr
-	}
-
-	ack := task.message.DigConfirm
-	addr := task.addr
-
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	item, ok := nat.cache[ack.TargetId]
-	if !ok {
-		return NotFundErr
-	}
-
-	ack.Public = addr.String()
-
-	logger.Info("hole punch step2-6 forward dig out notification:->", task.message.DigConfirm.Public)
-	data, _ := proto.Marshal(task.message)
-	if _, err := nat.sysNatServer.WriteToUDP(data, item.PubAddr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (nat *Server) pong(t *Task) error {
-	nat.CanServe <- true
-	logger.Debug("I can serve as in public network.")
-	return nil
-}
-
-func (nat *Server) checkKaTunnel(t *Task) error {
-
-	nat.cacheLock.Lock()
-	defer nat.cacheLock.Unlock()
-
-	currentClock := time.Now()
-	for nodeId, item := range nat.cache {
-		if currentClock.Sub(item.UpdateTIme) > KeepAliveTimeOut {
-			logger.Warning("the nat item has been removed:->", nodeId)
-			delete(nat.cache, nodeId)
-		}
-	}
-	return nil
-}
-
-func (nat *Server) ping(peerAddr *net.UDPAddr, reqNodeId string) {
-
-	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{
+	peerServer := &net.TCPAddr{
 		IP:   peerAddr.IP,
 		Port: utils.GetConfig().NatServerPort,
-	})
+	}
+	conn, err := net.DialTimeout("udp4", peerServer.String(), BootStrapTimeOut)
 
 	if err != nil {
 		logger.Warning("ping DialUDP err:->", err)
 		return
 	}
-	defer conn.Close()
 
-	if err := conn.SetDeadline(time.Now().Add(BootStrapTimeOut / 2)); err != nil {
-		logger.Warning("ping SetDeadline err:->", err)
-		return
-	}
+	defer conn.Close()
 
 	request := &net_pb.NatMsg{
 		Typ: nbsnet.NatPingPong,
@@ -228,9 +113,10 @@ func (nat *Server) ping(peerAddr *net.UDPAddr, reqNodeId string) {
 			Ping:  nat.networkId,
 			Pong:  reqNodeId,
 			Nonce: "", //TODO::security nonce
-			TTL:   1,  //time to live
+			TTL:   1,
 		},
 	}
+
 	reqData, _ := proto.Marshal(request)
 	if _, err := conn.Write(reqData); err != nil {
 		logger.Warning("ping Write err:->", err)

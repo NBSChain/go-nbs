@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
-	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/gogo/protobuf/proto"
 	"net"
 	"sync"
@@ -25,16 +24,15 @@ const (
 )
 
 type NbsUdpConn struct {
-	SessionID string
-	CType     ConnType
-	ctx       context.Context
-	close     context.CancelFunc
-	RealConn  *net.UDPConn
+	CType    ConnType
+	ctx      context.Context
+	close    context.CancelFunc
+	RealConn *net.UDPConn
 	sync.Mutex
 	updateTime time.Time
 }
 
-func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType) *NbsUdpConn {
+func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &NbsUdpConn{
@@ -42,7 +40,6 @@ func NewNbsConn(c *net.UDPConn, sessionID string, cType ConnType) *NbsUdpConn {
 		close:      cancel,
 		RealConn:   c,
 		CType:      cType,
-		SessionID:  sessionID,
 		updateTime: time.Now(),
 	}
 
@@ -76,9 +73,6 @@ func (conn *NbsUdpConn) keepAlive() error {
 	now := time.Now()
 	msg := &net_pb.NatMsg{
 		Typ: NatBlankKA,
-		ConnKA: &net_pb.ConnKA{
-			KA: crypto.MD5SS(now.String()),
-		},
 	}
 	data, _ := proto.Marshal(msg)
 

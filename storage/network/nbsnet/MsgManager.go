@@ -18,7 +18,7 @@ const (
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
 	NatBlankKA         = net_pb.MsgType_NatBlankKA
-	DrainOutOldKa      = net_pb.MsgType_NatInnerBase + 1
+	NatCheckNetType    = net_pb.MsgType_NatCheckNetType
 	NatEnd             = net_pb.MsgType_NatEnd
 
 	GspBase        = net_pb.MsgType_GspBase

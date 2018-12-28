@@ -37,8 +37,7 @@ var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.
 
 var ipHelpers = []*net.UDPAddr{&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("103.45.98.72")},
 	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("52.8.190.235")},
-	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("47.52.172.234")},
-	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("13.57.241.215")}}
+	&net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("47.52.172.234")}}
 
 //var natServer = &net.TCPAddr{Port: CtrlMsgPort, IP: net.ParseIP("192.168.103.101")}
 //var natHelpServer = &net.UDPAddr{Port: HoleHelpPort, IP: net.ParseIP("192.168.103.101")}
@@ -67,9 +66,9 @@ func NewPeer() *NatPeer {
 
 	locStr := conn.LocalAddr().String()
 	request := &net_pb.NatMsg{
-		Typ: nbsnet.NatKeepAlive,
+		Typ:   nbsnet.NatKeepAlive,
+		NetID: client.peerID,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId:  client.peerID,
 			PriAddr: locStr,
 		},
 	}
@@ -209,7 +208,6 @@ func (peer *NatPeer) blankKeepAlvie(conn *net.UDPConn) {
 	for {
 		msg := net_pb.NatMsg{
 			Typ: nbsnet.NatBlankKA,
-			Seq: time.Now().Unix(),
 		}
 		data, _ := proto.Marshal(&msg)
 
@@ -224,7 +222,6 @@ func (peer *NatPeer) digOut(apply *net_pb.DigApply) {
 
 	digMsg := &net_pb.NatMsg{
 		Typ: nbsnet.NatDigOut,
-		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(digMsg)
 
@@ -270,9 +267,9 @@ func (peer *NatPeer) digOut(apply *net_pb.DigApply) {
 func (peer *NatPeer) sendKA() {
 	locStr := peer.ctrlChannel.LocalAddr().String()
 	request := &net_pb.NatMsg{
-		Typ: nbsnet.NatKeepAlive,
+		Typ:   nbsnet.NatKeepAlive,
+		NetID: peer.peerID,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId:  peer.peerID,
 			PriAddr: locStr,
 		},
 	}
@@ -378,9 +375,9 @@ func (p *Probe) Probe() {
 
 	locStr := conn.LocalAddr().String()
 	request := &net_pb.NatMsg{
-		Typ: nbsnet.NatKeepAlive,
+		Typ:   nbsnet.NatKeepAlive,
+		NetID: "xxx---probe---XXX",
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId:  "xxx---probe---XXX",
 			PriAddr: locStr,
 		},
 	}

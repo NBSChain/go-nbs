@@ -8,6 +8,7 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -16,7 +17,7 @@ var NoTimeOut = time.Time{}
 const (
 	KeepAliveTime    = time.Second * 100
 	KeepAliveTimeOut = KeepAliveTime * 3
-	BootStrapTimeOut = time.Second * 4
+	BootStrapTimeOut = time.Second * 2
 	CmdTaskPoolSize  = 100
 	CMDAnswerInvite  = 1
 	CMDDigOut        = 2
@@ -36,7 +37,7 @@ type Client struct {
 	Ctx        context.Context
 	closeCtx   context.CancelFunc
 	NatAddr    *nbsnet.NbsUdpAddr
-	natConn    *net.UDPConn
+	CtrlConn   *net.TCPConn
 	updateTime time.Time
 	CmdTask    chan *ClientCmd
 }
@@ -59,9 +60,12 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 	if c.CanServer {
 		return c, nil
 	}
+
+	c.checkMyNetType()
+
 	go c.keepAlive()
 	go c.readCmd()
-	go c.listenPing()
+	go c.listenInPrivate()
 	return c, nil
 
 }
@@ -70,24 +74,21 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 
 	for _, serverIp := range utils.GetConfig().NatServerIP {
 
-		natServerAddr := &net.UDPAddr{
-			IP:   net.ParseIP(serverIp),
-			Port: utils.GetConfig().NatServerPort,
-		}
-		conn, err := net.DialUDP("udp4", nil, natServerAddr)
+		natServerAddr := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().NatServerPort))
+
+		cc, err := net.DialTimeout("tcp4", natServerAddr, BootStrapTimeOut)
 		if err != nil {
 			logger.Warning("this nat server is done:->", serverIp, err)
 			continue
 		}
-		conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
-
+		conn := cc.(*net.TCPConn)
 		localAddr := conn.LocalAddr().String()
+
 		host, port, err := nbsnet.SplitHostPort(localAddr)
 		request := &net_pb.NatMsg{
-			Typ: nbsnet.NatBootReg,
-			Seq: time.Now().Unix(),
+			Typ:   nbsnet.NatBootReg,
+			NetID: c.networkId,
 			BootReg: &net_pb.BootReg{
-				NodeId:      c.networkId,
 				PrivateIp:   host,
 				PrivatePort: port,
 			},
@@ -117,29 +118,27 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 
 		ack := response.BootAnswer
 		c.NatAddr = &nbsnet.NbsUdpAddr{
-			NetworkId: c.networkId,
-			CanServe:  nbsnet.CanServe(ack.NatType),
-			NatServer: natServerAddr.String(),
-			PubIp:     ack.PublicIp,
-			NatIp:     ack.PublicIp,
-			NatPort:   ack.PublicPort,
-			PriIp:     host,
+			NetworkId:   c.networkId,
+			CanServe:    nbsnet.CanServe(ack.NatType),
+			NatServerIP: serverIp,
+			PubIp:       ack.PublicIp,
+			NatIp:       ack.PublicIp,
+			NatPort:     ack.PublicPort,
+			PriIp:       host,
 		}
 
 		if ack.NatType == net_pb.NatType_ToBeChecked {
-
 			select {
 			case can := <-canSever:
 				c.NatAddr.CanServe = can
 
-			case <-time.After(BootStrapTimeOut / 2):
+			case <-time.After(BootStrapTimeOut):
 				c.NatAddr.CanServe = false
 			}
 		}
-		c.CanServer = c.NatAddr.CanServe
-		conn.SetDeadline(NoTimeOut)
-		c.natConn = conn
 
+		c.CanServer = c.NatAddr.CanServe
+		c.CtrlConn = conn
 		logger.Info("create client success for network:->\n", c.NatAddr.String())
 		return nil
 	}
@@ -154,10 +153,10 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 *************************************************************************/
 func (c *Client) keepAlive() {
 	request := &net_pb.NatMsg{
-		Typ: nbsnet.NatKeepAlive,
+		Typ:   nbsnet.NatKeepAlive,
+		NetID: c.networkId,
 		KeepAlive: &net_pb.KeepAlive{
-			NodeId:  c.networkId,
-			PriAddr: c.natConn.LocalAddr().String(),
+			PriAddr: c.CtrlConn.LocalAddr().String(),
 		},
 	}
 	requestData, _ := proto.Marshal(request)
@@ -165,7 +164,7 @@ func (c *Client) keepAlive() {
 		select {
 		case <-time.After(KeepAliveTime):
 
-			if no, err := c.natConn.Write(requestData); err != nil || no == 0 {
+			if no, err := c.CtrlConn.Write(requestData); err != nil || no == 0 {
 				logger.Warning("failed to send keep alive channel message:", err)
 				c.closeCtx()
 				return
@@ -186,7 +185,6 @@ func (c *Client) keepAlive() {
 *************************************************************************/
 
 func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
-	//TODO::
 	c.updateTime = time.Now()
 	oriNatInfo := nbsnet.JoinHostPort(c.NatAddr.NatIp, c.NatAddr.NatPort)
 	if oriNatInfo != alive.PubAddr {
@@ -197,47 +195,37 @@ func (c *Client) refreshNatInfo(alive *net_pb.KeepAlive) {
 	}
 }
 
-func (c *Client) listenPing() {
+func (c *Client) listenInPrivate() {
 
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{
+	lisConn, err := net.ListenTCP("tcp4", &net.TCPAddr{
 		Port: utils.GetConfig().NatPrivatePingPort,
 	})
 	if err != nil {
 		logger.Warning("start private nat ping listener err:->", err)
 		return
 	}
-	defer conn.Close()
+
+	defer lisConn.Close()
 	defer logger.Warning("ping listening exit")
 
+	res := &net_pb.NatMsg{
+		Typ:   nbsnet.NatPriDigAck,
+		NetID: c.networkId,
+	}
+	data, _ := proto.Marshal(res)
+
 	for {
-		buffer := make([]byte, utils.NormalReadBuffer)
-		n, peerAddr, err := conn.ReadFromUDP(buffer)
+		conn, err := lisConn.AcceptTCP()
 		if err != nil {
 			logger.Warning("private ping listener err:->", err)
 			c.closeCtx()
 			return
 		}
-		msg := &net_pb.NatMsg{}
-		if err := proto.Unmarshal(buffer[:n], msg); err != nil {
-			logger.Warning("private ping listener Unmarshal failed:->", err)
-			continue
-		}
-		logger.Debug("is it a private nat dig apply?:->", msg, peerAddr)
-		if msg.Typ != nbsnet.NatPriDigSyn {
-			logger.Warning("I can't this message:->", msg.Typ)
-			continue
-		}
 
-		res := &net_pb.NatMsg{
-			Typ: nbsnet.NatPriDigAck,
-			Seq: msg.Seq + 1,
+		if _, err := conn.Write(data); err != nil {
+			logger.Warning("write response err:->", err)
 		}
-		data, _ := proto.Marshal(res)
-		if _, err := conn.WriteToUDP(data, peerAddr); err != nil {
-			logger.Warning("answer NatPriDigAck err:->", err)
-			c.closeCtx()
-			return
-		}
+		conn.Close()
 
 		select {
 		case <-c.Ctx.Done():
@@ -254,7 +242,7 @@ func (c *Client) readCmd() {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 
-		n, err := c.natConn.Read(buffer)
+		n, err := c.CtrlConn.Read(buffer)
 		if err != nil {
 			logger.Warning("reading keep alive message failed:->", err)
 			c.closeCtx()
@@ -272,21 +260,25 @@ func (c *Client) readCmd() {
 		switch msg.Typ {
 		case nbsnet.NatKeepAlive:
 			c.refreshNatInfo(msg.KeepAlive)
+
 		case nbsnet.NatReversInvite:
 			c.CmdTask <- &ClientCmd{
 				CmdType: CMDAnswerInvite,
 				Params:  msg.ReverseInvite,
 			}
+
 		case nbsnet.NatDigApply:
 			c.CmdTask <- &ClientCmd{
 				CmdType: CMDDigOut,
 				Params:  msg.DigApply,
 			}
+
 		case nbsnet.NatDigConfirm:
 			c.CmdTask <- &ClientCmd{
 				CmdType: CMDDigSetup,
 				Params:  msg.DigConfirm,
 			}
+
 		}
 
 		select {
@@ -296,4 +288,75 @@ func (c *Client) readCmd() {
 		default:
 		}
 	}
+}
+
+func (c *Client) checkMyNetType() {
+
+	logger.Debug("start to check nat type ")
+
+	msg := net_pb.NatMsg{
+		Typ: nbsnet.NatCheckNetType,
+	}
+	data, _ := proto.Marshal(&msg)
+
+	ips, ports := make(map[string]struct{}), make(map[string]struct{})
+	var waitGrp sync.WaitGroup
+
+	for _, serverIp := range utils.GetConfig().NatServerIP {
+		serverHost := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().NatServerPort))
+		waitGrp.Add(1)
+
+		go func() {
+			defer waitGrp.Done()
+			conn, err := net.DialTimeout("tcp4", serverHost, BootStrapTimeOut)
+			if err != nil {
+				logger.Warning("this nat server is down:->", err, serverHost)
+				return
+			}
+			defer conn.Close()
+			logger.Debug("request from server:->", serverHost)
+
+			if _, err := conn.Write(data); err != nil {
+				logger.Warning("write check nat type msg err:->", err)
+				return
+			}
+
+			buffer := make([]byte, utils.NormalReadBuffer)
+			n, err := conn.Read(buffer)
+			if err != nil {
+				logger.Warning("read nat type err:->", err)
+				return
+			}
+
+			res := net_pb.NatMsg{}
+			proto.Unmarshal(buffer[:n], &res)
+
+			logger.Debug("get nat response:->", res)
+
+			ack := res.NatTypeCheck
+			ips[ack.Ip] = struct{}{}
+			ports[ack.Port] = struct{}{}
+		}()
+	}
+
+	waitGrp.Wait()
+
+	c.NatAddr.AllPubIps = make([]string, 0)
+	var networkType = nbsnet.SigIpSigPort
+
+	if len(ports) == 1 {
+		if len(ips) > 1 {
+			networkType = nbsnet.MulIpSigPort
+			for ip := range ips {
+				c.NatAddr.AllPubIps = append(c.NatAddr.AllPubIps, ip)
+			}
+		}
+
+	} else {
+		logger.Warning("we don't support multi port model to punch hole.")
+		networkType = nbsnet.MultiPort
+	}
+
+	c.NatAddr.NetType = networkType
+	logger.Debug("my network type:->", networkType, c.NatAddr.AllPubIps)
 }

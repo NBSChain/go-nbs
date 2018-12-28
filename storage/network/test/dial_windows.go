@@ -6,7 +6,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"time"
 )
 
 func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAddr *net.UDPAddr) (*net.UDPConn, error) {
@@ -16,7 +15,6 @@ func (peer *NatPeer) dialMultiTarget(ack *net_pb.DigConfirm, port int32, localAd
 	}
 	msg := net_pb.NatMsg{
 		Typ: nbsnet.NatBlankKA,
-		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(&msg)
 

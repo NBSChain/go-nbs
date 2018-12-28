@@ -226,7 +226,7 @@ func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
 
 	item := node.PartialView[task.msg.FromId]
 
-	if item.outAddr.NatServer != ack.Addr.NatServer {
+	if item.outAddr.NatServerIP != ack.Addr.NatServer { //TODO::check
 		item.outAddr = nbsnet.ConvertFromGossipAddr(ack.Addr)
 		logger.Warning("this item's nat server info changed:->", item.nodeId)
 		item.updateTime = time.Now()

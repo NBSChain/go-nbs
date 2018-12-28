@@ -19,6 +19,7 @@ type Configure struct {
 	SysTimeFormat      string
 	BootStrapPeers     []string
 	NatServerPort      int
+	HolePuncherPort    int
 	NatPrivatePingPort int
 	NatServerIP        []string
 	GossipBootStrapIP  []string
@@ -30,6 +31,7 @@ const (
 	cmdServicePort     = 10001
 	natServerPort      = 11001
 	natChanPriPingPort = 11002
+	holePuncherPort    = 11003
 	gossipCtrlPort     = 12001
 	NormalReadBuffer   = 1 << 11
 	AdditionalCopies   = 1
@@ -39,7 +41,7 @@ var (
 	natServerIP = []string{
 		"52.8.190.235",
 		"103.45.98.72",
-		//"13.57.241.215",
+		"103.45.98.72",
 		"192.168.103.97",
 		"192.168.103.101",
 	}
@@ -47,7 +49,7 @@ var (
 	gossipContracts = []string{
 		"103.45.98.72",
 		"52.8.190.235",
-		//"13.57.241.215",
+		"103.45.98.72",
 		"192.168.103.97",
 		"192.168.103.101",
 	}
@@ -95,6 +97,7 @@ func initConfig() *Configure {
 		BootStrapPeers:     defaultBootstrapAddresses,
 		NatServerPort:      natServerPort,
 		NatPrivatePingPort: natChanPriPingPort,
+		HolePuncherPort:    holePuncherPort,
 		NatServerIP:        natServerIP,
 		GossipBootStrapIP:  gossipContracts,
 		GossipCtrlPort:     gossipCtrlPort,

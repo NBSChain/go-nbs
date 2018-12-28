@@ -21,26 +21,17 @@ var (
 
 type HostBehindNat struct {
 	UpdateTIme time.Time
-	PubAddr    *net.UDPAddr
+	Conn       *net.TCPConn
 	PriAddr    string
 }
 
-type Task struct {
-	TypId  net_pb.MsgType
-	Param  interface{}
-	Result chan interface{}
-}
-
-type MsgProcess func(param *Task) error
-
 type Server struct {
-	sysNatServer *net.UDPConn
-	networkId    string
-	CanServe     chan bool
-	cacheLock    sync.Mutex
-	cache        map[string]*HostBehindNat
-	msgQueue     chan *Task
-	router       map[net_pb.MsgType]MsgProcess
+	sysNatServer  *net.TCPListener
+	holeDigHelper *net.UDPConn
+	networkId     string
+	CanServe      chan bool
+	cacheLock     sync.Mutex
+	cache         map[string]*HostBehindNat
 }
 
 func NewNatServer(networkId string) *Server {
@@ -48,100 +39,167 @@ func NewNatServer(networkId string) *Server {
 		networkId: networkId,
 		CanServe:  make(chan bool),
 		cache:     make(map[string]*HostBehindNat),
-		msgQueue:  make(chan *Task, MsgPoolSize),
-		router:    make(map[net_pb.MsgType]MsgProcess),
 	}
 
 	natObj.initService()
-	go natObj.receiveMsg()
-	go natObj.timer()
-	go natObj.runLoop()
+	go natObj.holeHelper()
+	go natObj.ctrlChServer()
 	return natObj
 }
 
 //TODO:: support ipv6 later.
 func (nat *Server) initService() {
 
-	natServer, err := net.ListenUDP("udp4", &net.UDPAddr{
+	natServer, err := net.ListenTCP("tcp4", &net.TCPAddr{
 		Port: utils.GetConfig().NatServerPort,
 	})
-
 	if err != nil {
-		logger.Panic("can't start nat sysNatServer.", err)
+		logger.Panic("can't start nat sysNatServer:->", err)
 	}
 	nat.sysNatServer = natServer
-	nat.router[nbsnet.NatBootReg] = nat.checkWhoIsHe
-	nat.router[nbsnet.NatKeepAlive] = nat.updateKATime
-	nat.router[nbsnet.NatReversInvite] = nat.forwardInvite
-	nat.router[nbsnet.NatDigApply] = nat.forwardDigApply
-	nat.router[nbsnet.NatDigConfirm] = nat.forwardDigConfirm
-	nat.router[nbsnet.NatPingPong] = nat.pong
-	nat.router[nbsnet.DrainOutOldKa] = nat.checkKaTunnel
+
+	h, err := net.ListenUDP("udp4", &net.UDPAddr{
+		Port: utils.GetConfig().HolePuncherPort,
+	})
+	if err != nil {
+		logger.Panic("can't start hole punch helper:->", err)
+	}
+	nat.holeDigHelper = h
 }
 
-func (nat *Server) receiveMsg() {
+func (nat *Server) ctrlChServer() {
 
 	logger.Info(">>>>>>Nat sysNatServer start to listen......")
 
 	for {
-		data := make([]byte, utils.NormalReadBuffer)
-
-		n, peerAddr, err := nat.sysNatServer.ReadFromUDP(data)
+		conn, err := nat.sysNatServer.AcceptTCP()
 		if err != nil {
-			logger.Warning("nat sysNatServer read udp data failed:", err)
+			logger.Warning("nat sysNatServer accept err:->", err)
+			continue
+		}
+		if err := conn.SetKeepAlive(true); err != nil {
+			logger.Warning("set keep alive err:->", err)
 			continue
 		}
 
-		request := &net_pb.NatMsg{}
-		if err := proto.Unmarshal(data[:n], request); err != nil {
-			logger.Warning("can't parse the nat message", err, peerAddr)
+		go nat.processCtrlMsg(conn)
+	}
+}
+
+func (nat *Server) forwardMsg(nodeId string, data []byte) error {
+
+	nat.cacheLock.Lock()
+	defer nat.cacheLock.Unlock()
+
+	item, ok := nat.cache[nodeId]
+	if !ok {
+		return NotFundErr
+	}
+	logger.Debug("Step3: forward notification to applier:", item.Conn.RemoteAddr())
+	if _, err := item.Conn.Write(data); err != nil {
+		delete(nat.cache, nodeId)
+	}
+	return nil
+}
+
+func (nat *Server) holeHelper() {
+
+	for {
+		buffer := make([]byte, utils.NormalReadBuffer)
+		n, peerAddr, err := nat.holeDigHelper.ReadFromUDP(buffer)
+		if err != nil {
+			logger.Error("this dig helper conn is bad:->", err)
+			return
+		}
+
+		msg := net_pb.NatMsg{}
+		proto.Unmarshal(buffer[:n], &msg)
+
+		switch msg.Typ {
+		case nbsnet.NatReversInvite:
+			invite := msg.ReverseInvite
+			err = nat.forwardMsg(invite.PeerId, buffer[:n])
+			logger.Info("forward reverse invite request:->", invite)
+
+		case nbsnet.NatDigApply:
+			req := msg.DigApply
+			req.Public = peerAddr.String()
+			data, _ := proto.Marshal(&msg)
+			err = nat.forwardMsg(req.TargetId, data)
+			logger.Info("hole punch step2-2 forward dig out message:->", req.Public)
+
+		case nbsnet.NatDigConfirm:
+			ack := msg.DigConfirm
+			ack.Public = peerAddr.String()
+			data, _ := proto.Marshal(&msg)
+			err = nat.forwardMsg(ack.TargetId, data)
+			logger.Info("hole punch step2-6 forward dig out notification:->", ack.Public)
+
+		}
+
+		if err != nil {
+			logger.Warning("failed to process dig msg:->", err)
+		}
+	}
+}
+
+func (nat *Server) processCtrlMsg(conn *net.TCPConn) {
+
+	defer conn.Close()
+
+	defer func() {
+		for nodeId, item := range nat.cache {
+			if item.Conn == conn {
+				delete(nat.cache, nodeId)
+			}
+		}
+	}()
+
+	for {
+		data := make([]byte, utils.NormalReadBuffer)
+		n, err := conn.Read(data)
+		if err != nil {
+			logger.Warning("read data from control channel err:->", err, conn.RemoteAddr().String())
+			return
+		}
+
+		msg := &net_pb.NatMsg{}
+		if err := proto.Unmarshal(data[:n], msg); err != nil {
+			logger.Warning("can't parse the nat message", err)
 			continue
 		}
 
-		logger.Debug("message:", request, peerAddr)
+		logger.Debug("control channel message:->", msg)
 
-		task := &Task{
-			TypId: request.Typ,
-			Param: &msgTask{
-				message: request,
-				addr:    peerAddr,
-			},
+		switch msg.Typ {
+
+		case nbsnet.NatBootReg:
+			err = nat.checkWhoIsHe(conn, msg.BootReg, msg.NetID)
+
+		case nbsnet.NatPingPong:
+			nat.CanServe <- true
+			logger.Debug("I can serve as in public network.")
+
+		case nbsnet.NatKeepAlive:
+			err = nat.updateKATime(msg.KeepAlive, conn, msg.NetID)
+
+		case nbsnet.NatCheckNetType:
+			req := msg.NatTypeCheck
+			req.Ip, req.Port, _ = net.SplitHostPort(conn.RemoteAddr().String())
+
+			data, _ := proto.Marshal(msg)
+			if _, err := conn.Write(data); err != nil {
+				logger.Warning("write back nat info err:->", err)
+			}
+
+			return
+
+		default:
+			logger.Warning("this msg can't be processed success->", msg)
 		}
 
-		nat.msgQueue <- task
-	}
-}
-
-func (nat *Server) runLoop() {
-
-	for {
-		select {
-
-		case task := <-nat.msgQueue:
-
-			p, ok := nat.router[task.TypId]
-			if !ok {
-				logger.Warning("unknown task type:->", task.TypId)
-				continue
-			}
-
-			if err := p(task); err != nil {
-				logger.Warning("process task err:->", err)
-				continue
-			}
-		}
-	}
-}
-
-func (nat *Server) timer() {
-
-	for {
-		select {
-		case <-time.After(KeepAliveTime):
-			task := &Task{
-				TypId: nbsnet.DrainOutOldKa,
-			}
-			nat.msgQueue <- task
+		if err != nil {
+			logger.Warning("control channel err :->", err)
 		}
 	}
 }

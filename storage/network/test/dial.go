@@ -41,7 +41,6 @@ func (peer *NatPeer) findTheRightConn(fromAddr, toAddr string, ch chan *net.UDPC
 	}
 	msg := net_pb.NatMsg{
 		Typ: nbsnet.NatBlankKA,
-		Seq: time.Now().Unix(),
 	}
 	data, _ := proto.Marshal(&msg)
 	if _, err := conn.Write(data); err != nil {

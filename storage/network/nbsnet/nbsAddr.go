@@ -10,13 +10,15 @@ import (
 
 //TODO:: refactoring this address setting.
 type NbsUdpAddr struct {
-	NetworkId string
-	CanServe  bool
-	NatServer string
-	NatIp     string
-	NatPort   int32
-	PubIp     string
-	PriIp     string
+	NetworkId   string
+	CanServe    bool
+	NetType     net_pb.NetWorkType
+	NatServerIP string
+	NatIp       string
+	NatPort     int32
+	PubIp       string
+	PriIp       string
+	AllPubIps   []string
 }
 
 func (addr *NbsUdpAddr) String() string {
@@ -29,7 +31,7 @@ func (addr *NbsUdpAddr) String() string {
 		"\tPubIp:%20s\n"+
 		"\tPriIp:%20s\n"+
 		"**************************************\n",
-		addr.NetworkId, addr.CanServe, addr.NatServer,
+		addr.NetworkId, addr.CanServe, addr.NatServerIP,
 		addr.NatIp, addr.NatPort, addr.PubIp, addr.PriIp)
 }
 
@@ -116,7 +118,7 @@ func ExternalIP() []string {
 func ConvertToGossipAddr(addr *NbsUdpAddr, nodeId string) *pb.BasicHost {
 	return &pb.BasicHost{
 		CanServer: addr.CanServe,
-		NatServer: addr.NatServer,
+		NatServer: addr.NatServerIP,
 		NatIP:     addr.NatIp,
 		NatPort:   addr.NatPort,
 		PriIP:     addr.PriIp,
@@ -127,12 +129,12 @@ func ConvertToGossipAddr(addr *NbsUdpAddr, nodeId string) *pb.BasicHost {
 
 func ConvertFromGossipAddr(addr *pb.BasicHost) *NbsUdpAddr {
 	return &NbsUdpAddr{
-		CanServe:  addr.CanServer,
-		NatServer: addr.NatServer,
-		NatIp:     addr.NatIP,
-		NatPort:   addr.NatPort,
-		PubIp:     addr.PubIp,
-		PriIp:     addr.PriIP,
-		NetworkId: addr.NetworkId,
+		CanServe:    addr.CanServer,
+		NatServerIP: addr.NatServer,
+		NatIp:       addr.NatIP,
+		NatPort:     addr.NatPort,
+		PubIp:       addr.PubIp,
+		PriIp:       addr.PriIP,
+		NetworkId:   addr.NetworkId,
 	}
 }
