@@ -19,6 +19,8 @@ const (
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
 	NatBlankKA         = net_pb.MsgType_NatBlankKA
 	NatCheckNetType    = net_pb.MsgType_NatCheckNetType
+	NatFindPubIpSyn    = net_pb.MsgType_NatFindPubIpSyn
+	NatFindPubIpACK    = net_pb.MsgType_NatFindPubIpACK
 	NatEnd             = net_pb.MsgType_NatEnd
 
 	GspBase        = net_pb.MsgType_GspBase

@@ -19,6 +19,8 @@ enum MsgType {
     NatBootAnswer       = 1013;
     NatBlankKA          = 1014;
     NatCheckNetType     = 1015;
+    NatFindPubIpSyn     = 1016;
+    NatFindPubIpACK     = 1017;
     NatEnd              = 1999;
     GspBase         = 2000;
     GspSub          = 2001;

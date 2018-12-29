@@ -14,7 +14,6 @@ import (
 
 type connTask struct {
 	err         error
-	lAddr       string
 	udpConn     chan *net.UDPConn
 	portCapConn *net.UDPConn
 }

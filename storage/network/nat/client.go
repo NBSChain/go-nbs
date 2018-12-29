@@ -276,7 +276,7 @@ func (c *Client) readCmd() {
 		case nbsnet.NatDigConfirm:
 			c.CmdTask <- &ClientCmd{
 				CmdType: CMDDigSetup,
-				Params:  msg.DigConfirm,
+				Params:  msg,
 			}
 
 		}
