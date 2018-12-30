@@ -84,6 +84,7 @@ func (network *nbsNetwork) digOut(params interface{}) error {
 
 	natAddr := network.natClient.NatAddr
 	if natAddr.NetType == nbsnet.MultiPort {
+		logger.Warning("can't punch hole in such network type")
 		return NTSportErr
 	}
 

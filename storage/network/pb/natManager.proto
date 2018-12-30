@@ -59,7 +59,7 @@ message ReverseInvite {
     string fromPort  = 5;
 }
 
-message NatTypeCheck{
+message IpV4 {
     string ip   = 1;
     string port = 2;
 }
@@ -73,6 +73,6 @@ message NatMsg {
     DigConfirm DigConfirm       = 6;
     PingPong PingPong           = 7;
     BootAnswer BootAnswer       = 10;
-    NatTypeCheck NatTypeCheck   = 11;
+    IpV4 NatTypeCheck           = 11;
     ReverseInvite ReverseInvite = 8;
 }

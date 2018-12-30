@@ -184,8 +184,12 @@ func (nat *Server) processCtrlMsg(conn *net.TCPConn) {
 			err = nat.updateKATime(msg.KeepAlive, conn, msg.NetID)
 
 		case nbsnet.NatCheckNetType:
-			req := msg.NatTypeCheck
-			req.Ip, req.Port, _ = net.SplitHostPort(conn.RemoteAddr().String())
+
+			ip, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+			msg.NatTypeCheck = &net_pb.IpV4{
+				Ip:   ip,
+				Port: port,
+			}
 
 			data, _ := proto.Marshal(msg)
 			if _, err := conn.Write(data); err != nil {

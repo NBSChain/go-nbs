@@ -107,8 +107,8 @@ func (network *nbsNetwork) punchANatHole(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort
 	priConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
-
 	go network.directDialInPriNet(lAddr, rAddr, priConnTask, toPort)
+
 	pubConnTask := &connTask{
 		udpConn: make(chan *net.UDPConn),
 	}
