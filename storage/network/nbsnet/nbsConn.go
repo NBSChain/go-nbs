@@ -91,6 +91,10 @@ func (conn *NbsUdpConn) keepAlive() error {
 	return nil
 }
 
+func (conn *NbsUdpConn) filterTheNatMsg() error {
+	return nil
+}
+
 /************************************************************************
 *
 *			normal function

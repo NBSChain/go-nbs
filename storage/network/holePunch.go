@@ -209,10 +209,10 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 
 		buffer := make([]byte, utils.NormalReadBuffer)
 		task.portCapConn.SetReadDeadline(time.Now().Add(HolePunchTimeOut))
-
 		_, peerAddr, err := task.portCapConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("didn't find one from multi ips:->", err)
+			task.portCapConn.Close()
 			task.finish(err, nil)
 			return err
 		}
