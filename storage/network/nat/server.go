@@ -148,11 +148,13 @@ func (nat *Server) processCtrlMsg(conn *net.TCPConn) {
 	defer conn.Close()
 
 	defer func() {
+		nat.cacheLock.Lock()
 		for nodeId, item := range nat.cache {
 			if item.Conn == conn {
 				delete(nat.cache, nodeId)
 			}
 		}
+		nat.cacheLock.Unlock()
 	}()
 
 	for {

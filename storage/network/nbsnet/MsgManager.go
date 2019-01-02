@@ -2,6 +2,7 @@ package nbsnet
 
 import (
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/golang/protobuf/proto"
 )
 
 const (
@@ -45,3 +46,18 @@ const (
 	MulIpSigPort = net_pb.NetWorkType_MulIpSigPort
 	MultiPort    = net_pb.NetWorkType_MultiPort
 )
+
+func PackReverseInviteMsg(pubIp, peerId, fromPort string, toPort int32) {
+	req := &net_pb.NatMsg{
+		Typ: NatReversInvite,
+		ReverseInvite: &net_pb.ReverseInvite{
+			PubIp:    pubIp,
+			ToPort:   toPort,
+			PeerId:   peerId,
+			FromPort: fromPort,
+		},
+	}
+
+	reqData, _ := proto.Marshal(req)
+
+}
