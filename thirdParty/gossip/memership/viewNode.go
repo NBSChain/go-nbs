@@ -8,10 +8,12 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
+	"sync"
 	"time"
 )
 
 type ViewNode struct {
+	sync.RWMutex
 	nodeId      string
 	probability float64
 	inAddr      *net.UDPAddr
@@ -60,6 +62,8 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 }
 
 func (node *MemManager) sendData(item *ViewNode, data []byte) error {
+	item.Lock()
+	defer item.Unlock()
 
 	if _, err := item.outConn.Write(data); err != nil {
 		node.removeFromView(item, node.PartialView)
@@ -70,6 +74,8 @@ func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 }
 
 func (node *MemManager) send(item *ViewNode, pb proto.Message) error {
+	item.Lock()
+	defer item.Unlock()
 
 	data, err := proto.Marshal(pb)
 
@@ -112,6 +118,8 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 }
 
 func (item *ViewNode) String() string {
+	item.RLock()
+	defer item.RUnlock()
 
 	format := utils.GetConfig().SysTimeFormat
 
