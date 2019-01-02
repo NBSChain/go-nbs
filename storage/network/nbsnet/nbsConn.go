@@ -91,32 +91,45 @@ func (conn *NbsUdpConn) keepAlive() error {
 	return nil
 }
 
-func (conn *NbsUdpConn) natMsgFilter(data []byte) ([]byte, bool) {
+func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, error) {
 
 	msg := net_pb.NatMsg{}
-	if err := proto.Unmarshal(data, &msg); err != nil {
-		return nil, false
+	if err := proto.Unmarshal(b, &msg); err != nil {
+		return false, err
 	}
 	if msg.Typ < NatMsgBase || msg.Typ > NatEnd {
-		return nil, false
+		return false, nil
 	}
 
+	logger.Debug("this is a inner msg:->", msg)
+	var data []byte = nil
 	switch msg.Typ {
 	case NatBlankKA:
-		data, _ := proto.Marshal(&net_pb.NatMsg{
+		data, _ = proto.Marshal(&net_pb.NatMsg{
 			Typ: NatBlankKACK,
 		})
 		logger.Debug("hole keep alive msg:->", msg)
-		return data, true
 	case NatFindPubIpSyn:
-		data, _ := proto.Marshal(&net_pb.NatMsg{
+		data, _ = proto.Marshal(&net_pb.NatMsg{
 			Typ: NatFindPubIpACK,
 		})
 		logger.Debug("multi ip searching msg:->", msg)
-		return data, true
-	default:
-		return nil, false
 	}
+	if data == nil {
+		return true, nil
+	}
+
+	if peerAddr != nil {
+		if _, err := conn.RealConn.WriteToUDP(data, peerAddr); err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+	if _, err := conn.RealConn.Write(data); err != nil {
+		return true, err
+	}
+
+	return true, nil
 }
 
 /************************************************************************
@@ -146,12 +159,12 @@ reading:
 		return 0, err
 	}
 
-	data, isInnerMsg := conn.natMsgFilter(b[:n])
+	isInnerMsg, err := conn.natMsgFilter(b[:n], nil)
+	if err != nil {
+		return 0, err
+	}
+
 	if isInnerMsg {
-		if _, err := conn.RealConn.Write(data); err != nil {
-			return 0, err
-		}
-		logger.Debug("this is a inner msg:->")
 		goto reading
 	}
 
@@ -173,12 +186,12 @@ reading:
 		return 0, nil, err
 	}
 
-	data, isInnerMsg := conn.natMsgFilter(b[:n])
+	isInnerMsg, err := conn.natMsgFilter(b[:n], addr)
+	if err != nil {
+		return 0, nil, err
+	}
+
 	if isInnerMsg {
-		if _, err := conn.RealConn.WriteToUDP(data, addr); err != nil {
-			return 0, nil, err
-		}
-		logger.Debug("this is a inner msg:->", addr)
 		goto reading
 	}
 
