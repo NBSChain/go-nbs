@@ -153,6 +153,8 @@ func (item *ViewNode) String() string {
 
 func (node *MemManager) freshInputView(nodeId string) {
 	if item, ok := node.InputView[nodeId]; ok {
+		item.Lock()
+		defer item.Unlock()
 		logger.Debug("update input view item for msg receive :->", item.nodeId)
 		item.updateTime = time.Now()
 	}
