@@ -91,13 +91,10 @@ func (conn *NbsUdpConn) keepAlive() error {
 	return nil
 }
 
-func (conn *NbsUdpConn) natMsgFilter(buf []byte, peerAddr *net.UDPAddr) (bool, error) {
+func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, error) {
 	if conn.CType != CTypeNatListen {
 		return false, nil
 	}
-
-	b := make([]byte, len(buf))
-	copy(b, buf)
 
 	msg := net_pb.NatMsg{}
 	if err := proto.Unmarshal(b, &msg); err != nil {
