@@ -3,6 +3,7 @@ package memership
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -217,6 +218,18 @@ func (node *MemManager) reSubscribe() error {
 		node.removeFromView(item, node.PartialView)
 		return err
 	}
+
+	item.outConn.SetDeadline(time.Now().Add(SubscribeTimeOut))
+
+	if err := node.checkProxyValidation(item.outConn); err != nil {
+		logger.Info("check reSub response err:->.", err)
+		node.removeFromView(item, node.PartialView)
+		return err
+	}
+
+	logger.Info("reSub success :->.", item.outConn.String())
+	item.outConn.SetDeadline(nat.NoTimeOut)
+
 	return nil
 }
 
