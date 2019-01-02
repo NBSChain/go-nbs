@@ -112,7 +112,7 @@ func (manager *nbsGossip) ShowInputViews() ([]string, error) {
 		return nil, ServiceNotValid
 	}
 
-	return manager.memberManager.GetViewsInfo(memership.GetInputViews), nil
+	return manager.memberManager.GetViewsInfo(manager.memberManager.InputView), nil
 }
 
 func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
@@ -120,19 +120,19 @@ func (manager *nbsGossip) ShowOutputViews() ([]string, error) {
 		return nil, ServiceNotValid
 	}
 
-	return manager.memberManager.GetViewsInfo(memership.GetOutputViews), nil
+	return manager.memberManager.GetViewsInfo(manager.memberManager.PartialView), nil
 }
 
 func (manager *nbsGossip) ClearInputViews() int {
 	if manager.memberManager == nil {
 		return 0
 	}
-	return manager.memberManager.RemoveViewsInfo(memership.ClearInputViews)
+	return manager.memberManager.RemoveViewsInfo(manager.memberManager.InputView)
 }
 
 func (manager *nbsGossip) ClearOutputViews() int {
 	if manager.memberManager == nil {
 		return 0
 	}
-	return manager.memberManager.RemoveViewsInfo(memership.ClearOutputViews)
+	return manager.memberManager.RemoveViewsInfo(manager.memberManager.PartialView)
 }
