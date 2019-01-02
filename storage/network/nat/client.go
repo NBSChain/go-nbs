@@ -204,7 +204,6 @@ func (c *Client) listenInPrivate() {
 		logger.Warning("start private nat ping listener err:->", err)
 		return
 	}
-
 	defer lisConn.Close()
 	defer logger.Warning("ping listening exit")
 
@@ -214,6 +213,7 @@ func (c *Client) listenInPrivate() {
 	}
 	data, _ := proto.Marshal(res)
 
+	logger.Info("start listen private connection request:->", lisConn.Addr().String())
 	for {
 		conn, err := lisConn.AcceptTCP()
 		if err != nil {
@@ -221,6 +221,8 @@ func (c *Client) listenInPrivate() {
 			c.closeCtx()
 			return
 		}
+
+		logger.Debug("accept a private connection:->", nbsnet.ConnString(conn))
 
 		if _, err := conn.Write(data); err != nil {
 			logger.Warning("write response err:->", err)

@@ -151,12 +151,13 @@ func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, t
 
 	priHost := nbsnet.JoinHostPort(rAddr.PriIp, int32(utils.GetConfig().NatPrivatePingPort))
 	pingConn, err := net.DialTimeout("tcp4", priHost, HolePunchTimeOut/2)
-	defer pingConn.Close()
 	if err != nil {
 		logger.Info("Step 1-1:can't dial by private network.", err)
 		task.finish(err, nil)
 		return
 	}
+	defer pingConn.Close()
+
 	logger.Debug("1-2 success in private network:->", nbsnet.ConnString(pingConn))
 
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
