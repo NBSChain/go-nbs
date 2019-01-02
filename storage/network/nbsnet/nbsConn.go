@@ -91,8 +91,29 @@ func (conn *NbsUdpConn) keepAlive() error {
 	return nil
 }
 
-func (conn *NbsUdpConn) filterTheNatMsg() error {
-	return nil
+func (conn *NbsUdpConn) natMsgFilter(data []byte) ([]byte, bool) {
+
+	msg := net_pb.NatMsg{}
+	if err := proto.Unmarshal(data, &msg); err != nil {
+		return nil, false
+	}
+
+	switch msg.Typ {
+	case NatBlankKA:
+		data, _ := proto.Marshal(&net_pb.NatMsg{
+			Typ: NatBlankKA,
+		})
+		logger.Debug("hole keep alive msg:->", msg)
+		return data, true
+	case NatFindPubIpSyn:
+		data, _ := proto.Marshal(&net_pb.NatMsg{
+			Typ: NatFindPubIpACK,
+		})
+		logger.Debug("multi ip searching msg:->", msg)
+		return data, true
+	default:
+		return nil, false
+	}
 }
 
 /************************************************************************
@@ -115,7 +136,23 @@ func (conn *NbsUdpConn) Read(b []byte) (int, error) {
 	conn.Lock()
 	conn.updateTime = time.Now()
 	conn.Unlock()
-	return conn.RealConn.Read(b)
+
+reading:
+	n, err := conn.RealConn.Read(b)
+	if err != nil {
+		return 0, err
+	}
+
+	data, isInnerMsg := conn.natMsgFilter(b[:n])
+	if isInnerMsg {
+		if _, err := conn.RealConn.Write(data); err != nil {
+			return 0, err
+		}
+		logger.Debug("this is a inner msg:->")
+		goto reading
+	}
+
+	return n, err
 }
 
 func (conn *NbsUdpConn) Close() error {
@@ -127,7 +164,22 @@ func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	conn.Lock()
 	conn.updateTime = time.Now()
 	conn.Unlock()
-	return conn.RealConn.ReadFromUDP(b)
+reading:
+	n, addr, err := conn.RealConn.ReadFromUDP(b)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	data, isInnerMsg := conn.natMsgFilter(b[:n])
+	if isInnerMsg {
+		if _, err := conn.RealConn.WriteToUDP(data, addr); err != nil {
+			return 0, nil, err
+		}
+		logger.Debug("this is a inner msg:->", addr)
+		goto reading
+	}
+
+	return n, addr, err
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {

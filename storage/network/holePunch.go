@@ -194,7 +194,6 @@ func (network *nbsNetwork) makeAHole(params interface{}) error {
 		data, _ := proto.Marshal(choseIp)
 
 		go func() {
-
 			for _, ip := range ack.PubIps {
 				peerAddr := &net.UDPAddr{
 					IP:   net.ParseIP(ip),
