@@ -14,7 +14,7 @@
 
 Install [msys2] (http://www.msys2.org)
 
-Install [grpc](https://grpc.io/docs/quickstart/go.html),[protocol-buffers](https://developers.google.com/protocol-buffers/)
+Install [grpc](https://grpc.io/docs/quickstart/go.html),[protocol-buffers](https://developers.google.com/protocol-buffers/) [pb-git](https://github.com/protocolbuffers/protobuf/releases)
 
 go get -v -u github.com/golang/protobuf/protoc-gen-go
 
