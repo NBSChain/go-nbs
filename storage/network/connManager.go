@@ -189,7 +189,7 @@ func (network *nbsNetwork) answerInvite(params interface{}) error {
 	}
 
 	reqData, _ := proto.Marshal(req)
-	logger.Debug("Step4: answer the invite:->", conn.LocalAddr().String())
+	logger.Debug("Step4: answer the invite:->", nbsnet.ConnString(conn))
 
 	for i := 0; i < DigTryTimesOnNat; i++ {
 		if _, err := conn.Write(reqData); err != nil {

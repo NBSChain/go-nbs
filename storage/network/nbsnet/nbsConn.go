@@ -101,7 +101,7 @@ func (conn *NbsUdpConn) natMsgFilter(data []byte) ([]byte, bool) {
 	switch msg.Typ {
 	case NatBlankKA:
 		data, _ := proto.Marshal(&net_pb.NatMsg{
-			Typ: NatBlankKA,
+			Typ: NatBlankKACK,
 		})
 		logger.Debug("hole keep alive msg:->", msg)
 		return data, true

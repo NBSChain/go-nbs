@@ -18,6 +18,7 @@ enum MsgType {
     NatDigConfirm       = 1012;
     NatBootAnswer       = 1013;
     NatBlankKA          = 1014;
+    NatBlankKACK        = 1018;
     NatCheckNetType     = 1015;
     NatFindPubIpSyn     = 1016;
     NatFindPubIpACK     = 1017;
