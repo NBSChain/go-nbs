@@ -101,7 +101,7 @@ func (conn *NbsUdpConn) natMsgFilter(buf []byte, peerAddr *net.UDPAddr) (bool, e
 
 	msg := net_pb.NatMsg{}
 	if err := proto.Unmarshal(b, &msg); err != nil {
-		return false, err
+		return false, nil
 	}
 	if msg.Typ < NatMsgBase || msg.Typ > NatEnd {
 		return false, nil
