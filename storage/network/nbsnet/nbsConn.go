@@ -104,7 +104,7 @@ func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, err
 		return false, nil
 	}
 
-	logger.Debug("this is a inner msg:->", msg)
+	logger.Debug("this is a inner msg:->", msg, peerAddr)
 	var data []byte = nil
 	switch msg.Typ {
 	case NatFindPubIpSyn:
