@@ -97,6 +97,9 @@ func (conn *NbsUdpConn) natMsgFilter(data []byte) ([]byte, bool) {
 	if err := proto.Unmarshal(data, &msg); err != nil {
 		return nil, false
 	}
+	if msg.Typ < NatMsgBase || msg.Typ > NatEnd {
+		return nil, false
+	}
 
 	switch msg.Typ {
 	case NatBlankKA:
