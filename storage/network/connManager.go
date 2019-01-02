@@ -21,6 +21,7 @@ type connTask struct {
 func (task *connTask) finish(err error, conn *net.UDPConn) {
 	task.err = err
 	task.udpConn <- conn
+	close(task.udpConn)
 }
 
 /************************************************************************
@@ -156,7 +157,7 @@ func (network *nbsNetwork) directDialInPriNet(lAddr, rAddr *nbsnet.NbsUdpAddr, t
 		task.finish(err, nil)
 		return
 	}
-	logger.Debug("create connection in private network success:->", nbsnet.ConnString(pingConn))
+	logger.Debug("1-2 success in private network:->", nbsnet.ConnString(pingConn))
 
 	conn, err := net.DialUDP("udp4", &net.UDPAddr{
 		IP: net.ParseIP(lAddr.PriIp),
