@@ -110,16 +110,10 @@ func (conn *NbsUdpConn) natMsgFilter(buf []byte, peerAddr *net.UDPAddr) (bool, e
 	logger.Debug("this is a inner msg:->", msg)
 	var data []byte = nil
 	switch msg.Typ {
-	case NatBlankKA:
-		data, _ = proto.Marshal(&net_pb.NatMsg{
-			Typ: NatBlankKACK,
-		})
-		logger.Debug("hole keep alive msg:->", msg)
 	case NatFindPubIpSyn:
 		data, _ = proto.Marshal(&net_pb.NatMsg{
 			Typ: NatFindPubIpACK,
 		})
-		logger.Debug("multi ip searching msg:->", msg)
 	}
 	if data == nil {
 		return true, nil
