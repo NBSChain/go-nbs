@@ -71,7 +71,7 @@ func (network *nbsNetwork) sendDigData(conn *net.UDPConn, peerAddr *net.UDPAddr,
 			return err
 		}
 
-		logger.Info("hole punch step2-4  dig dig on peer's nat server:->", nbsnet.ConnString(conn))
+		logger.Info("hole punch step2-4  dig dig on peer's nat server:->", conn.LocalAddr().String(), peerAddr.String())
 	}
 	return nil
 }
