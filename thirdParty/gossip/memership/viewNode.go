@@ -93,14 +93,8 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 		n, addr, err := item.outConn.ReadFromUDP(buffer)
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
-			node.taskQueue <- &gossipTask{
-				taskType:  RemoveOutPutItem,
-				innerTask: innerTask{params: item},
-			}
-			node.taskQueue <- &gossipTask{
-				taskType:  RemoveInPutItem,
-				innerTask: innerTask{params: item},
-			}
+			node.removeFromView(item, node.InputView)
+			node.removeFromView(item, node.PartialView)
 			return
 		}
 		msg := &pb.Gossip{}
@@ -147,18 +141,6 @@ func (item *ViewNode) String() string {
 		"outAddr",
 		outAddr,
 	)
-}
-
-func (node *MemManager) removeOV(task *gossipTask) error {
-	item := task.params.(*ViewNode)
-	node.removeFromView(item, node.PartialView)
-	return nil
-}
-
-func (node *MemManager) removeIV(task *gossipTask) error {
-	item := task.params.(*ViewNode)
-	node.removeFromView(item, node.InputView)
-	return nil
 }
 
 func (node *MemManager) freshInputView(nodeId string) {
