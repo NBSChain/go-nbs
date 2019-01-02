@@ -11,7 +11,7 @@ import (
 
 func (nat *Server) checkWhoIsHe(conn *net.TCPConn, request *net_pb.BootReg, nodeId string) error {
 
-	peerAddr := conn.LocalAddr().(*net.TCPAddr)
+	peerAddr := conn.RemoteAddr().(*net.TCPAddr)
 	response := &net_pb.BootAnswer{}
 	response.PublicIp = peerAddr.IP.String()
 	response.PublicPort = int32(peerAddr.Port)
