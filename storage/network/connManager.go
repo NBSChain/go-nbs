@@ -21,6 +21,8 @@ type connTask struct {
 func (task *connTask) finish(err error, conn *net.UDPConn) {
 	task.err = err
 	task.udpConn <- conn
+	close(task.udpConn)
+	task.udpConn = nil
 }
 
 /************************************************************************
