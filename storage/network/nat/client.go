@@ -303,7 +303,7 @@ func (c *Client) checkMyNetType() {
 
 	ips, ports := make(map[string]struct{}), make(map[string]struct{})
 	var waitGrp sync.WaitGroup
-
+	var locker sync.Mutex
 	for _, serverIp := range utils.GetConfig().NatServerIP {
 		serverHost := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().NatServerPort))
 		waitGrp.Add(1)
@@ -336,8 +336,10 @@ func (c *Client) checkMyNetType() {
 			logger.Debug("get nat response:->", res)
 
 			ack := res.NatTypeCheck
+			locker.Lock()
 			ips[ack.Ip] = struct{}{}
 			ports[ack.Port] = struct{}{}
+			locker.Unlock()
 		}()
 	}
 
