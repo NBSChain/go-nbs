@@ -92,6 +92,9 @@ func (conn *NbsUdpConn) keepAlive() error {
 }
 
 func (conn *NbsUdpConn) natMsgFilter(buf []byte, peerAddr *net.UDPAddr) (bool, error) {
+	if conn.CType != CTypeNatListen {
+		return false, nil
+	}
 
 	b := make([]byte, len(buf))
 	copy(b, buf)
