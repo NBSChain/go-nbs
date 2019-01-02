@@ -53,10 +53,6 @@ func (network *nbsNetwork) makeDirectConn(lAddr, rAddr *nbsnet.NbsUdpAddr, toPor
 	return nbsnet.NewNbsConn(c, nbsnet.CTypeNormal), nil
 }
 
-func (network *nbsNetwork) inviteAndWait(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*net.UDPConn, error) {
-
-}
-
 func (network *nbsNetwork) invitePeerBehindNat(lAddr, rAddr *nbsnet.NbsUdpAddr, toPort int) (*net.UDPConn, error) {
 
 	lisConn, err := net.ListenUDP("udp4", nil)
