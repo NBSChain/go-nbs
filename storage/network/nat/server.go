@@ -137,9 +137,12 @@ func (nat *Server) holeHelper() {
 
 		case nbsnet.NatCheckNetType:
 			ip, port, _ := net.SplitHostPort(peerAddr.String())
-			data, _ := proto.Marshal(&net_pb.IpV4{
-				Ip:   ip,
-				Port: port,
+			data, _ := proto.Marshal(&net_pb.NatMsg{
+				Typ: nbsnet.NatCheckNetType,
+				NatTypeCheck: &net_pb.IpV4{
+					Ip:   ip,
+					Port: port,
+				},
 			})
 			if _, err := nat.holeDigHelper.WriteToUDP(data, peerAddr); err != nil {
 				logger.Warning("write back nat info err:->", err)
