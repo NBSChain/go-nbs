@@ -17,8 +17,7 @@ var NoTimeOut = time.Time{}
 
 const (
 	KeepAliveTime    = time.Second * 100
-	KeepAliveTimeOut = KeepAliveTime * 3
-	BootStrapTimeOut = time.Second * 2
+	BootStrapTimeOut = time.Second * 4
 	CmdTaskPoolSize  = 100
 	CMDAnswerInvite  = 1
 	CMDDigOut        = 2
@@ -205,7 +204,6 @@ func (c *Client) listenInPrivate() {
 		logger.Warning("start private nat ping listener err:->", err)
 		return
 	}
-	defer lisConn.Close()
 	defer logger.Warning("ping listening exit")
 
 	res := &net_pb.NatMsg{
@@ -220,6 +218,7 @@ func (c *Client) listenInPrivate() {
 		if err != nil {
 			logger.Warning("private ping listener err:->", err)
 			c.closeCtx()
+			lisConn.Close()
 			return
 		}
 
@@ -232,6 +231,7 @@ func (c *Client) listenInPrivate() {
 
 		select {
 		case <-c.Ctx.Done():
+			lisConn.Close()
 			logger.Info("exit sending thread cause's of context close")
 			return
 		default:
