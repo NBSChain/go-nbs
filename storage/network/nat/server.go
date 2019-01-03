@@ -135,6 +135,15 @@ func (nat *Server) holeHelper() {
 			err = nat.forwardMsg(ack.TargetId, data)
 			logger.Info("hole punch step2-6 forward dig out notification:->", ack.Public)
 
+		case nbsnet.NatCheckNetType:
+			ip, port, _ := net.SplitHostPort(peerAddr.String())
+			data, _ := proto.Marshal(&net_pb.IpV4{
+				Ip:   ip,
+				Port: port,
+			})
+			if _, err := nat.holeDigHelper.WriteToUDP(data, peerAddr); err != nil {
+				logger.Warning("write back nat info err:->", err)
+			}
 		}
 
 		if err != nil {
@@ -184,21 +193,6 @@ func (nat *Server) processCtrlMsg(conn *net.TCPConn) {
 
 		case nbsnet.NatKeepAlive:
 			err = nat.updateKATime(msg.KeepAlive, conn, msg.NetID)
-
-		case nbsnet.NatCheckNetType:
-
-			ip, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
-			msg.NatTypeCheck = &net_pb.IpV4{
-				Ip:   ip,
-				Port: port,
-			}
-
-			data, _ := proto.Marshal(msg)
-			if _, err := conn.Write(data); err != nil {
-				logger.Warning("write back nat info err:->", err)
-			}
-
-			return
 
 		default:
 			logger.Warning("this msg can't be processed success->", msg)

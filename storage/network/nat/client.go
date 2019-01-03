@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
+	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -304,24 +305,32 @@ func (c *Client) checkMyNetType() {
 	ips, ports := make(map[string]struct{}), make(map[string]struct{})
 	var waitGrp sync.WaitGroup
 	var locker sync.Mutex
+
+	checkAddr := &net.UDPAddr{
+		Port: utils.GetConfig().NetTypeCheckPort,
+	}
 	for _, serverIp := range utils.GetConfig().NatServerIP {
-		serverHost := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().NatServerPort))
+
+		serverHost := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().HolePuncherPort))
 		waitGrp.Add(1)
 
 		go func() {
 			defer waitGrp.Done()
-			conn, err := net.DialTimeout("tcp4", serverHost, BootStrapTimeOut)
+			conn, err := shareport.DialUDP("udp4", checkAddr.String(), serverHost)
 			if err != nil {
 				logger.Warning("this nat server is down:->", err, serverHost)
 				return
 			}
 			defer conn.Close()
+
 			logger.Debug("request from server:->", serverHost)
 
 			if _, err := conn.Write(data); err != nil {
 				logger.Warning("write check nat type msg err:->", err)
 				return
 			}
+
+			conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
 
 			buffer := make([]byte, utils.NormalReadBuffer)
 			n, err := conn.Read(buffer)
