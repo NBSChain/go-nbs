@@ -19,15 +19,17 @@ const (
 	MsgCounterCollect = 2
 	CheckItemInView   = 3
 	UpdateProbability = 4
-	MemShipHeartBeat  = time.Second * 100
-	IsolatedTime      = time.Second * 3
-	MaxInnerTaskSize  = 1 << 10
-	MaxForwardTimes   = 10
-	DefaultSubExpire  = time.Hour
-	SubscribeTimeOut  = time.Second * 4
-	MSGTrashCollect   = time.Minute * 10
-	MaxItemPerRound   = 1 << 10
-	ProbUpdateInter   = 10
+	NodeFailed        = 5
+
+	MemShipHeartBeat = time.Second * 100
+	IsolatedTime     = time.Second * 3
+	MaxInnerTaskSize = 1 << 10
+	MaxForwardTimes  = 10
+	DefaultSubExpire = time.Hour
+	SubscribeTimeOut = time.Second * 4
+	MSGTrashCollect  = time.Minute * 10
+	MaxItemPerRound  = 1 << 10
+	ProbUpdateInter  = 10
 )
 
 var (
@@ -103,6 +105,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspRemoveIVArc)] = node.removeUnsubPeerFromOut
 	node.taskRouter[int(nbsnet.GspRemoveOVAcr)] = node.removeUnsubPeerFromIn
 	node.taskRouter[UpdateProbability] = node.updateProbability
+	node.taskRouter[NodeFailed] = node.viewNodeError
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
 	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
@@ -114,16 +117,12 @@ func (node *MemManager) InitNode() error {
 	if err := node.initMsgService(); err != nil {
 		return err
 	}
-
-	go node.receivingCmd()
-
-	go node.msgProcessor()
-
 	if err := node.RegisterMySelf(); err != nil {
 		logger.Warning(err)
 		return err
 	}
-
+	go node.receivingCmd()
+	go node.msgProcessor()
 	go node.timer()
 
 	return nil

@@ -97,10 +97,15 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 	for {
 		buffer := make([]byte, utils.NormalReadBuffer)
 		n, addr, err := item.outConn.ReadFromUDP(buffer)
+
 		if err != nil {
 			logger.Warning("node in view read err:->", err, item.nodeId)
-			node.removeFromView(item, node.InputView)
-			node.removeFromView(item, node.PartialView)
+			node.taskQueue <- &gossipTask{
+				taskType: NodeFailed,
+				innerTask: innerTask{
+					params: item,
+				},
+			}
 			return
 		}
 		msg := &pb.Gossip{}
