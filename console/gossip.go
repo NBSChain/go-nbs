@@ -98,13 +98,31 @@ func processResult(args []string, res *pb.DebugResult) {
 
 	switch args[0] {
 	case "showIV":
-		fmt.Println(res.InputViews.Views)
+		if res.InputViews != nil {
+			fmt.Println(res.InputViews.Views)
+		} else {
+			fmt.Println("no input views")
+		}
 	case "showOV":
-		fmt.Println(res.OutputViews.Views)
+		if res.InputViews != nil {
+			fmt.Println(res.OutputViews.Views)
+
+		} else {
+			fmt.Println("no output views")
+		}
 	case "showAV":
 		fmt.Println("===>IN<===")
-		fmt.Println(res.InputViews.Views)
+		if res.InputViews != nil {
+			fmt.Println(res.InputViews.Views)
+		} else {
+			fmt.Println("no input views")
+		}
 		fmt.Println("===>Out<===")
-		fmt.Println(res.OutputViews.Views)
+		if res.InputViews != nil {
+			fmt.Println(res.OutputViews.Views)
+
+		} else {
+			fmt.Println("no output views")
+		}
 	}
 }
