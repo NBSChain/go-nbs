@@ -196,12 +196,7 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 
 func (node *MemManager) reSubscribe() error {
 
-	if node.isBootNode {
-		logger.Info("I'm the boot node, so maybe it's normal situation")
-		return nil
-	}
-
-	if len(node.PartialView) == 0 {
+	if len(node.PartialView) == 0 || node.isBootNode {
 		logger.Debug("register myself because of no partial view in my cache")
 		return node.RegisterMySelf()
 	}

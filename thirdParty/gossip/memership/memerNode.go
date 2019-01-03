@@ -252,7 +252,7 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 		}
 	}
 
-	if len(node.InputView) == 0 && !node.isBootNode {
+	if len(node.InputView) == 0 {
 		return node.reSubscribe()
 	}
 
