@@ -119,13 +119,13 @@ func (node *MemManager) InitNode() error {
 	}
 	go node.receivingCmd()
 	go node.msgProcessor()
-	go node.timer()
 
 	if err := node.RegisterMySelf(); err != nil {
 		logger.Warning(err)
 		return err
 	}
 
+	go node.timer()
 	return nil
 }
 
