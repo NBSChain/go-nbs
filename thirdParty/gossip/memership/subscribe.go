@@ -3,7 +3,6 @@ package memership
 import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network"
-	"github.com/NBSChain/go-nbs/storage/network/nat"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
@@ -80,10 +79,7 @@ func (node *MemManager) acquireProxy(conn *nbsnet.NbsUdpConn) error {
 			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
-	msgData, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
+	msgData, _ := proto.Marshal(msg)
 
 	if _, err := conn.Write(msgData); err != nil {
 		return err
@@ -213,32 +209,27 @@ func (node *MemManager) reSubscribe() error {
 	item := node.randomSelectItem()
 	logger.Debug("I am alone and need to subscribe to random node:->", item.nodeId)
 
-	if err := node.acquireProxy(item.outConn); err != nil {
-		logger.Warning("send reSub request err:->", err)
-		node.removeFromView(item, node.PartialView)
-		return err
+	netId, nbsAddr := network.GetInstance().GetNatAddr()
+	msg := &pb.Gossip{
+		MsgType: nbsnet.GspSub,
+		Subscribe: &pb.Subscribe{
+			SeqNo:  1,
+			Expire: time.Now().Add(DefaultSubExpire).Unix(),
+			NodeId: netId,
+			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
+		},
 	}
-
-	item.outConn.SetDeadline(time.Now().Add(SubscribeTimeOut))
-
-	if err := node.checkProxyValidation(item.outConn); err != nil {
-		logger.Info("check reSub response err:->.", err)
-		node.removeFromView(item, node.PartialView)
-		return err
-	}
-
-	logger.Info("reSub success :->.", item.outConn.String())
-	item.outConn.SetDeadline(nat.NoTimeOut)
-
-	return nil
+	return node.send(item, msg)
 }
 
 func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
 	ack := task.msg.SubAck
 	logger.Debug("he will solve our reSub request:->", task.addr, ack)
 
-	item := node.PartialView[task.msg.FromId]
-
+	item, ok := node.PartialView[task.msg.FromId]
+	if !ok {
+		return ItemNotFound
+	}
 	if item.outAddr.NatServerIP != ack.Addr.NatServer { //TODO::check
 		item.outAddr = nbsnet.ConvertFromGossipAddr(ack.Addr)
 		logger.Warning("this item's nat server info changed:->", item.nodeId)
