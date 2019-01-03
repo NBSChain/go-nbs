@@ -183,10 +183,14 @@ func (network *nbsNetwork) runLoop() {
 		case <-network.natClient.Ctx.Done():
 			logger.Warning("nat client process quit")
 			network.natServer.CanServe = make(chan bool)
-			go network.setupNatClient(network.networkId) //TODO::check
+			go network.restartNatClient(network.networkId)
 			return
 		}
 	}
+}
+func (network *nbsNetwork) restartNatClient(peerId string) {
+	network.natClient.Close()
+	network.setupNatClient(peerId)
 }
 
 func (network *nbsNetwork) setupNatClient(peerId string) error {

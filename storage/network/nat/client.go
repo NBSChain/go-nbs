@@ -32,14 +32,15 @@ type ClientCmd struct {
 }
 
 type Client struct {
-	networkId  string
-	CanServer  bool
-	Ctx        context.Context
-	closeCtx   context.CancelFunc
-	NatAddr    *nbsnet.NbsUdpAddr
-	CtrlConn   *net.TCPConn
-	updateTime time.Time
-	CmdTask    chan *ClientCmd
+	networkId   string
+	CanServer   bool
+	Ctx         context.Context
+	closeCtx    context.CancelFunc
+	NatAddr     *nbsnet.NbsUdpAddr
+	CtrlConn    *net.TCPConn
+	updateTime  time.Time
+	CmdTask     chan *ClientCmd
+	priPingConn *net.TCPListener
 }
 
 func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
@@ -204,6 +205,7 @@ func (c *Client) listenInPrivate() {
 		logger.Warning("start private nat ping listener err:->", err)
 		return
 	}
+	c.priPingConn = lisConn
 	defer logger.Warning("ping listening exit")
 
 	res := &net_pb.NatMsg{
@@ -218,7 +220,6 @@ func (c *Client) listenInPrivate() {
 		if err != nil {
 			logger.Warning("private ping listener err:->", err)
 			c.closeCtx()
-			lisConn.Close()
 			return
 		}
 
@@ -228,15 +229,6 @@ func (c *Client) listenInPrivate() {
 			logger.Warning("write response err:->", err)
 		}
 		conn.Close()
-
-		select {
-		case <-c.Ctx.Done():
-			lisConn.Close()
-			logger.Info("exit sending thread cause's of context close")
-			return
-		default:
-			logger.Info("Step 1-6:->answer dig in private:->", res)
-		}
 	}
 }
 
@@ -372,4 +364,10 @@ func (c *Client) checkMyNetType() {
 
 	c.NatAddr.NetType = networkType
 	logger.Debug("my network type:->", networkType, c.NatAddr.AllPubIps)
+}
+
+func (c *Client) Close() {
+	c.priPingConn.Close()
+	c.CtrlConn.Close()
+	close(c.CmdTask)
 }
