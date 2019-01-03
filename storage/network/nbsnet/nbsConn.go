@@ -63,7 +63,6 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 	}
 }
 
-//TODO::need a response ?ka-ack?
 func (conn *NbsUdpConn) keepAlive() error {
 	msg := &net_pb.NatMsg{
 		Typ: NatBlankKA,
