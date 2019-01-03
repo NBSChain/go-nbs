@@ -24,7 +24,7 @@ const (
 	MaxInnerTaskSize  = 1 << 10
 	MaxForwardTimes   = 10
 	DefaultSubExpire  = time.Hour
-	SubscribeTimeOut  = time.Second * 2
+	SubscribeTimeOut  = time.Second * 4
 	MSGTrashCollect   = time.Minute * 10
 	MaxItemPerRound   = 1 << 10
 	ProbUpdateInter   = 10
@@ -139,7 +139,7 @@ func (node *MemManager) initMsgService() error {
 		logger.Error("can't start contract service:", err)
 		return err
 	}
-
+	logger.Info("gossip service start:->", conn.RealConn.LocalAddr().String())
 	node.serviceConn = conn
 	return nil
 }
