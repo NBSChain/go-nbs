@@ -43,6 +43,10 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 		expiredTime: expire,
 	}
 
+	if oldItem, ok := node.PartialView[item.nodeId]; ok {
+		oldItem.outConn.Close()
+	}
+
 	node.PartialView[item.nodeId] = item
 	go node.waitingWork(item)
 

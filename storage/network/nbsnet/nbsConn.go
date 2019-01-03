@@ -6,7 +6,6 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -15,7 +14,7 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	NatHoleKATime          = time.Second * 18
+	NatHoleKATime          = time.Second * 20
 	_             ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex
@@ -28,19 +27,16 @@ type NbsUdpConn struct {
 	ctx      context.Context
 	close    context.CancelFunc
 	RealConn *net.UDPConn
-	sync.Mutex
-	updateTime time.Time
 }
 
 func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &NbsUdpConn{
-		ctx:        ctx,
-		close:      cancel,
-		RealConn:   c,
-		CType:      cType,
-		updateTime: time.Now(),
+		ctx:      ctx,
+		close:    cancel,
+		RealConn: c,
+		CType:    cType,
 	}
 
 	if cType == CTypeNatSimplex ||
@@ -69,24 +65,15 @@ func (conn *NbsUdpConn) KeepHoleOpened() {
 
 //TODO::need a response ?ka-ack?
 func (conn *NbsUdpConn) keepAlive() error {
-
-	now := time.Now()
 	msg := &net_pb.NatMsg{
 		Typ: NatBlankKA,
 	}
 	data, _ := proto.Marshal(msg)
 
-	conn.Lock()
-	defer conn.Unlock()
-	if now.Sub(conn.updateTime) < NatHoleKATime {
-		return nil
-	}
 	if _, err := conn.RealConn.Write(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
 		return err
 	}
-
-	conn.updateTime = now
 	logger.Debug("try to keep hole opened:->", conn.String())
 	return nil
 }
@@ -139,17 +126,10 @@ func (conn *NbsUdpConn) SetDeadline(t time.Time) error {
 }
 
 func (conn *NbsUdpConn) Write(d []byte) (int, error) {
-	conn.Lock()
-	conn.updateTime = time.Now()
-	conn.Unlock()
 	return conn.RealConn.Write(d)
 }
 
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
-	conn.Lock()
-	conn.updateTime = time.Now()
-	conn.Unlock()
-
 reading:
 	n, err := conn.RealConn.Read(b)
 	if err != nil {
@@ -174,9 +154,6 @@ func (conn *NbsUdpConn) Close() error {
 }
 
 func (conn *NbsUdpConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
-	conn.Lock()
-	conn.updateTime = time.Now()
-	conn.Unlock()
 reading:
 	n, addr, err := conn.RealConn.ReadFromUDP(b)
 	if err != nil {
@@ -196,9 +173,6 @@ reading:
 }
 
 func (conn *NbsUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
-	conn.Lock()
-	conn.updateTime = time.Now()
-	conn.Unlock()
 	return conn.RealConn.WriteToUDP(b, addr)
 }
 
