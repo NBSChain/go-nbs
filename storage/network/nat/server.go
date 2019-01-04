@@ -11,12 +11,9 @@ import (
 	"time"
 )
 
-const MsgPoolSize = 1 << 12
-
 var (
-	MsgConvertErr = fmt.Errorf("convert to message failed")
-	NotFundErr    = fmt.Errorf("no such node behind nat device")
-	logger        = utils.GetLogInstance()
+	NotFundErr = fmt.Errorf("no such node behind nat device")
+	logger     = utils.GetLogInstance()
 )
 
 type HostBehindNat struct {
@@ -114,6 +111,8 @@ func (nat *Server) holeHelper() {
 
 		msg := net_pb.NatMsg{}
 		proto.Unmarshal(buffer[:n], &msg)
+
+		logger.Debug("get hole punching helper msg:->", peerAddr, msg)
 
 		switch msg.Typ {
 		case nbsnet.NatReversInvite:
