@@ -62,7 +62,7 @@ func NewNatClient(networkId string, canServer chan bool) (*Client, error) {
 	}
 
 	if err := c.checkMyNetType(); err != nil {
-		return err
+		return nil, err
 	}
 
 	go c.keepAlive()
