@@ -31,30 +31,26 @@ func (node *MemManager) RegisterMySelf() error {
 				IP:   net.ParseIP(serverIp),
 				Port: utils.GetConfig().GossipCtrlPort,
 			})
-
 		if err != nil {
 			logger.Warning("dial to contract boot server failed:->", err)
-			goto CloseConn
+			continue
 		}
-
-		if err := conn.SetDeadline(time.Now().Add(SubscribeTimeOut)); err != nil {
-			logger.Warning("set outConn time out err:->", err)
-			goto CloseConn
-		}
+		conn.SetDeadline(time.Now().Add(SubscribeTimeOut))
 
 		if err := node.acquireProxy(conn); err != nil {
 			logger.Warning("send init sub request failed:", err)
-			goto CloseConn
+			conn.Close()
+			continue
 		}
 
-		if err := node.checkProxyValidation(conn); err == nil {
+		if err := node.checkProxyValidation(conn); err != nil {
 			logger.Info("find gossip contact server success.", serverIp)
-			success = true
-			break
+			conn.Close()
+			continue
 		}
 
-	CloseConn:
-		conn.Close()
+		success = true
+		break
 	}
 
 	if !success {
