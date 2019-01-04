@@ -240,7 +240,6 @@ func (node *MemManager) timer() {
 func (node *MemManager) checkItemInView(task *gossipTask) error {
 
 	if node.isBootNode {
-		logger.Debug("I'm the boss, don't check me")
 		return nil
 	}
 
