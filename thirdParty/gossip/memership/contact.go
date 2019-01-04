@@ -135,11 +135,8 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 	}
 
 	data, _ := proto.Marshal(req)
-	for i := 0; i < 3; i++ {
-		if no := node.sendVoteApply(data, sub.NodeId); no > 0 {
-			return nil
-		}
-		logger.Warning("no one want to vote, ask again:->", i)
+	if no := node.sendVoteApply(data, sub.NodeId); no > 0 {
+		return nil
 	}
 
 	logger.Debug("ok no one proxy this subscribe, let me do it:->", sub.NodeId)
@@ -164,6 +161,7 @@ func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
 			logger.Debug("no luck to send vote apply, try next one:->", item.nodeId)
 			continue
 		}
+
 		if item.nodeId == targetId {
 			logger.Debug("don't let him find himself, the life is already so hard:->", targetId)
 			continue
