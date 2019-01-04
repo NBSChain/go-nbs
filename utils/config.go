@@ -20,7 +20,6 @@ type Configure struct {
 	BootStrapPeers     []string
 	NatServerPort      int
 	HolePuncherPort    int
-	NetTypeCheckPort   int
 	NatPrivatePingPort int
 	NatServerIP        []string
 	GossipBootStrapIP  []string
@@ -33,7 +32,6 @@ const (
 	natServerPort      = 11001
 	natChanPriPingPort = 11002
 	holePuncherPort    = 11003
-	netTypeCheckPort   = 11004
 	gossipCtrlPort     = 12001
 	NormalReadBuffer   = 1 << 11
 	AdditionalCopies   = 1
@@ -98,7 +96,6 @@ func initConfig() *Configure {
 		NatServerPort:      natServerPort,
 		NatPrivatePingPort: natChanPriPingPort,
 		HolePuncherPort:    holePuncherPort,
-		NetTypeCheckPort:   netTypeCheckPort,
 		NatServerIP:        natServerIP,
 		GossipBootStrapIP:  gossipContracts,
 		GossipCtrlPort:     gossipCtrlPort,

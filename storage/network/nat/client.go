@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
-	"github.com/NBSChain/go-nbs/storage/network/shareport"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
@@ -285,9 +284,9 @@ func (c *Client) readCmd() {
 	}
 }
 
-func (c *Client) checkMyNetType() {
+func (c *Client) checkMyNetType() error {
 
-	logger.Debug("start to check nat type ")
+	logger.Debug("start to check nat type......")
 
 	msg := net_pb.NatMsg{
 		Typ: nbsnet.NatCheckNetType,
@@ -295,37 +294,35 @@ func (c *Client) checkMyNetType() {
 	data, _ := proto.Marshal(&msg)
 
 	ips, ports := make(map[string]struct{}), make(map[string]struct{})
+
+	lisConn, err := net.ListenUDP("udp4", nil)
+	if err != nil {
+		logger.Warning("can't check the network type:->", err)
+		return err
+	}
+
+	defer lisConn.Close()
+
 	var waitGrp sync.WaitGroup
 	var locker sync.Mutex
-
-	checkAddr := &net.UDPAddr{
-		Port: utils.GetConfig().NetTypeCheckPort,
-	}
 	for _, serverIp := range utils.GetConfig().NatServerIP {
 
-		serverHost := nbsnet.JoinHostPort(serverIp, int32(utils.GetConfig().HolePuncherPort))
+		server := &net.UDPAddr{
+			IP:   net.ParseIP(serverIp),
+			Port: utils.GetConfig().HolePuncherPort,
+		}
+		if _, err := lisConn.WriteToUDP(data, server); err != nil {
+			logger.Warning("query nat type err:->", err)
+			continue
+		}
 		waitGrp.Add(1)
 
 		go func() {
 			defer waitGrp.Done()
-			conn, err := shareport.DialUDP("udp4", checkAddr.String(), serverHost)
-			if err != nil {
-				logger.Warning("this nat server is down:->", err, serverHost)
-				return
-			}
-			defer conn.Close()
 
-			logger.Debug("request from server:->", serverHost)
-
-			if _, err := conn.Write(data); err != nil {
-				logger.Warning("write check nat type msg err:->", err)
-				return
-			}
-
-			conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
-
+			lisConn.SetReadDeadline(time.Now().Add(BootStrapTimeOut))
 			buffer := make([]byte, utils.NormalReadBuffer)
-			n, err := conn.Read(buffer)
+			n, peerAddr, err := lisConn.ReadFromUDP(buffer)
 			if err != nil {
 				logger.Warning("read nat type err:->", err)
 				return
@@ -334,7 +331,7 @@ func (c *Client) checkMyNetType() {
 			res := net_pb.NatMsg{}
 			proto.Unmarshal(buffer[:n], &res)
 
-			logger.Debug("get nat response:->", res)
+			logger.Debug("get nat response:->", res, peerAddr)
 
 			ack := res.NatTypeCheck
 			locker.Lock()
@@ -364,6 +361,7 @@ func (c *Client) checkMyNetType() {
 
 	c.NatAddr.NetType = networkType
 	logger.Debug("my network type:->", networkType, c.NatAddr.AllPubIps)
+	return nil
 }
 
 func (c *Client) Close() {
