@@ -48,7 +48,9 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 
 func (conn *NbsUdpConn) keepHoleOpened() {
 
-	logger.Debug("setup keep live routine", conn.String())
+	logger.Warning("setup keep live routine", conn.String())
+
+	defer logger.Warning("hole closed, bye")
 
 	for {
 		select {
@@ -57,7 +59,7 @@ func (conn *NbsUdpConn) keepHoleOpened() {
 				return
 			}
 		case <-conn.ctx.Done():
-			logger.Debug("hole closed, bye")
+			logger.Debug("context done......")
 			return
 		}
 	}
@@ -148,7 +150,15 @@ reading:
 }
 
 func (conn *NbsUdpConn) Close() error {
+
 	conn.close()
+
+	logger.Warning("close conn local address:", conn.RealConn.LocalAddr().String())
+
+	if conn.RealConn.RemoteAddr() != nil {
+		logger.Warning("close conn remote address:", conn.RealConn.RemoteAddr().String())
+	}
+
 	return conn.RealConn.Close()
 }
 
