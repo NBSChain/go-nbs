@@ -238,6 +238,12 @@ func (node *MemManager) timer() {
 }
 
 func (node *MemManager) checkItemInView(task *gossipTask) error {
+
+	if node.isBootNode {
+		logger.Debug("I'm the boss, don't check me")
+		return nil
+	}
+
 	now := time.Now()
 	for _, item := range node.InputView {
 		if now.Sub(item.updateTime) > (MemShipHeartBeat*2 + IsolatedTime) {

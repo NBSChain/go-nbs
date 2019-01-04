@@ -192,7 +192,7 @@ func (node *MemManager) subAccepted(task *gossipTask) error {
 
 func (node *MemManager) reSubscribe() error {
 
-	if len(node.PartialView) == 0 || node.isBootNode {
+	if len(node.PartialView) == 0 {
 		logger.Debug("register myself because of no partial view in my cache")
 		return node.RegisterMySelf()
 	}
