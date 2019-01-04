@@ -96,7 +96,10 @@ func (manager *nbsGossip) Online(peerId string) error {
 	if err := memberNode.InitNode(); err != nil {
 		return err
 	}
-
+	if err := memberNode.RegisterMySelf(); err != nil {
+		logger.Warning("failed to register myself:->", err)
+		return err
+	}
 	logger.Info("gossip service start up......")
 
 	return nil

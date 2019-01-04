@@ -41,13 +41,13 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 
 	if cType == CTypeNatSimplex ||
 		cType == CTypeNatDuplex {
-		go conn.KeepHoleOpened()
+		go conn.keepHoleOpened()
 	}
-
 	return conn
 }
 
-func (conn *NbsUdpConn) KeepHoleOpened() {
+func (conn *NbsUdpConn) keepHoleOpened() {
+
 	logger.Debug("setup keep live routine", conn.String())
 
 	for {

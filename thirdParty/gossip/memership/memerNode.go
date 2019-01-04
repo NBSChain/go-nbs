@@ -117,14 +117,8 @@ func (node *MemManager) InitNode() error {
 	if err := node.initMsgService(); err != nil {
 		return err
 	}
-	go node.receivingCmd()
 	go node.msgProcessor()
-
-	if err := node.RegisterMySelf(); err != nil {
-		logger.Warning(err)
-		return err
-	}
-
+	go node.receivingCmd()
 	go node.timer()
 	return nil
 }
@@ -292,6 +286,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
 			continue
 		}
+
 		logger.Debug("send heart beat to:->", item.nodeId, item.outConn.String())
 		if err := node.sendData(item, data); err != nil {
 			logger.Warning("send data failed:->", err)
