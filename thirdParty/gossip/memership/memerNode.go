@@ -62,7 +62,6 @@ type MemManager struct {
 	close       context.CancelFunc
 	nodeID      string
 	subNo       int
-	isBootNode  bool
 	taskQueue   chan *gossipTask
 	serviceConn *nbsnet.NbsUdpConn
 	InputView   map[string]*ViewNode
@@ -239,8 +238,8 @@ func (node *MemManager) timer() {
 
 func (node *MemManager) checkItemInView(task *gossipTask) error {
 
-	if node.isBootNode {
-		return nil
+	if len(node.InputView) == 0 {
+		return node.reSubscribe()
 	}
 
 	now := time.Now()
@@ -249,10 +248,6 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}
-	}
-
-	if len(node.InputView) == 0 {
-		return node.reSubscribe()
 	}
 
 	return nil

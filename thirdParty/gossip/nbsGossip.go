@@ -39,7 +39,7 @@ func newNbsGossip() *nbsGossip {
 		logger.Warning("no account right now, so the message gossip can't setup")
 	} else {
 		if err := gossipObj.Online(peerId); err != nil {
-			logger.Error("gossip start failed:", err)
+			logger.Error("gossip online failed:->", err)
 		}
 	}
 

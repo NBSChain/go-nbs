@@ -25,11 +25,25 @@ func (node *MemManager) randomSelectItem() *ViewNode {
 }
 
 func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
+
+	if _, ok := views[item.nodeId]; !ok {
+		logger.Debug("node has been removed:->", item.nodeId)
+		return
+	}
+
 	if item.outConn != nil {
 		item.outConn.Close()
 	}
+
 	delete(views, item.nodeId)
+
 	logger.Warning("remove node from view:->", item.nodeId)
+
+	if len(node.InputView) == 0 {
+		if err := node.reSubscribe(); err != nil {
+			logger.Warning("re sub err:->", err)
+		}
+	}
 }
 
 func (node *MemManager) updateMyInProb(task *gossipTask) error {
