@@ -27,7 +27,7 @@ func (node *MemManager) randomSelectItem() *ViewNode {
 func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
 
 	if _, ok := views[item.nodeId]; !ok {
-		logger.Debug("node has been removed:->", item.nodeId)
+		logger.Debug("node has been removed:->", item.nodeId, len(views))
 		return
 	}
 
@@ -37,7 +37,7 @@ func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNod
 
 	delete(views, item.nodeId)
 
-	logger.Warning("remove node from view:->", item.nodeId)
+	logger.Warning("remove node from view:->", item.nodeId, len(views))
 
 	if len(node.InputView) == 0 {
 		if err := node.reSubscribe(); err != nil {
@@ -138,7 +138,7 @@ func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 //TIPS void to use lock
 func (node *MemManager) viewNodeError(task *gossipTask) error {
 	item := task.params.(*ViewNode)
-	logger.Info("item node is done:->")
+	logger.Info("item node is down:->")
 	node.removeFromView(item, node.InputView)
 	node.removeFromView(item, node.PartialView)
 	return nil

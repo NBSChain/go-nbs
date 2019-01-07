@@ -48,7 +48,7 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 
 func (conn *NbsUdpConn) keepHoleOpened() {
 
-	logger.Warning("setup keep live routine", conn.String())
+	logger.Debug("setup keep live routine", conn.String())
 
 	defer logger.Warning("hole closed, bye")
 
