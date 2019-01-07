@@ -70,6 +70,7 @@ func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 	defer item.Unlock()
 
 	if _, err := item.outConn.Write(data); err != nil {
+		logger.Warning("item write data to peer err:->", err)
 		node.removeFromView(item, node.PartialView)
 		return err
 	}
@@ -88,6 +89,7 @@ func (node *MemManager) send(item *ViewNode, pb proto.Message) error {
 	}
 
 	if _, err := item.outConn.Write(data); err != nil {
+		logger.Warning("item write data to peer err:->", err)
 		node.removeFromView(item, node.PartialView)
 		return err
 	}
