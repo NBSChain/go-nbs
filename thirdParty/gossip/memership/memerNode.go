@@ -22,7 +22,7 @@ const (
 	NodeFailed        = 5
 
 	MemShipHeartBeat = time.Second * 100
-	IsolatedTime     = time.Second * 3
+	IsolatedTime     = MemShipHeartBeat * 2
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
 	DefaultSubExpire = time.Minute * 10 //time.Hour
@@ -245,7 +245,7 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 
 	now := time.Now()
 	for _, item := range node.InputView {
-		if now.Sub(item.updateTime) > (MemShipHeartBeat*2 + IsolatedTime) {
+		if now.Sub(item.updateTime) > IsolatedTime {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item, node.InputView)
 		}
