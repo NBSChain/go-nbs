@@ -27,7 +27,7 @@ func (node *MemManager) randomSelectItem() *ViewNode {
 func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
 
 	if _, ok := views[item.nodeId]; !ok {
-		logger.Debug("node has been removed:->", item.nodeId, len(views))
+		logger.Debug("node doesn't exist:->", item.nodeId, len(views))
 		return
 	}
 
