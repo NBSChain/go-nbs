@@ -26,8 +26,15 @@ type ViewNode struct {
 func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*ViewNode, error) {
 
 	addr := nbsnet.ConvertFromGossipAddr(host)
-	port := utils.GetConfig().GossipCtrlPort
+	if oldItem, ok := node.PartialView[host.NetworkId]; ok {
+		oldItem.expiredTime = expire
+		oldItem.updateTime = time.Now()
+		oldItem.outAddr = addr
+		logger.Debug("I've this item already :->", oldItem.nodeId)
+		return oldItem, nil
+	}
 
+	port := utils.GetConfig().GossipCtrlPort
 	conn, err := network.GetInstance().Connect(nil, addr, port)
 	if err != nil {
 		logger.Error("the contact failed to notify the subscriber:", err, addr, port)
@@ -41,10 +48,6 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 		outAddr:     addr,
 		updateTime:  time.Now(),
 		expiredTime: expire,
-	}
-
-	if oldItem, ok := node.PartialView[item.nodeId]; ok {
-		oldItem.outConn.Close()
 	}
 
 	node.PartialView[item.nodeId] = item
