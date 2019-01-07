@@ -162,6 +162,7 @@ func (nat *Server) processCtrlMsg(conn *net.TCPConn) {
 		nat.cacheLock.Lock()
 		for nodeId, item := range nat.cache {
 			if item.Conn == conn {
+				logger.Debug("remove item from cache:->", nodeId)
 				delete(nat.cache, nodeId)
 			}
 		}
