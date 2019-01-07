@@ -150,13 +150,11 @@ reading:
 }
 
 func (conn *NbsUdpConn) Close() error {
-
 	conn.close()
-
-	logger.Warning("close conn local address:", conn.RealConn.LocalAddr().String())
-
 	if conn.RealConn.RemoteAddr() != nil {
-		logger.Warning("close conn remote address:", conn.RealConn.RemoteAddr().String())
+		logger.Warning("close conn:->", conn.String())
+	} else {
+		logger.Warning("close conn:->", conn.RealConn.LocalAddr().String())
 	}
 
 	return conn.RealConn.Close()

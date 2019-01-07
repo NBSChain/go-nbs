@@ -44,7 +44,7 @@ func (node *MemManager) RegisterMySelf() error {
 		}
 
 		if err := node.checkProxyValidation(conn); err != nil {
-			logger.Info("find gossip contact server success.", serverIp)
+			logger.Info("find gossip contact server err:->", serverIp, err)
 			conn.Close()
 			continue
 		}
