@@ -286,6 +286,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 		if now.After(item.expiredTime) {
 			logger.Warning("subscribe expired:->", item.expiredTime, now, item.nodeId)
 			node.removeFromView(item, node.PartialView)
+			continue
 		}
 
 		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
