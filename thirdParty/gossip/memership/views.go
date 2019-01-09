@@ -33,6 +33,7 @@ func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNod
 
 	if item.outConn != nil {
 		item.outConn.Close()
+		item.outConn = nil
 	}
 
 	logger.Warning("before remove :->", len(views))
