@@ -82,23 +82,11 @@ func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 }
 
 func (node *MemManager) send(item *ViewNode, pb proto.Message) error {
-	item.Lock()
-	defer item.Unlock()
-
 	data, err := proto.Marshal(pb)
-
 	if err != nil {
 		return err
 	}
-
-	if _, err := item.outConn.Write(data); err != nil {
-		logger.Warning("item write data to peer err:->", err)
-		node.removeFromView(item, node.PartialView)
-		return err
-	}
-	item.updateTime = time.Now()
-
-	return nil
+	return node.sendData(item, data)
 }
 
 func (node *MemManager) waitingWork(item *ViewNode) {
