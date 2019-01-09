@@ -23,10 +23,11 @@ const (
 )
 
 type NbsUdpConn struct {
-	CType    ConnType
-	ctx      context.Context
-	close    context.CancelFunc
-	RealConn *net.UDPConn
+	CType     ConnType
+	ctx       context.Context
+	close     context.CancelFunc
+	RealConn  *net.UDPConn
+	freshTime chan time.Time
 }
 
 func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
@@ -41,6 +42,7 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 
 	if cType == CTypeNatSimplex ||
 		cType == CTypeNatDuplex {
+		conn.freshTime = make(chan time.Time)
 		go conn.keepHoleOpened()
 	}
 	return conn
@@ -76,6 +78,13 @@ func (conn *NbsUdpConn) keepAlive() error {
 		return err
 	}
 	logger.Debug("try to keep hole opened:->", conn.String())
+	select {
+	case <-conn.freshTime:
+		logger.Debug("the hole is still open")
+	case <-time.After(time.Second * 2):
+		logger.Warning("the hole is closed maybe")
+		conn.Close()
+	}
 	return nil
 }
 
@@ -99,6 +108,12 @@ func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, err
 		data, _ = proto.Marshal(&net_pb.NatMsg{
 			Typ: NatFindPubIpACK,
 		})
+	case NatBlankKA:
+		data, _ = proto.Marshal(&net_pb.NatMsg{
+			Typ: NatBlankKAACK,
+		})
+	case NatBlankKAACK:
+		conn.freshTime <- time.Now()
 	}
 	if data == nil {
 		return true, nil
