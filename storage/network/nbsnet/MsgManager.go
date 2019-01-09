@@ -13,7 +13,6 @@ const (
 	NatDigOut          = net_pb.MsgType_NatDigOut
 	NatReversInvite    = net_pb.MsgType_NatReversInvite
 	NatReversInviteAck = net_pb.MsgType_NatReversInviteAck
-	NatPriDigSyn       = net_pb.MsgType_NatPriDigSyn
 	NatPriDigAck       = net_pb.MsgType_NatPriDigAck
 	NatDigConfirm      = net_pb.MsgType_NatDigConfirm
 	NatBootAnswer      = net_pb.MsgType_NatBootAnswer
@@ -21,7 +20,6 @@ const (
 	NatCheckNetType    = net_pb.MsgType_NatCheckNetType
 	NatFindPubIpSyn    = net_pb.MsgType_NatFindPubIpSyn
 	NatFindPubIpACK    = net_pb.MsgType_NatFindPubIpACK
-	NatBlankKAACK      = net_pb.MsgType_NatBlankKAACK
 	NatUdpSyn          = net_pb.MsgType_NatUdpSyn
 	NatUdpAck          = net_pb.MsgType_NatUdpAck
 	NatEnd             = net_pb.MsgType_NatEnd
