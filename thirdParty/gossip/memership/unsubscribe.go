@@ -76,7 +76,7 @@ func (node *MemManager) replaceForUnsubPeer(task *gossipTask) error {
 	}
 
 	logger.Debug("remove old unsub node and replace it with new one:->")
-	node.removeFromView(item, node.PartialView)
+	node.removeFromView(item.nodeId, node.PartialView)
 
 	if _, ok := node.PartialView[replace.ToId]; ok {
 		return fmt.Errorf("no need to make a new item, I have got it")
@@ -157,12 +157,8 @@ func (node *MemManager) removeMeFromInView() {
 func (node *MemManager) removeUnsubPeerFromOut(task *gossipTask) error {
 
 	nodeId := task.msg.FromId
-	item, ok := node.PartialView[nodeId]
-	if !ok {
-		return ItemNotFound
-	}
 	logger.Debug("remove unsub node form output view:->")
-	node.removeFromView(item, node.PartialView)
+	node.removeFromView(nodeId, node.PartialView)
 
 	return nil
 }
@@ -170,12 +166,8 @@ func (node *MemManager) removeUnsubPeerFromOut(task *gossipTask) error {
 func (node *MemManager) removeUnsubPeerFromIn(task *gossipTask) error {
 
 	nodeId := task.msg.FromId
-	item, ok := node.InputView[nodeId]
-	if !ok {
-		return ItemNotFound
-	}
 	logger.Debug("remove unsub node form input view:->")
-	node.removeFromView(item, node.InputView)
+	node.removeFromView(nodeId, node.InputView)
 
 	return nil
 }

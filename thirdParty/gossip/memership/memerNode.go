@@ -246,7 +246,7 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 	for _, item := range node.InputView {
 		if now.Sub(item.updateTime) > IsolatedTime {
 			logger.Debug("more than isolate check:->")
-			node.removeFromView(item, node.InputView)
+			node.removeFromView(item.nodeId, node.InputView)
 		}
 	}
 
@@ -280,7 +280,7 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 	for _, item := range node.PartialView {
 		if now.After(item.expiredTime) {
 			logger.Warning("subscribe expired:->", item.expiredTime, now, item.nodeId)
-			node.removeFromView(item, node.PartialView)
+			node.removeFromView(item.nodeId, node.PartialView)
 			continue
 		}
 

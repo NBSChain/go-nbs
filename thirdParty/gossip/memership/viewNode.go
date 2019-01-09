@@ -63,6 +63,8 @@ func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNod
 		inAddr:      addr,
 		probability: node.meanProb(node.InputView),
 		updateTime:  time.Now(),
+		outConn:     nil,
+		outAddr:     nil,
 	}
 	node.InputView[nodeId] = view
 	return view
@@ -74,7 +76,7 @@ func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 
 	if _, err := item.outConn.WriteWithSyn(data); err != nil {
 		logger.Warning("item write data to peer err:->", err)
-		node.removeFromView(item, node.PartialView)
+		node.removeFromView(item.nodeId, node.PartialView)
 		return err
 	}
 	item.updateTime = time.Now()
@@ -100,7 +102,7 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 			node.taskQueue <- &gossipTask{
 				taskType: NodeFailed,
 				innerTask: innerTask{
-					params: item,
+					params: item.nodeId,
 				},
 			}
 			return

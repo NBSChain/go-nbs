@@ -24,16 +24,16 @@ func (node *MemManager) randomSelectItem() *ViewNode {
 	return nil
 }
 
-func (node *MemManager) removeFromView(item *ViewNode, views map[string]*ViewNode) {
+func (node *MemManager) removeFromView(nodeId string, views map[string]*ViewNode) {
 
-	if _, ok := views[item.nodeId]; !ok {
-		logger.Debug("node doesn't exist:->", item.nodeId, len(views))
+	item, ok := views[nodeId]
+	if !ok {
+		logger.Debug("node doesn't exist:->", nodeId, len(views))
 		return
 	}
 
 	if item.outConn != nil {
 		item.outConn.Close()
-		item.outConn = nil
 	}
 
 	logger.Warning("before remove :->", len(views))
@@ -139,10 +139,10 @@ func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 
 //TIPS void to use lock
 func (node *MemManager) viewNodeError(task *gossipTask) error {
-	item := task.params.(*ViewNode)
+	nodeId := task.params.(string)
 	logger.Debug("item node is down, remove from input view:->")
-	node.removeFromView(item, node.InputView)
+	node.removeFromView(nodeId, node.InputView)
 	logger.Debug("item node is down, remove from output view:->")
-	node.removeFromView(item, node.PartialView)
+	node.removeFromView(nodeId, node.PartialView)
 	return nil
 }

@@ -11,7 +11,7 @@ func (node *MemManager) GetViewsInfo(viewMap map[string]*ViewNode) []string {
 func (node *MemManager) RemoveViewsInfo(viewMap map[string]*ViewNode) int {
 	lenV := len(node.PartialView)
 	for _, item := range viewMap {
-		node.removeFromView(item, node.PartialView)
+		node.removeFromView(item.nodeId, node.PartialView)
 	}
 
 	return lenV

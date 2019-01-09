@@ -76,6 +76,7 @@ func (conn *NbsUdpConn) keepAlive() error {
 
 	if _, err := conn.WriteWithSyn(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
+		conn.Close()
 		return err
 	}
 	logger.Debug("try to keep hole opened:->", conn.String())
@@ -175,6 +176,7 @@ reading:
 }
 
 func (conn *NbsUdpConn) Close() error {
+
 	conn.ctxFinish()
 
 	if conn.RealConn.RemoteAddr() != nil {
