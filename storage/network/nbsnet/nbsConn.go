@@ -85,7 +85,7 @@ func (conn *NbsUdpConn) keepAlive() error {
 
 	case <-time.After(HoleMsgTimeOut):
 		logger.Warning("the hole is closed maybe")
-		conn.ctxFinish()
+		conn.Close()
 	}
 	return nil
 }
@@ -167,9 +167,9 @@ func (conn *NbsUdpConn) Close() error {
 	conn.ctxFinish()
 
 	if conn.RealConn.RemoteAddr() != nil {
-		logger.Warning("ctxFinish conn:->", conn.String())
+		logger.Warning("close conn:->", conn.String())
 	} else {
-		logger.Warning("ctxFinish conn:->", conn.RealConn.LocalAddr().String())
+		logger.Warning("close conn:->", conn.RealConn.LocalAddr().String())
 	}
 
 	if conn.freshTime != nil {
