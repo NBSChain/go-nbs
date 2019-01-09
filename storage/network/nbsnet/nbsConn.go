@@ -14,8 +14,9 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	NatHoleKATime          = time.Second * 20
-	_             ConnType = iota
+	HoleMsgTimeOut          = time.Second * 2
+	NatHoleKATime           = time.Second * 20
+	_              ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex
 	CTypeNatDuplex
@@ -81,7 +82,7 @@ func (conn *NbsUdpConn) keepAlive() error {
 	select {
 	case <-conn.freshTime:
 		logger.Debug("the hole is still open")
-	case <-time.After(time.Second * 2):
+	case <-time.After(HoleMsgTimeOut):
 		logger.Warning("the hole is closed maybe")
 		conn.Close()
 	}
@@ -89,9 +90,9 @@ func (conn *NbsUdpConn) keepAlive() error {
 }
 
 func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, error) {
-	if conn.CType != CTypeNatListen {
-		return false, nil
-	}
+	//if conn.CType != CTypeNatListen {
+	//	return false, nil
+	//}
 
 	msg := net_pb.NatMsg{}
 	if err := proto.Unmarshal(b, &msg); err != nil {

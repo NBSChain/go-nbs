@@ -122,6 +122,7 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 			logger.Warning("unmarshal err:->", err, addr, n)
 			continue
 		}
+		logger.Debug("receive ctrl msg:->", msg)
 		task := &gossipTask{
 			taskType: int(msg.MsgType),
 		}
