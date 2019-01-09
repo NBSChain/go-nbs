@@ -176,6 +176,9 @@ reading:
 }
 
 func (conn *NbsUdpConn) Close() error {
+	if conn.udpChan == nil {
+		return fmt.Errorf("close of closed socket")
+	}
 
 	conn.ctxFinish()
 
@@ -185,6 +188,7 @@ func (conn *NbsUdpConn) Close() error {
 		logger.Warning("close conn:->", conn.RealConn.LocalAddr().String())
 	}
 	close(conn.udpChan)
+	conn.udpChan = nil
 
 	return conn.RealConn.Close()
 }

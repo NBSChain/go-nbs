@@ -140,9 +140,9 @@ func (node *MemManager) meanProb(views map[string]*ViewNode) float64 {
 //TIPS void to use lock
 func (node *MemManager) viewNodeError(task *gossipTask) error {
 	nodeId := task.params.(string)
-	logger.Debug("item node is down, remove from input view:->")
-	node.removeFromView(nodeId, node.InputView)
 	logger.Debug("item node is down, remove from output view:->")
 	node.removeFromView(nodeId, node.PartialView)
+	logger.Debug("item node is down, remove from input view:->")
+	node.removeFromView(nodeId, node.InputView)
 	return nil
 }
