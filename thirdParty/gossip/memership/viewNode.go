@@ -72,7 +72,7 @@ func (node *MemManager) sendData(item *ViewNode, data []byte) error {
 	item.Lock()
 	defer item.Unlock()
 
-	if _, err := item.outConn.Write(data); err != nil {
+	if _, err := item.outConn.WriteWithSyn(data); err != nil {
 		logger.Warning("item write data to peer err:->", err)
 		node.removeFromView(item, node.PartialView)
 		return err

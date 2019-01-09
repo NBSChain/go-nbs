@@ -22,6 +22,8 @@ const (
 	NatFindPubIpSyn    = net_pb.MsgType_NatFindPubIpSyn
 	NatFindPubIpACK    = net_pb.MsgType_NatFindPubIpACK
 	NatBlankKAACK      = net_pb.MsgType_NatBlankKAACK
+	NatUdpSyn          = net_pb.MsgType_NatUdpSyn
+	NatUdpAck          = net_pb.MsgType_NatUdpAck
 	NatEnd             = net_pb.MsgType_NatEnd
 
 	GspBase        = net_pb.MsgType_GspBase

@@ -2,6 +2,7 @@ package nbsnet
 
 import (
 	"context"
+	"fmt"
 	"github.com/NBSChain/go-nbs/storage/network/pb"
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/gogo/protobuf/proto"
@@ -14,9 +15,9 @@ type ConnType int8
 var logger = utils.GetLogInstance()
 
 const (
-	HoleMsgTimeOut          = time.Second * 2
-	NatHoleKATime           = time.Second * 20
-	_              ConnType = iota
+	UdpSynTimeOut          = time.Second * 2
+	NatHoleKATime          = time.Second * 20
+	_             ConnType = iota
 	CTypeNormal
 	CTypeNatSimplex
 	CTypeNatDuplex
@@ -28,7 +29,7 @@ type NbsUdpConn struct {
 	ctx       context.Context
 	ctxFinish context.CancelFunc
 	RealConn  *net.UDPConn
-	freshTime chan time.Time
+	udpChan   chan time.Time
 }
 
 func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
@@ -39,18 +40,17 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 		ctxFinish: cancel,
 		RealConn:  c,
 		CType:     cType,
+		udpChan:   make(chan time.Time),
 	}
 
 	if cType == CTypeNatSimplex ||
 		cType == CTypeNatDuplex {
-		conn.freshTime = make(chan time.Time)
 		go conn.keepHoleOpened()
 	}
 	return conn
 }
 
 func (conn *NbsUdpConn) keepHoleOpened() {
-
 	logger.Debug("setup keep live routine:->", conn.String())
 
 	defer logger.Warning("hole closed, bye:->", conn.String())
@@ -74,19 +74,11 @@ func (conn *NbsUdpConn) keepAlive() error {
 	}
 	data, _ := proto.Marshal(msg)
 
-	if _, err := conn.RealConn.Write(data); err != nil {
+	if _, err := conn.WriteWithSyn(data); err != nil {
 		logger.Warning("the keep alive for hole msg err:->", err)
 		return err
 	}
 	logger.Debug("try to keep hole opened:->", conn.String())
-	select {
-	case <-conn.freshTime:
-		logger.Debug("the hole is still open")
-
-	case <-time.After(HoleMsgTimeOut):
-		logger.Warning("the hole is closed maybe")
-		conn.Close()
-	}
 	return nil
 }
 
@@ -107,12 +99,12 @@ func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, err
 		data, _ = proto.Marshal(&net_pb.NatMsg{
 			Typ: NatFindPubIpACK,
 		})
-	case NatBlankKA:
+	case NatUdpSyn:
 		data, _ = proto.Marshal(&net_pb.NatMsg{
-			Typ: NatBlankKAACK,
+			Typ: NatUdpAck,
 		})
-	case NatBlankKAACK:
-		conn.freshTime <- time.Now()
+	case NatUdpAck:
+		conn.udpChan <- time.Now()
 	}
 	if data == nil {
 		return true, nil
@@ -144,6 +136,25 @@ func (conn *NbsUdpConn) Write(d []byte) (int, error) {
 	return conn.RealConn.Write(d)
 }
 
+func (conn *NbsUdpConn) WriteWithSyn(d []byte) (int, error) {
+	n, err := conn.RealConn.Write(d)
+	if err != nil {
+		return 0, err
+	}
+	data, _ := proto.Marshal(&net_pb.NatMsg{
+		Typ: NatUdpSyn,
+	})
+	if _, err := conn.RealConn.Write(data); err != nil {
+		return 0, err
+	}
+	select {
+	case <-time.After(UdpSynTimeOut):
+		return 0, fmt.Errorf("time out")
+	case <-conn.udpChan:
+		return n, nil
+	}
+}
+
 func (conn *NbsUdpConn) Read(b []byte) (int, error) {
 reading:
 	n, err := conn.RealConn.Read(b)
@@ -171,11 +182,7 @@ func (conn *NbsUdpConn) Close() error {
 	} else {
 		logger.Warning("close conn:->", conn.RealConn.LocalAddr().String())
 	}
-
-	if conn.freshTime != nil {
-		close(conn.freshTime)
-		conn.freshTime = nil
-	}
+	close(conn.udpChan)
 
 	return conn.RealConn.Close()
 }
