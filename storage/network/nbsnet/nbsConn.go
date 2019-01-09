@@ -26,7 +26,7 @@ const (
 type NbsUdpConn struct {
 	CType     ConnType
 	ctx       context.Context
-	close     context.CancelFunc
+	ctxFinish context.CancelFunc
 	RealConn  *net.UDPConn
 	freshTime chan time.Time
 }
@@ -35,10 +35,10 @@ func NewNbsConn(c *net.UDPConn, cType ConnType) *NbsUdpConn {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &NbsUdpConn{
-		ctx:      ctx,
-		close:    cancel,
-		RealConn: c,
-		CType:    cType,
+		ctx:       ctx,
+		ctxFinish: cancel,
+		RealConn:  c,
+		CType:     cType,
 	}
 
 	if cType == CTypeNatSimplex ||
@@ -82,17 +82,15 @@ func (conn *NbsUdpConn) keepAlive() error {
 	select {
 	case <-conn.freshTime:
 		logger.Debug("the hole is still open")
+
 	case <-time.After(HoleMsgTimeOut):
 		logger.Warning("the hole is closed maybe")
-		conn.Close()
+		conn.ctxFinish()
 	}
 	return nil
 }
 
 func (conn *NbsUdpConn) natMsgFilter(b []byte, peerAddr *net.UDPAddr) (bool, error) {
-	//if conn.CType != CTypeNatListen {
-	//	return false, nil
-	//}
 
 	msg := net_pb.NatMsg{}
 	if err := proto.Unmarshal(b, &msg); err != nil {
@@ -166,11 +164,17 @@ reading:
 }
 
 func (conn *NbsUdpConn) Close() error {
-	conn.close()
+	conn.ctxFinish()
+
 	if conn.RealConn.RemoteAddr() != nil {
-		logger.Warning("close conn:->", conn.String())
+		logger.Warning("ctxFinish conn:->", conn.String())
 	} else {
-		logger.Warning("close conn:->", conn.RealConn.LocalAddr().String())
+		logger.Warning("ctxFinish conn:->", conn.RealConn.LocalAddr().String())
+	}
+
+	if conn.freshTime != nil {
+		close(conn.freshTime)
+		conn.freshTime = nil
 	}
 
 	return conn.RealConn.Close()
