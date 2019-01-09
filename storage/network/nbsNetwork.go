@@ -190,7 +190,12 @@ func (network *nbsNetwork) runLoop() {
 }
 func (network *nbsNetwork) restartNatClient(peerId string) {
 	network.natClient.Close()
-	network.setupNatClient(peerId)
+
+	if err := network.setupNatClient(peerId); err != nil {
+		logger.Warning("resSetup nat client err :->", err)
+		panic(err)
+	}
+
 }
 
 func (network *nbsNetwork) setupNatClient(peerId string) error {
