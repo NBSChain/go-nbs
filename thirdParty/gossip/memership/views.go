@@ -36,7 +36,6 @@ func (node *MemManager) removeFromView(nodeId string, views map[string]*ViewNode
 		item.outConn.Close()
 	}
 
-	logger.Warning("before remove :->", len(views))
 	delete(views, item.nodeId)
 
 	logger.Warning("remove node from view:->", item.nodeId, len(views))

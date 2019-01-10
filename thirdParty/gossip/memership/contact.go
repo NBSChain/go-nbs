@@ -33,7 +33,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	for _, item := range node.PartialView {
 
 		if item.nodeId == sub.NodeId {
-			logger.Debug("don't introduce himself, no  .")
+			logger.Debug("don't introduce himself:->", item.nodeId)
 			continue
 		}
 
@@ -48,7 +48,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	for i := 0; i < utils.AdditionalCopies; i++ {
 		item := node.randomSelectItem()
 
-		logger.Debug("random chose target:->", item.nodeId)
+		logger.Debug("for system robust, additional forward:->", item.nodeId)
 
 		if err := node.sendData(item, data); err != nil {
 			logger.Error("forward extra C sub as contact err :->", err)

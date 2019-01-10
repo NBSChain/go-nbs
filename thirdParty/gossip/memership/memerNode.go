@@ -22,10 +22,10 @@ const (
 	NodeFailed        = 5
 
 	MemShipHeartBeat = time.Second * 100
-	IsolatedTime     = MemShipHeartBeat * 2
+	IsolatedTime     = MemShipHeartBeat * 3
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
-	DefaultSubExpire = time.Minute * 10 //time.Hour
+	DefaultSubExpire = time.Minute * 30 //time.Hour
 	SubscribeTimeOut = time.Second * 4
 	MSGTrashCollect  = time.Minute * 10
 	MaxItemPerRound  = 1 << 10
