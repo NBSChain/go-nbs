@@ -84,6 +84,8 @@ func (node *MemManager) normalizeWeight(views map[string]*ViewNode) {
 
 func (node *MemManager) updateProbability(task *gossipTask) error {
 
+	logger.Debug("start to broadcast the new probability:->")
+
 	node.normalizeWeight(node.PartialView)
 
 	for _, item := range node.PartialView {
