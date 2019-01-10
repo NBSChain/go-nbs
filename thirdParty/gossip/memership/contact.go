@@ -109,6 +109,7 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 
+	//TODO::crash and restart again, how to process?
 	if item, ok := node.PartialView[sub.NodeId]; ok &&
 		sub.Expire == item.expiredTime.Unix() {
 		return fmt.Errorf("this sub(%s) has been accepted by me:->", item.nodeId)
@@ -133,14 +134,8 @@ func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
 			Subscribe: sub,
 		},
 	}
-
 	data, _ := proto.Marshal(req)
-	if no := node.sendVoteApply(data, sub.NodeId); no > 0 {
-		return nil
-	}
-
-	logger.Debug("ok no one proxy this subscribe, let me do it:->", sub.NodeId)
-	return node.asContactServer(sub)
+	return node.sendVoteApply(data, sub.NodeId)
 }
 
 func (node *MemManager) getVoteApply(task *gossipTask) error {
@@ -148,35 +143,29 @@ func (node *MemManager) getVoteApply(task *gossipTask) error {
 	return node.asContactProxy(req.Subscribe, int(req.TTL))
 }
 
-func (node *MemManager) sendVoteApply(data []byte, targetId string) int {
+func (node *MemManager) chooseWithProb() *ViewNode {
+	pro, _ := rand.Int(rand.Reader, big.NewInt(100))
+	logger.Debug("vote apply pro:->", pro)
+
+	proInt, startInt := pro.Int64(), int64(0)
+	for _, item := range node.PartialView {
+		startInt += int64(item.probability * 100)
+		logger.Debug("item with prob:->", item.nodeId, item.probability, startInt)
+		if proInt < startInt {
+			logger.Debug("selected node is:->", item.nodeId)
+			return item
+		}
+	}
+	return nil
+}
+
+func (node *MemManager) sendVoteApply(data []byte, targetId string) error {
 
 	node.normalizeWeight(node.PartialView)
 
-	var forwardTime int
-	for _, item := range node.PartialView {
+	item := node.chooseWithProb()
 
-		pro, _ := rand.Int(rand.Reader, big.NewInt(100))
-
-		logger.Debug("vote apply pro and itemPro:->", pro, item.probability*100)
-		if pro.Int64() > int64(item.probability*100) {
-			logger.Debug("no luck to send vote apply, try next one:->", item.nodeId)
-			continue
-		}
-
-		if item.nodeId == targetId {
-			logger.Debug("don't let him find himself, the life is already so hard:->", targetId)
-			continue
-		}
-
-		logger.Debug("ok, vote for him please:->", item.nodeId)
-		if err := node.sendData(item, data); err != nil {
-			logger.Warning("failed to send apply for err:->", err)
-			continue
-		}
-		forwardTime++
-	}
-
-	return forwardTime
+	return node.sendData(item, data)
 }
 
 func (node *MemManager) asSubAdapter(sub *pb.Subscribe) error {
