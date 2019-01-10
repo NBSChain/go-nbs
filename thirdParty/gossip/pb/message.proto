@@ -17,6 +17,7 @@ message BasicHost {
 message Subscribe {
     int64 SeqNo     = 1;
     int64 Expire    = 2;
+    bool  isReSub   = 5;
     string nodeId   = 3;
     BasicHost Addr  = 4;
 }

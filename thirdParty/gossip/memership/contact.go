@@ -14,11 +14,11 @@ import (
 	"time"
 )
 
-func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
+func (node *MemManager) broadCastSub(sub *pb.Subscribe) {
 
 	if len(node.PartialView) == 0 {
 		logger.Info("no partial view node to broadcast ")
-		return 0
+		return
 	}
 	sub.SeqNo++
 	msg := &pb.Gossip{
@@ -28,7 +28,6 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 	msg.MsgId = crypto.MD5SS(msg.String())
 	data, _ := proto.Marshal(msg)
 
-	forwardTime := 0
 	logger.Debug("broad cast sub to all partial views:->", len(node.PartialView))
 	for _, item := range node.PartialView {
 
@@ -41,8 +40,11 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 			logger.Error("forward sub as contact err :->", err)
 			continue
 		}
+	}
 
-		forwardTime++
+	if sub.IsReSub {
+		logger.Info("ReSub no need to make additional forward")
+		return
 	}
 
 	for i := 0; i < utils.AdditionalCopies; i++ {
@@ -54,10 +56,7 @@ func (node *MemManager) broadCastSub(sub *pb.Subscribe) int {
 			logger.Error("forward extra C sub as contact err :->", err)
 			continue
 		}
-		forwardTime++
 	}
-
-	return forwardTime
 }
 
 func (node *MemManager) publishVoteResult(sub *pb.Subscribe) error {

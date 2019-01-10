@@ -199,10 +199,11 @@ func (node *MemManager) reSubscribe() error {
 	msg := &pb.Gossip{
 		MsgType: nbsnet.GspSub,
 		Subscribe: &pb.Subscribe{
-			SeqNo:  1,
-			Expire: time.Now().Add(DefaultSubExpire).Unix(),
-			NodeId: netId,
-			Addr:   nbsnet.ConvertToGossipAddr(nbsAddr, netId),
+			SeqNo:   1,
+			Expire:  time.Now().Add(DefaultSubExpire).Unix(),
+			IsReSub: true,
+			NodeId:  netId,
+			Addr:    nbsnet.ConvertToGossipAddr(nbsAddr, netId),
 		},
 	}
 	return node.send(item, msg)
