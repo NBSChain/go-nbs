@@ -25,9 +25,9 @@ const (
 	IsolatedTime     = MemShipHeartBeat * 3
 	MaxInnerTaskSize = 1 << 10
 	MaxForwardTimes  = 10
-	DefaultSubExpire = time.Minute * 30 //time.Hour
+	DefaultSubExpire = time.Hour * 24
 	SubscribeTimeOut = time.Second * 4
-	MSGTrashCollect  = time.Minute * 10
+	MSGTrashCollect  = time.Minute * 30
 	MaxItemPerRound  = 1 << 10
 	ProbUpdateInter  = 10
 )
