@@ -147,14 +147,19 @@ func (node *MemManager) getVoteApply(task *gossipTask) error {
 }
 
 func (node *MemManager) chooseWithProb() *ViewNode {
-	pro, _ := rand.Int(rand.Reader, big.NewInt(100))
-	logger.Debug("vote apply pro:->", pro)
 
-	proInt, startInt := pro.Int64(), int64(0)
+	randValue, _ := rand.Int(rand.Reader, big.NewInt(10000))
+	randPro := float64(randValue.Int64()) / 10000
+
+	logger.Debug("vote apply pro:->", randPro)
+	var start float64
+
 	for _, item := range node.PartialView {
-		startInt += int64(item.probability * 100)
-		logger.Debug("item with prob:->", item.nodeId, item.probability, startInt)
-		if proInt < startInt {
+
+		start += item.probability
+		logger.Debug("item with prob:->", item.nodeId, item.probability, start)
+
+		if randPro <= start {
 			logger.Debug("selected node is:->", item.nodeId)
 			return item
 		}
