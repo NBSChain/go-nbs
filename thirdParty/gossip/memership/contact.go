@@ -107,6 +107,10 @@ func (node *MemManager) asContactServer(sub *pb.Subscribe) error {
 }
 
 func (node *MemManager) asContactProxy(sub *pb.Subscribe, counter int) error {
+	if len(node.PartialView) == 0 {
+		logger.Debug("I have no output views, get you.")
+		return node.asContactServer(sub)
+	}
 
 	//TODO::crash and restart again, how to process?
 	if item, ok := node.PartialView[sub.NodeId]; ok &&
