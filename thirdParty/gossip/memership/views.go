@@ -50,6 +50,7 @@ func (node *MemManager) removeFromView(nodeId string, views map[string]*ViewNode
 func (node *MemManager) updateMyInProb(task *gossipTask) error {
 
 	wei := task.msg.OVWeight
+	logger.Debug("get update probability msg for my input view:->", wei)
 	item, ok := node.InputView[wei.NodeId]
 	if !ok {
 		return ItemNotFound
@@ -61,6 +62,7 @@ func (node *MemManager) updateMyInProb(task *gossipTask) error {
 
 func (node *MemManager) updateMyOutProb(task *gossipTask) error {
 	wei := task.msg.IVWeight
+	logger.Debug("get update probability msg for my output view:->", wei)
 	item, ok := node.PartialView[wei.NodeId]
 	if !ok {
 		return ItemNotFound
@@ -100,6 +102,7 @@ func (node *MemManager) updateProbability(task *gossipTask) error {
 		if err := node.send(item, msg); err != nil {
 			logger.Warning("send weight update to partial view item err:->", err, item.nodeId)
 		}
+		logger.Debug("send new pro to item in partial view:->", item.nodeId, msg)
 	}
 
 	node.normalizeWeight(node.InputView)
@@ -117,6 +120,7 @@ func (node *MemManager) updateProbability(task *gossipTask) error {
 		if _, err := node.serviceConn.WriteToUDP(data, item.inAddr); err != nil {
 			logger.Warning("send weight update to input view item err:->", err, item.nodeId)
 		}
+		logger.Debug("send new pro to item in input view:->", item.nodeId, msg, item.inAddr)
 	}
 
 	node.subNo = 0
