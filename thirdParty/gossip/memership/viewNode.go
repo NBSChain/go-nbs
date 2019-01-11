@@ -8,27 +8,25 @@ import (
 	"github.com/NBSChain/go-nbs/utils"
 	"github.com/golang/protobuf/proto"
 	"net"
-	"sync"
 	"time"
 )
 
 type ViewNode struct {
-	sync.RWMutex
-	nodeId      string
-	probability float64
-	inAddr      *net.UDPAddr
-	updateTime  time.Time
-	expiredTime time.Time
-	outConn     *nbsnet.NbsUdpConn
-	outAddr     *nbsnet.NbsUdpAddr
+	nodeId        string
+	probability   float64
+	inAddr        *net.UDPAddr
+	heartBeatTime time.Time
+	expiredTime   time.Time
+	outConn       *nbsnet.NbsUdpConn
+	outAddr       *nbsnet.NbsUdpAddr
 }
 
 func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*ViewNode, error) {
 
 	addr := nbsnet.ConvertFromGossipAddr(host)
-	if oldItem, ok := node.PartialView[host.NetworkId]; ok {
+	if oldItem, ok := node.PartialView[host.NetworkId]; ok { //TODO::check again.
 		oldItem.expiredTime = expire
-		oldItem.updateTime = time.Now()
+		oldItem.heartBeatTime = time.Now()
 		oldItem.outAddr = addr
 		logger.Debug("I've this item already :->", oldItem.nodeId)
 		return oldItem, nil
@@ -42,12 +40,12 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 	}
 
 	item := &ViewNode{
-		nodeId:      host.NetworkId,
-		probability: node.meanProb(node.PartialView),
-		outConn:     conn,
-		outAddr:     addr,
-		updateTime:  time.Now(),
-		expiredTime: expire,
+		nodeId:        host.NetworkId,
+		probability:   node.meanProb(node.PartialView),
+		outConn:       conn,
+		outAddr:       addr,
+		heartBeatTime: time.Now(),
+		expiredTime:   expire,
 	}
 
 	node.PartialView[item.nodeId] = item
@@ -59,27 +57,24 @@ func (node *MemManager) newOutViewNode(host *pb.BasicHost, expire time.Time) (*V
 func (node *MemManager) newInViewNode(nodeId string, addr *net.UDPAddr) *ViewNode {
 
 	view := &ViewNode{
-		nodeId:      nodeId,
-		inAddr:      addr,
-		probability: node.meanProb(node.InputView),
-		updateTime:  time.Now(),
-		outConn:     nil,
-		outAddr:     nil,
+		nodeId:        nodeId,
+		inAddr:        addr,
+		probability:   node.meanProb(node.InputView),
+		heartBeatTime: time.Now(),
+		outConn:       nil,
+		outAddr:       nil,
 	}
 	node.InputView[nodeId] = view
 	return view
 }
 
 func (node *MemManager) sendData(item *ViewNode, data []byte) error {
-	item.Lock()
-	defer item.Unlock()
 
 	if _, err := item.outConn.WriteWithSyn(data); err != nil {
 		logger.Warning("item write data to peer err:->", err)
 		node.removeFromView(item.nodeId, node.PartialView)
 		return err
 	}
-	item.updateTime = time.Now()
 	return nil
 }
 
@@ -123,8 +118,6 @@ func (node *MemManager) waitingWork(item *ViewNode) {
 }
 
 func (item *ViewNode) String() string {
-	item.RLock()
-	defer item.RUnlock()
 
 	format := utils.GetConfig().SysTimeFormat
 
@@ -147,20 +140,11 @@ func (item *ViewNode) String() string {
 		item.probability,
 		"inAddr",
 		inAddr,
-		"updateTime",
-		item.updateTime.Format(format),
+		"heartBeatTime",
+		item.heartBeatTime.Format(format),
 		"expiredTime",
 		item.expiredTime.Format(format),
 		"outAddr",
 		outAddr,
 	)
-}
-
-func (node *MemManager) freshInputView(nodeId string) {
-	if item, ok := node.InputView[nodeId]; ok {
-		item.Lock()
-		defer item.Unlock()
-		logger.Debug("update input view item for msg receive :->", item.nodeId)
-		item.updateTime = time.Now()
-	}
 }

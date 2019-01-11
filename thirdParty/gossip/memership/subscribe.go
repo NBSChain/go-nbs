@@ -220,7 +220,6 @@ func (node *MemManager) reSubAckConfirm(task *gossipTask) error {
 	if item.outAddr.NatServerIP != ack.Addr.NatServer {
 		item.outAddr = nbsnet.ConvertFromGossipAddr(ack.Addr)
 		logger.Warning("this item's nat server info changed:->", item.nodeId)
-		item.updateTime = time.Now()
 	}
 	return nil
 }

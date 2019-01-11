@@ -96,7 +96,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspWelcome)] = node.subAccepted
 	node.taskRouter[int(nbsnet.GspVoteResAck)] = node.voteAck
 	node.taskRouter[SendHeartBeat] = node.sendHeartBeat
-	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.noop
+	node.taskRouter[int(nbsnet.GspHeartBeat)] = node.updateHeartBeat
 	node.taskRouter[MsgCounterCollect] = node.msgCounterClean
 	node.taskRouter[CheckItemInView] = node.checkItemInView
 	node.taskRouter[int(nbsnet.GspReplaceArc)] = node.replaceForUnsubPeer
@@ -191,10 +191,6 @@ func (node *MemManager) msgProcessor() {
 				continue
 			}
 
-			if task.msg != nil {
-				node.freshInputView(task.msg.FromId)
-			}
-
 		case <-node.ctx.Done():
 			logger.Info("gossip offline")
 			return
@@ -244,7 +240,7 @@ func (node *MemManager) checkItemInView(task *gossipTask) error {
 
 	now := time.Now()
 	for _, item := range node.InputView {
-		if now.Sub(item.updateTime) > IsolatedTime {
+		if now.Sub(item.heartBeatTime) > IsolatedTime {
 			logger.Debug("more than isolate check:->")
 			node.removeFromView(item.nodeId, node.InputView)
 		}
@@ -281,10 +277,6 @@ func (node *MemManager) sendHeartBeat(task *gossipTask) error {
 		if now.After(item.expiredTime) {
 			logger.Warning("subscribe expired:->", item.expiredTime, now, item.nodeId)
 			node.removeFromView(item.nodeId, node.PartialView)
-			continue
-		}
-
-		if now.Sub(item.updateTime) < (MemShipHeartBeat / 2) {
 			continue
 		}
 
@@ -358,7 +350,15 @@ func (node *MemManager) getForwardSub(task *gossipTask) error {
 	return node.asSubAdapter(task.msg.Subscribe)
 }
 
-func (node *MemManager) noop(task *gossipTask) error {
-	logger.Debug("noop:->", task.taskType, task.msg)
+func (node *MemManager) updateHeartBeat(task *gossipTask) error {
+
+	nodeId := task.msg.FromId
+	item, ok := node.InputView[nodeId]
+	if !ok {
+		return ItemNotFound
+	}
+	logger.Debug("update heart beat :->", item.nodeId)
+
+	item.heartBeatTime = time.Now()
 	return nil
 }
