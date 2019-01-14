@@ -16,7 +16,7 @@ type pubSubService struct{}
 
 func (service *pubSubService) Publish(ctx context.Context, request *pb.PublishRequest) (*pb.PublishResponse, error) {
 
-	if err := gossip.GetGossipInstance().Publish(request.Topics, []byte(request.Message)); err != nil {
+	if err := gossip.GetGossipInstance().Publish(request.Topics, request.Message); err != nil {
 		return nil, err
 	}
 
@@ -24,15 +24,29 @@ func (service *pubSubService) Publish(ctx context.Context, request *pb.PublishRe
 		Result: "subscribe success!",
 	}, nil
 }
-func (service *pubSubService) Subscribe(ctx context.Context, request *pb.SubscribeRequest) (*pb.SubscribeResponse, error) {
+func (service *pubSubService) Subscribe(request *pb.SubscribeRequest, stream pb.PubSubTask_SubscribeServer) error {
 
-	if err := gossip.GetGossipInstance().Subscribe(request.Topics); err != nil {
-		return nil, err
+	queue, err := gossip.GetGossipInstance().Subscribe(request.Topics)
+	if err != nil {
+		return err
 	}
 
-	return &pb.SubscribeResponse{
-		Result: "subscribe success!",
-	}, nil
+	defer gossip.GetGossipInstance().Unsubscribe(request.Topics)
+
+	for {
+		select {
+		case msg := <-queue:
+			res := &pb.SubscribeResponse{
+				From:    msg.From,
+				MsgType: msg.Typ,
+				MsgData: msg.PayLoad,
+			}
+
+			if err := stream.Send(res); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (service *pubSubService) Peers(ctx context.Context, request *pb.PeersRequest) (*pb.PeersResponse, error) {

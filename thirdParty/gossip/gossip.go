@@ -1,5 +1,7 @@
 package gossip
 
+import "github.com/NBSChain/go-nbs/thirdParty/gossip/message"
+
 type BasicProtocol interface {
 	Online(peerId string) error
 
@@ -7,11 +9,11 @@ type BasicProtocol interface {
 
 	IsOnline() bool
 
-	Publish(channel string, message []byte) error
+	Publish(channel string, message string) error
 
-	Subscribe(channel string) error
+	Subscribe(channel string) (chan *message.MsgEntity, error)
 
-	Unsubscribe(channel string) error
+	Unsubscribe(channel string)
 
 	AllPeers(channel string, depth int) ([]string, []string)
 

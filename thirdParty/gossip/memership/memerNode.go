@@ -8,6 +8,7 @@ import (
 	"github.com/NBSChain/go-nbs/storage/network/nbsnet"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/pb"
 	"github.com/NBSChain/go-nbs/utils"
+	"github.com/NBSChain/go-nbs/utils/crypto"
 	"github.com/golang/protobuf/proto"
 	"math/big"
 	"net"
@@ -56,6 +57,7 @@ type msgCounter struct {
 	counter int
 	time    time.Time
 }
+type MsgConsumer func(msg *pb.AppMsg) bool
 
 type MemManager struct {
 	ctx         context.Context
@@ -68,6 +70,7 @@ type MemManager struct {
 	PartialView map[string]*ViewNode
 	taskRouter  map[int]worker
 	msgCounter  map[string]*msgCounter
+	AppMsgHub   MsgConsumer
 }
 
 var (
@@ -108,6 +111,7 @@ func NewMemberNode(peerId string) *MemManager {
 	node.taskRouter[int(nbsnet.GspUpdateOVWei)] = node.updateMyInProb
 	node.taskRouter[int(nbsnet.GspUpdateIVWei)] = node.updateMyOutProb
 	node.taskRouter[int(nbsnet.GspSubACK)] = node.reSubAckConfirm
+	node.taskRouter[int(nbsnet.GspAppMsg)] = node.processAppMsg
 	return node
 }
 
@@ -360,5 +364,45 @@ func (node *MemManager) updateHeartBeat(task *gossipTask) error {
 	logger.Debug("update heart beat :->", item.nodeId)
 
 	item.heartBeatTime = time.Now()
+	return nil
+}
+
+func (node *MemManager) FanOut(c string, bytes []byte, msgType int32) {
+	timeFormat := utils.GetConfig().SysTimeFormat
+	msg := pb.AppMsg{
+		Channel: c,
+		MsgType: msgType,
+		From:    node.nodeID,
+		Payload: bytes,
+		CTime:   time.Now().Format(timeFormat),
+	}
+	msg.MsgId = crypto.MD5SS(msg.String())
+
+	data, _ := proto.Marshal(&pb.Gossip{
+		MsgType: nbsnet.GspAppMsg,
+		AppMsg:  &msg,
+	})
+
+	for _, item := range node.PartialView {
+		if err := node.sendData(item, data); err != nil {
+			logger.Warning("failed to publish message:->", item.nodeId)
+		}
+		logger.Debug("send msg:->", msg, item.nodeId)
+	}
+}
+
+func (node *MemManager) processAppMsg(task *gossipTask) error {
+	msg := task.msg.AppMsg
+	if isNew := node.AppMsgHub(msg); !isNew {
+		return nil
+	}
+
+	data, _ := proto.Marshal(task.msg)
+	for _, item := range node.PartialView {
+		if err := node.sendData(item, data); err != nil {
+			logger.Warning("forward app msg err:->", err)
+		}
+	}
+	logger.Debug("I forward one msg:->", msg)
 	return nil
 }

@@ -39,6 +39,7 @@ const (
 	GspRemoveOVAcr = net_pb.MsgType_GspRemoveOVAcr
 	GspUpdateOVWei = net_pb.MsgType_GspUpdateOVWei
 	GspUpdateIVWei = net_pb.MsgType_GspUpdateIVWei
+	GspAppMsg      = net_pb.MsgType_GspAppMsg
 	GspInnerBase   = net_pb.MsgType_GspInnerBase
 	GspEnd         = net_pb.MsgType_GspEnd
 

@@ -40,6 +40,7 @@ enum MsgType {
     GspRemoveOVAcr  = 2012;
     GspUpdateOVWei  = 2014;
     GspUpdateIVWei  = 2015;
+    GspAppMsg       = 2016;
     GspInnerBase    = 2500;
     GspEnd          = 2999;
 }

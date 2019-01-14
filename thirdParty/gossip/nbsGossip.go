@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/NBSChain/go-nbs/thirdParty/account"
 	"github.com/NBSChain/go-nbs/thirdParty/gossip/memership"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip/message"
 	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
@@ -18,6 +19,7 @@ var (
 type nbsGossip struct {
 	peerId        string
 	memberManager *memership.MemManager
+	msgManager    *message.MsgManager
 }
 
 func GetGossipInstance() BasicProtocol {
@@ -51,12 +53,17 @@ func newNbsGossip() *nbsGossip {
 *		interface implementations
 *
 *****************************************************************/
-func (manager *nbsGossip) Publish(channel string, message []byte) error {
+func (manager *nbsGossip) Publish(channel string, msg string) error {
+	if manager.memberManager != nil {
+		return fmt.Errorf("gossip isn't online right now")
+	}
+
+	manager.memberManager.FanOut(channel, []byte(msg), message.MsgTypePlainTxt)
 	return nil
 }
 
-func (manager *nbsGossip) Subscribe(channel string) error {
-	return nil
+func (manager *nbsGossip) Subscribe(channel string) (chan *message.MsgEntity, error) {
+	return manager.msgManager.NewSub(channel)
 }
 
 func (manager *nbsGossip) AllPeers(channel string, depth int) ([]string, []string) {
@@ -67,8 +74,9 @@ func (manager *nbsGossip) AllMyTopics() []string {
 	return nil
 }
 
-func (manager *nbsGossip) Unsubscribe(channel string) error {
-	return nil
+func (manager *nbsGossip) Unsubscribe(channel string) {
+	manager.msgManager.CancelSub(channel)
+
 }
 
 func (manager *nbsGossip) Offline() error {
@@ -101,6 +109,9 @@ func (manager *nbsGossip) Online(peerId string) error {
 		return err
 	}
 	logger.Info("gossip service start up......")
+
+	manager.msgManager = message.NewMsgManager()
+	manager.memberManager.AppMsgHub = manager.msgManager.MsgReceiver
 
 	return nil
 }

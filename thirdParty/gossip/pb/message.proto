@@ -42,6 +42,15 @@ message WeightUpdate {
     double weight = 2;
 }
 
+message AppMsg{
+    string msgId   = 1;
+    int32  msgType = 6;
+    string channel = 2;
+    string from    = 3;
+    bytes payload  = 4;
+    string  CTime  = 5;
+}
+
 message gossip {
     net.pb.MsgType  MsgType     = 1;
     string          MsgId       = 2;
@@ -54,4 +63,5 @@ message gossip {
     Subscribe       ReplaceAck  = 12;
     WeightUpdate    OVWeight    = 13;
     WeightUpdate    IVWeight    = 14;
+    AppMsg          AppMsg      = 15;
 }

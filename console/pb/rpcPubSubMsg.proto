@@ -8,7 +8,7 @@ package pb;
 
 service PubSubTask{
     rpc Publish(PublishRequest)     returns (PublishResponse) {}
-    rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {}
     rpc Peers(PeersRequest)         returns (PeersResponse) {}
     rpc Topics(TopicsRequest)       returns (TopicsResponse) {}
 }
@@ -25,7 +25,9 @@ message SubscribeRequest{
     string topics = 1;
 }
 message SubscribeResponse{
-    string result = 1;
+    string from    = 1;
+    int32  msgType = 2;
+    bytes  msgData = 3;
 }
 
 message PeersRequest{
