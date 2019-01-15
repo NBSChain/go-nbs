@@ -7,7 +7,7 @@ import (
 )
 
 var pubSubCmd = &cobra.Command{
-	Use:   "pubSub",
+	Use:   "pubsub",
 	Short: "gossip protocol publish and subscribe actions",
 	Long:  `gossip protocol publish and subscribe actions`,
 	Run:   pubAndSub,

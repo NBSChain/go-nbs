@@ -45,6 +45,9 @@ func (service *pubSubService) Subscribe(request *pb.SubscribeRequest, stream pb.
 			if err := stream.Send(res); err != nil {
 				return err
 			}
+		case <-stream.Context().Done():
+			logger.Debug("subscribe context done")
+			return nil
 		}
 	}
 }
