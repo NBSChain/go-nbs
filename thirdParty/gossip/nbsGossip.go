@@ -100,18 +100,19 @@ func (manager *nbsGossip) Online(peerId string) error {
 	manager.peerId = peerId
 
 	memberNode := memership.NewMemberNode(peerId)
+	manager.msgManager = message.NewMsgManager()
+	memberNode.AppMsgHub = manager.msgManager.MsgReceiver
+
 	manager.memberManager = memberNode
 	if err := memberNode.InitNode(); err != nil {
 		return err
 	}
+
 	if err := memberNode.RegisterMySelf(); err != nil {
 		logger.Warning("failed to register myself:->", err)
 		return err
 	}
 	logger.Info("gossip service start up......")
-
-	manager.msgManager = message.NewMsgManager()
-	manager.memberManager.AppMsgHub = manager.msgManager.MsgReceiver
 
 	return nil
 }
