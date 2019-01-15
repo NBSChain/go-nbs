@@ -193,7 +193,8 @@ func (network *nbsNetwork) restartNatClient(peerId string) {
 
 	if err := network.setupNatClient(peerId); err != nil {
 		logger.Warning("resSetup nat client err :->", err)
-		panic(err)
+		//panic(err)
+		//TODO::check later and restart.
 	}
 
 }
