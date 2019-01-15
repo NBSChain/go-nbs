@@ -99,7 +99,7 @@ func subscribe(cmd *cobra.Command, args []string) {
 			return
 		}
 
-		logger.Info("get msg:->", response.MsgData)
+		logger.Info("get msg:->", string(response.MsgData))
 	}
 }
 
