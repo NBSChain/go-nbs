@@ -84,6 +84,8 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 			continue
 		}
 		conn := cc.(*net.TCPConn)
+		conn.SetDeadline(time.Now().Add(BootStrapTimeOut))
+
 		localAddr := conn.LocalAddr().String()
 
 		host, port, err := nbsnet.SplitHostPort(localAddr)
@@ -140,6 +142,7 @@ func (c *Client) findWhoAmI(canSever chan bool) error {
 		}
 
 		c.CanServer = c.NatAddr.CanServe
+		conn.SetDeadline(NoTimeOut)
 		c.CtrlConn = conn
 		logger.Info("create client success for network:->\n", c.NatAddr.String())
 		return nil

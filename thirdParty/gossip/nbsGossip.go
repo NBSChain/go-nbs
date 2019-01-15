@@ -54,7 +54,7 @@ func newNbsGossip() *nbsGossip {
 *
 *****************************************************************/
 func (manager *nbsGossip) Publish(channel string, msg string) error {
-	if manager.memberManager != nil {
+	if manager.memberManager == nil {
 		return fmt.Errorf("gossip isn't online right now")
 	}
 

@@ -386,8 +386,9 @@ func (node *MemManager) FanOut(c string, bytes []byte, msgType int32) {
 	for _, item := range node.PartialView {
 		if err := node.sendData(item, data); err != nil {
 			logger.Warning("failed to publish message:->", item.nodeId)
+			continue
 		}
-		logger.Debug("send msg:->", msg, item.nodeId)
+		logger.Debug("send app msg:->", msg, item.nodeId)
 	}
 }
 
