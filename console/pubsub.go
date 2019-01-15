@@ -86,9 +86,21 @@ func subscribe(cmd *cobra.Command, args []string) {
 		Topics: args[0],
 	}
 
-	response, err := client.Subscribe(conn.ctx, request)
+	stream, err := client.Subscribe(conn.ctx, request)
+	if err != nil {
+		logger.Warning("failed to sub the topics:->", args[0])
+		return
+	}
 
-	logger.Info(response, err)
+	for {
+		response, err := stream.Recv()
+		if err != nil {
+			logger.Warning("receive rpc response err:->", err)
+			return
+		}
+
+		logger.Info("get msg:->", response)
+	}
 }
 
 func listAllPeers(cmd *cobra.Command, args []string) {
