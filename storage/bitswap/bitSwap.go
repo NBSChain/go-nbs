@@ -11,10 +11,10 @@ import (
 	"sync"
 )
 
-var instance 		*bitSwap
-var once 		sync.Once
-var parentContext 	context.Context
-var logger 		= utils.GetLogInstance()
+var instance *bitSwap
+var once sync.Once
+var parentContext context.Context
+var logger = utils.GetLogInstance()
 
 func GetSwapInstance() Exchange {
 
@@ -39,30 +39,30 @@ func GetSwapInstance() Exchange {
 *		DAGService interface implements.
 *
 *****************************************************************/
-func newBitSwap() (*bitSwap,error){
+func newBitSwap() (*bitSwap, error) {
 
 	return &bitSwap{
-		broadCaster:	broadCaster.NewBroadCaster(),
-		wantManager:	fetcher.NewRouterFetcher(),
-		ledgerEngine:	engine.NewLedgerEngine(),
+		broadCaster:  broadCaster.NewBroadCaster(),
+		wantManager:  fetcher.NewRouterFetcher(),
+		ledgerEngine: engine.NewLedgerEngine(),
 	}, nil
 }
 
 type bitSwap struct {
-	broadCaster 	*broadCaster.BroadCaster
-	wantManager 	*fetcher.Fetcher
-	ledgerEngine	LedgerEngine
+	broadCaster  *broadCaster.BroadCaster
+	wantManager  *fetcher.Fetcher
+	ledgerEngine LedgerEngine
 }
 
-func (bs *bitSwap) GetDagNode(cidObj *cid.Cid) (ipld.DagNode, error){
+func (bs *bitSwap) GetDagNode(cidObj *cid.Cid) (ipld.DagNode, error) {
 	return bs.wantManager.GetNodeSync(cidObj)
 }
 
-func (bs *bitSwap) GetDagNodes(ctx context.Context, cidArr []*cid.Cid) <- chan fetcher.AsyncResult {
+func (bs *bitSwap) GetDagNodes(ctx context.Context, cidArr []*cid.Cid) <-chan fetcher.AsyncResult {
 	return bs.wantManager.CacheRequest(ctx, cidArr)
 }
 
-func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error{
+func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error {
 
 	bs.broadCaster.PushCache(nodes)
 
@@ -71,6 +71,6 @@ func (bs *bitSwap) SaveToNetPeer(nodes map[string]ipld.DagNode) error{
 	return nil
 }
 
-func (bs *bitSwap) GetLedgerEngine() LedgerEngine{
+func (bs *bitSwap) GetLedgerEngine() LedgerEngine {
 	return bs.ledgerEngine
 }

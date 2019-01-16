@@ -9,13 +9,13 @@ import (
 	"sync"
 )
 
-var instance 		*ServiceRoutingMap
-var once 		sync.Once
-var parentContext 	context.Context
-var logger 		= utils.GetLogInstance()
-var ErrNotFound		= errors.New("dataStore: key not found")
-var ErrInvalidType 	= errors.New("dataStore: invalid type error")
-var ErrCommit		= errors.New("dataStore: batch commit failed")
+var instance *ServiceRoutingMap
+var once sync.Once
+var parentContext context.Context
+var logger = utils.GetLogInstance()
+var ErrNotFound = errors.New("dataStore: key not found")
+var ErrInvalidType = errors.New("dataStore: invalid type error")
+var ErrCommit = errors.New("dataStore: batch commit failed")
 
 func GetServiceDispatcher() *ServiceRoutingMap {
 
@@ -27,7 +27,7 @@ func GetServiceDispatcher() *ServiceRoutingMap {
 			panic(err)
 		}
 
-		logger.Info("data store service start to run......\n")
+		logger.Info("data store service start to run......")
 		instance = mounts
 	})
 
@@ -35,7 +35,7 @@ func GetServiceDispatcher() *ServiceRoutingMap {
 }
 
 type ServiceRoutingMap struct {
-	serviceRouter	map[ServiceType]DataStore
+	serviceRouter map[ServiceType]DataStore
 }
 
 //TODO:: Configurable this mount settings later.
@@ -44,19 +44,18 @@ func newDispatcher() (*ServiceRoutingMap, error) {
 	serviceMap := new(ServiceRoutingMap)
 	serviceMap.serviceRouter = make(map[ServiceType]DataStore)
 
-	levelDbMount, err := newLevelDB( &opt.Options{
+	levelDbMount, err := newLevelDB(&opt.Options{
 		Filter: filter.NewBloomFilter(10),
 	})
 
-	if err != nil{
-		return nil ,err
+	if err != nil {
+		return nil, err
 	}
 	serviceMap.registerService(NewServiceKey(RootServiceURL), levelDbMount)
 	serviceMap.registerService(NewServiceKey(LocalParamKeyURL), levelDbMount)
 
-
 	flatFileDs, err := newFlatFileDataStore()
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 	serviceMap.registerService(NewServiceKey(BLOCKServiceURL), flatFileDs)
@@ -64,18 +63,18 @@ func newDispatcher() (*ServiceRoutingMap, error) {
 	return serviceMap, nil
 }
 
-func (service *ServiceRoutingMap) registerService(key ServiceType, item DataStore)  {
+func (service *ServiceRoutingMap) registerService(key ServiceType, item DataStore) {
 	service.serviceRouter[key] = item
 }
 
-func (service *ServiceRoutingMap) GetService(key string)  DataStore{
+func (service *ServiceRoutingMap) GetService(key string) DataStore {
 
 	serviceKey := NewServiceKey(key)
 
 	return service.serviceRouter[serviceKey]
 }
 
-func (service *ServiceRoutingMap) ServiceByType(serviceKey ServiceType)  DataStore{
+func (service *ServiceRoutingMap) ServiceByType(serviceKey ServiceType) DataStore {
 
 	return service.serviceRouter[serviceKey]
 }

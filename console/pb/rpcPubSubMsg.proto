@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcPubSubMessage";
+
+package pb;
+
+service PubSubTask{
+    rpc Publish(PublishRequest)     returns (PublishResponse) {}
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {}
+    rpc Peers(PeersRequest)         returns (PeersResponse) {}
+    rpc Topics(TopicsRequest)       returns (TopicsResponse) {}
+}
+
+message PublishRequest{
+    string topics  = 1;
+    string message = 2;
+}
+message PublishResponse{
+    string result = 1;
+}
+
+message SubscribeRequest{
+    string topics = 1;
+}
+message SubscribeResponse{
+    string from    = 1;
+    int32  msgType = 2;
+    bytes  msgData = 3;
+}
+
+message PeersRequest{
+    string topics = 1;
+    int32   depth = 2;
+}
+message PeersResponse{
+    repeated string inPeers     = 1;
+    repeated string outPeers    = 2;
+}
+
+message TopicsRequest{
+    string message = 1;
+}
+message TopicsResponse{
+    repeated string topics = 1;
+}

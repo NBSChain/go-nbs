@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-
 var ErrPossiblyInsecureHashFunction = fmt.Errorf("potentially insecure hash functions not allowed")
 var ErrBelowMinimumHashLength = fmt.Errorf("hashes must be at %d least bytes long", minimumHashLength)
 
@@ -61,19 +60,19 @@ func ValidateCid(c *Cid) error {
 	return nil
 }
 
-func IsValidPath(path string) (*Cid, []string, error)  {
-	if path[0] == '/'{
+func IsValidPath(path string) (*Cid, []string, error) {
+	if path[0] == '/' {
 		path = path[1:]
 	}
 
 	parts := strings.Split(path, "/")
-	if len(parts) == 0{
+	if len(parts) == 0 {
 		return nil, nil, ErrBelowMinimumHashLength
 	}
 
 	var firstUri = parts[0]
-	if parts[0] == "nbs"{
-		if len(parts) < 2{
+	if parts[0] == "nbs" {
+		if len(parts) < 2 {
 			return nil, nil, ErrBelowMinimumHashLength
 		}
 		firstUri = parts[1]

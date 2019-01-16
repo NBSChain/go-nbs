@@ -1,11 +1,11 @@
 package dataStore
+
 /*****************************************************************
 *
 *		DataStore interface and implements.
 *
 *****************************************************************/
 type DataStore interface {
-
 	Put(key string, value []byte) error
 
 	Get(key string) ([]byte, error)
@@ -19,9 +19,7 @@ type DataStore interface {
 	Batch() (Batch, error)
 }
 
-
 type Batch interface {
-
 	Put(key string, val []byte) error
 
 	Delete(key string) error

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/NBSChain/go-nbs/utils/cmdKits"
+	"github.com/NBSChain/go-nbs/console"
 )
 
 func main() {
 
-	cmdKits.Execute()
+	console.Execute()
 }

@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package pb;
+
+import "github.com/NBSChain/go-nbs/storage/network/pb/nbsMsg.proto";
+
+message BasicHost {
+    bool   CanServer    = 1;
+    string NatServer    = 2;
+    string NatIP        = 3;
+    int32  NatPort      = 4;
+    string PriIP        = 5;
+    string PubIp        = 6;
+    string NetworkId    = 7;
+}
+
+message Subscribe {
+    int64 SeqNo     = 1;
+    int64 Expire    = 2;
+    bool  isReSub   = 5;
+    string nodeId   = 3;
+    BasicHost Addr  = 4;
+}
+
+message SynAck {
+    int64 SeqNo     = 1;
+    BasicHost Addr  = 3;
+}
+
+message VoteContact {
+    int32 TTL           = 1;
+    Subscribe Subscribe = 2;
+}
+
+message ArcReplace {
+    string ToId     = 2;
+    BasicHost Addr  = 3;
+}
+
+message WeightUpdate {
+    string nodeId = 1;
+    double weight = 2;
+}
+
+message AppMsg{
+    string msgId   = 1;
+    int32  msgType = 6;
+    string channel = 2;
+    string from    = 3;
+    bytes payload  = 4;
+    string  CTime  = 5;
+}
+
+message gossip {
+    net.pb.MsgType  MsgType     = 1;
+    string          MsgId       = 2;
+    string          FromId      = 7;
+    Subscribe       Subscribe   = 3;
+    SynAck          SubAck      = 4;
+    VoteContact     VoteContact = 5;
+    Subscribe       VoteResult  = 6;
+    ArcReplace      ArcReplace  = 10;
+    Subscribe       ReplaceAck  = 12;
+    WeightUpdate    OVWeight    = 13;
+    WeightUpdate    IVWeight    = 14;
+    AppMsg          AppMsg      = 15;
+}

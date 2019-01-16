@@ -1,8 +1,15 @@
 garbage collection
 ping data
 mark data as temp
-key pair generation
 all initial things in one time.
 control the size of logs.
 control the size of local storage.
 chatting function.
+
+compile share port package under other os: it's ok in windows, darwin, centos only.
+account create return the id.
+
+windows socket timeout deadline is not ok right now.
+
+---------------->>>>>>---------------->>>>>>
+for nat pole punch Applications must therefore authen- ticate all messages in some way to filter out such stray traffic robustly. The messages might include application- specific names or cryptographic tokens, for example, or at least a random nonce pre-arranged through S.

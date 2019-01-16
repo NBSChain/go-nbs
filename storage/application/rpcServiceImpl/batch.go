@@ -6,22 +6,21 @@ import (
 	"sync"
 )
 
-const MaxNodes	= DefaultLinksPerBlock
+const MaxNodes = DefaultLinksPerBlock
 
 func NewBatch() *Batch {
 	batch := &Batch{
-		nodes:  make([]ipld.DagNode, 0, MaxNodes),
+		nodes: make([]ipld.DagNode, 0, MaxNodes),
 	}
 
 	return batch
 }
 
 type Batch struct {
-	wg		sync.WaitGroup
-	commitResult  	error
-	nodes         	[]ipld.DagNode
+	wg           sync.WaitGroup
+	commitResult error
+	nodes        []ipld.DagNode
 }
-
 
 func (batch *Batch) Add(node ipld.DagNode) error {
 
@@ -30,9 +29,9 @@ func (batch *Batch) Add(node ipld.DagNode) error {
 	}
 
 	batch.nodes = append(batch.nodes, node)
-	if len(batch.nodes) >= MaxNodes{
+	if len(batch.nodes) >= MaxNodes {
 		batch.subCommit()
-		batch.nodes =  make([]ipld.DagNode, 0, MaxNodes)
+		batch.nodes = make([]ipld.DagNode, 0, MaxNodes)
 	}
 
 	return nil
@@ -51,8 +50,7 @@ func (batch *Batch) Commit() error {
 	return batch.commitResult
 }
 
-
-func (batch *Batch) subCommit(){
+func (batch *Batch) subCommit() {
 
 	logger.Warning("...start to subCommit......")
 
@@ -63,7 +61,7 @@ func (batch *Batch) subCommit(){
 
 	dagService := merkledag.GetDagInstance()
 	err := dagService.AddMany(batch.nodes)
-	if err != nil{
+	if err != nil {
 		logger.Error(err)
 		batch.commitResult = err
 	}

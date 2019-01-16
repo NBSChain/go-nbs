@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcGossipMessage";
+
+package pb;
+
+service GossipTask {
+    rpc startService (StartRequest) returns (StartResponse) {}
+    rpc stopService (StopRequest) returns (StopResponse) {
+    }
+    rpc debug (DebugCmd) returns (DebugResult) {
+    }
+}
+
+message StartRequest {
+    string cmd = 1;
+}
+
+message StartResponse {
+    string result = 1;
+}
+
+message StopRequest {
+    string cmd = 1;
+}
+
+message StopResponse {
+    string result = 1;
+}
+
+message DebugCmd {
+    string cmd = 1;
+}
+message viewInfos{
+    repeated string views = 1;
+}
+
+message DebugResult {
+    viewInfos inputViews    = 1;
+    viewInfos outputViews   = 2;
+    string    result        = 3;
+}

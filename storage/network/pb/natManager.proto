@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package net.pb;
+
+import "nbsMsg.proto";
+
+enum NatType {
+    UnknownRES      = 0;
+    NoNatDevice     = 1;
+    BehindNat       = 2;
+    CanBeNatServer  = 3;
+    ToBeChecked     = 4;
+}
+
+message BootReg {
+    string  privateIp   = 2;
+    int32   privatePort  = 3;
+}
+
+message BootAnswer {
+    NatType NatType     = 1;
+    string  PublicIp    = 2;
+    int32  PublicPort   = 3;
+}
+
+message DigApply {
+    string NatServer    = 1;
+    string Public       = 2;
+    string TargetId     = 3;
+    int32 TargetPort    = 4;
+    string FromId       = 6;
+    NetWorkType ntType  = 7;
+    repeated string PubIps = 8;
+}
+
+message DigConfirm {
+    string Public       = 1;
+    string targetId     = 3;
+    NetWorkType ntType  = 4;
+    repeated string PubIps = 5;
+}
+
+message KeepAlive {
+    string PriAddr = 2;
+    string PubAddr = 3;
+}
+
+message PingPong {
+    string ping  = 1;
+    string pong  = 2;
+    string nonce = 3;
+    int32  TTL   = 4;
+}
+
+message ReverseInvite {
+    string pubIp     = 2;
+    int32 toPort     = 3;
+    string peerId    = 4;
+    string fromPort  = 5;
+}
+
+message IpV4 {
+    string ip   = 1;
+    string port = 2;
+}
+
+message NatMsg {
+    MsgType Typ                 = 1;
+    string  NetID               = 2;
+    BootReg BootReg             = 3;
+    KeepAlive KeepAlive         = 4;
+    DigApply DigApply           = 5;
+    DigConfirm DigConfirm       = 6;
+    PingPong PingPong           = 7;
+    BootAnswer BootAnswer       = 10;
+    IpV4 NatTypeCheck           = 11;
+    ReverseInvite ReverseInvite = 8;
+}

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package net.pb;
+
+enum MsgType {
+    Error               = 0;
+
+    NatBase          = 1000;
+    NatBootReg          = 1001;
+    NatKeepAlive        = 1002;
+    NatDigApply         = 1003;
+    NatPingPong         = 1004;
+    NatDigOut           = 1006;
+    NatReversInvite     = 1008;
+    NatReversInviteAck  = 1009;
+    NatPriDigSyn        = 1010;
+    NatPriDigAck        = 1011;
+    NatDigConfirm       = 1012;
+    NatBootAnswer       = 1013;
+    NatBlankKA          = 1014;
+    NatCheckNetType     = 1015;
+    NatFindPubIpSyn     = 1016;
+    NatFindPubIpACK     = 1017;
+    NatBlankKAACK       = 1018;
+    NatUdpSyn           = 1019;
+    NatUdpAck           = 1020;
+    NatEnd              = 1999;
+    GspBase         = 2000;
+    GspSub          = 2001;
+    GspSubACK       = 2002;
+    GspVoteContact  = 2003;
+    GspVoteResult   = 2004;
+    GspVoteResAck   = 2005;
+    GspIntroduce    = 2006;
+    GspWelcome      = 2007;
+    GspHeartBeat    = 2008;
+    GspReplaceArc   = 2009;
+    GspReplaceAck   = 2010;
+    GspRemoveIVArc  = 2011;
+    GspRemoveOVAcr  = 2012;
+    GspUpdateOVWei  = 2014;
+    GspUpdateIVWei  = 2015;
+    GspAppMsg       = 2016;
+    GspInnerBase    = 2500;
+    GspEnd          = 2999;
+}
+
+enum NetWorkType{
+    SigIpSigPort = 0;
+    MulIpSigPort = 1;
+    MultiPort    = 2;
+}

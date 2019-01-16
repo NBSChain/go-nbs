@@ -129,7 +129,6 @@ func (m *PBNode) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
-
 func (m *PBLink) Unmarshal(data []byte) error {
 	l := len(data)
 	index := 0
@@ -321,7 +320,6 @@ func (m *PBNode) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-
 
 func Skip(data []byte) (n int, err error) {
 	l := len(data)

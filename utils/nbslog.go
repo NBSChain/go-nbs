@@ -21,7 +21,7 @@ func GetLogInstance() *logging.Logger {
 
 func newLogIns() *logging.Logger {
 
-	log := logging.MustGetLogger("NBS")
+	logIns := logging.MustGetLogger("NBS")
 
 	logFile, err := os.OpenFile(GetConfig().LogFileName,
 		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -33,22 +33,22 @@ func newLogIns() *logging.Logger {
 	fileBackend := logging.NewLogBackend(logFile, "-->", 0)
 
 	fileFormat := logging.MustStringFormatter(
-		`{time:01-02/15:04:05} %{shortfunc} > %{level:.4s} %{message}`,
+		`{time:01-02/15:04:05} %{longfunc:-30s} %{shortfile:-22.20s} > %{level:.4s} %{message}`,
 	)
 	fileFormatBackend := logging.NewBackendFormatter(fileBackend, fileFormat)
 
 	leveledFileBackend := logging.AddModuleLevel(fileFormatBackend)
 
 	cmdFormat := logging.MustStringFormatter(
-		`%{color}%{time:01-02/15:04:05} %{longfunc} > %{level:.4s} %{message}%{color:reset}`,
+		`%{color}%{time:01-02/15:04:05} %{shortfile:-20.18s} %{shortfunc:-20.20s} [%{level:.4s}] %{message}%{color:reset}`,
 	)
-	cmdBackend := logging.NewLogBackend(os.Stderr, ">>>", 0)
+	cmdBackend := logging.NewLogBackend(os.Stderr, "\n>>>", 0)
 	formattedCmdBackend := logging.NewBackendFormatter(cmdBackend, cmdFormat)
 
 	logging.SetBackend(leveledFileBackend, formattedCmdBackend)
 	//logging.SetLevel(logging.DEBUG, "")
 
-	return log
+	return logIns
 }
 
 type Password string

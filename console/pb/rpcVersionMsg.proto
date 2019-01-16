@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcVersionMessage";
+
+package pb;
+
+service VersionTask {
+    rpc SystemVersion (VersionRequest) returns (VersionResponse) {}
+}
+
+message VersionRequest {
+    string              cmdName = 1;
+    repeated string     args    = 2;
+}
+
+message VersionResponse {
+    string result = 1;
+}

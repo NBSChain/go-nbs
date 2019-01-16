@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcGetMessage";
+
+package pb;
+
+service GetTask {
+    rpc Get (GetRequest) returns (stream GetResponse) {}
+}
+
+message GetRequest {
+    string              dataUri = 1;
+}
+
+message GetResponse {
+    bytes   content = 1;
+}

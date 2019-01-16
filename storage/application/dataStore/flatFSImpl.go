@@ -21,9 +21,9 @@ const (
 )
 
 var (
-	DiskUsageFile 		= "diskUsage.cache"
-	DiskUsageFilesAverage 	= 2000
-	DiskUsageCalcTimeout 	= 5 * time.Minute
+	DiskUsageFile         = "diskUsage.cache"
+	DiskUsageFilesAverage = 2000
+	DiskUsageCalcTimeout  = 5 * time.Minute
 )
 var (
 	ErrDataStoreExists       = errors.New("dataStore already exists")
@@ -36,8 +36,8 @@ func init() {
 }
 
 type diskUsageValue struct {
-	DiskUsage int64        	`json:"diskUsage"`
-	Accuracy  string	`json:"accuracy"`
+	DiskUsage int64  `json:"diskUsage"`
+	Accuracy  string `json:"accuracy"`
 }
 
 type ShardFunc func(string) string
@@ -45,11 +45,11 @@ type ShardFunc func(string) string
 type opT int
 
 type op struct {
-	typ  	opT
-	key  	Key
-	tmp  	string
-	path 	string
-	v    	[]byte
+	typ  opT
+	key  Key
+	tmp  string
+	path string
+	v    []byte
 }
 
 type opMap struct {
@@ -57,33 +57,32 @@ type opMap struct {
 }
 
 type opResult struct {
-	mu		sync.RWMutex
-	success 	bool
-	opMap 		*opMap
-	name  		string
+	mu      sync.RWMutex
+	success bool
+	opMap   *opMap
+	name    string
 }
 
 type FlatFileDataStore struct {
-	diskUsage 	int64
-	path 		string
-	shardStr 	string
-	getDir   	ShardFunc
-	dirty       	bool
-	storedValue 	diskUsageValue
-	checkpointCh 	chan struct{}
-	done         	chan struct{}
-	opMap 		*opMap
+	diskUsage    int64
+	path         string
+	shardStr     string
+	getDir       ShardFunc
+	dirty        bool
+	storedValue  diskUsageValue
+	checkpointCh chan struct{}
+	done         chan struct{}
+	opMap        *opMap
 }
-
 
 func newFlatFileDataStore() (DataStore, error) {
 	var path = utils.GetConfig().BlocksDir
 	var shardIdV1 *ShardIdV1
 
 	_, exist := utils.FileExists(path)
-	if !exist{
+	if !exist {
 		err := os.Mkdir(path, 0755)
-		if err != nil{
+		if err != nil {
 			return nil, err
 		}
 		shardIdV1, err = ParseShardFunc(utils.GetConfig().ShardFun)
@@ -94,10 +93,10 @@ func newFlatFileDataStore() (DataStore, error) {
 		}
 		err = WriteReadme(path, shardIdV1)
 
-		if err != nil{
+		if err != nil {
 			return nil, err
 		}
-	}else{
+	} else {
 		var err error
 		shardIdV1, err = ReadShardFunc(path)
 		if err != nil {
@@ -106,11 +105,11 @@ func newFlatFileDataStore() (DataStore, error) {
 	}
 
 	fileStore := &FlatFileDataStore{
-		path:      	path,
-		shardStr:  	shardIdV1.String(),
-		getDir:    	shardIdV1.Func(),
-		diskUsage: 	0,
-		opMap:     	new(opMap),
+		path:      path,
+		shardStr:  shardIdV1.String(),
+		getDir:    shardIdV1.Func(),
+		diskUsage: 0,
+		opMap:     new(opMap),
 	}
 
 	err := fileStore.calculateDiskUsage()
@@ -125,14 +124,14 @@ func newFlatFileDataStore() (DataStore, error) {
 	return fileStore, nil
 }
 
-func (fs *FlatFileDataStore) calculateDiskUsage()  error{
+func (fs *FlatFileDataStore) calculateDiskUsage() error {
 	return nil
 }
 
 func (fs *FlatFileDataStore) checkpointLoop() {
 
-	timerActive	:= true
-	timer 		:= time.NewTimer(0)
+	timerActive := true
+	timer := time.NewTimer(0)
 
 	defer timer.Stop()
 
@@ -141,7 +140,7 @@ func (fs *FlatFileDataStore) checkpointLoop() {
 		case _, more := <-fs.checkpointCh:
 			if !more {
 			}
-			if timerActive{
+			if timerActive {
 
 			}
 		case <-timer.C:
@@ -154,15 +153,15 @@ func (fs *FlatFileDataStore) encode(key string) (dir, file string) {
 
 	var noSlash string
 
-	if key[0] == '/'{
-		noSlash	= key[1:]
-	}else{
+	if key[0] == '/' {
+		noSlash = key[1:]
+	} else {
 		noSlash = key
 	}
 
-	dir 	= filepath.Join(fs.path, fs.getDir(noSlash))
+	dir = filepath.Join(fs.path, fs.getDir(noSlash))
 
-	file 	= filepath.Join(dir, noSlash + extension)
+	file = filepath.Join(dir, noSlash+extension)
 
 	return dir, file
 }
@@ -180,7 +179,7 @@ func (fs *FlatFileDataStore) decode(file string) (key string, ok bool) {
 
 func (fs *FlatFileDataStore) makeDir(dir string) error {
 
-	if _, exist := utils.FileExists(dir); exist{
+	if _, exist := utils.FileExists(dir); exist {
 		return nil
 	}
 
@@ -191,24 +190,25 @@ func (fs *FlatFileDataStore) makeDir(dir string) error {
 	return nil
 }
 
-func (fs *FlatFileDataStore) putAsync(key string, value []byte, errorNum *int32, wg *sync.WaitGroup)  {
+func (fs *FlatFileDataStore) putAsync(key string, value []byte, errorNum *int32, wg *sync.WaitGroup) {
 	defer wg.Done()
-	if err := fs.Put(key, value); err != nil{
+	if err := fs.Put(key, value); err != nil {
 		atomic.AddInt32(errorNum, 1)
 	}
 }
-func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32, wg *sync.WaitGroup)  {
+func (fs *FlatFileDataStore) deleteAsync(key string, errorNum *int32, wg *sync.WaitGroup) {
 	defer wg.Done()
 	if err := fs.Delete(key); err != nil {
 		atomic.AddInt32(errorNum, 1)
 	}
 }
+
 /*****************************************************************
 *
 *		DataStore interface and implements.
 *
 *****************************************************************/
-func (fs *FlatFileDataStore) Put(key string, value []byte) error{
+func (fs *FlatFileDataStore) Put(key string, value []byte) error {
 
 	dir, path := fs.encode(key)
 
@@ -241,33 +241,33 @@ func (fs *FlatFileDataStore) Put(key string, value []byte) error{
 	return nil
 }
 
-func (fs *FlatFileDataStore) Get(key string) ([]byte, error){
+func (fs *FlatFileDataStore) Get(key string) ([]byte, error) {
 	_, path := fs.encode(key)
 	return ioutil.ReadFile(path)
 }
 
-func (fs *FlatFileDataStore) Has(key string) (bool, error){
+func (fs *FlatFileDataStore) Has(key string) (bool, error) {
 	_, path := fs.encode(key)
 	_, err := os.Stat(path)
 	return err == nil, err
 }
 
-func (fs *FlatFileDataStore) Delete(key string) error{
+func (fs *FlatFileDataStore) Delete(key string) error {
 	_, path := fs.encode(key)
 	return os.Remove(path)
 }
 
 //TODO::
-func (fs *FlatFileDataStore) Query(q Query) (Results, error){
+func (fs *FlatFileDataStore) Query(q Query) (Results, error) {
 	return nil, nil
 }
 
-func (fs *FlatFileDataStore) Batch() (Batch, error){
+func (fs *FlatFileDataStore) Batch() (Batch, error) {
 
 	return &flatFileBatch{
-		puts:    	make(map[string][]byte),
-		deletes: 	make(map[string]struct{}),
-		dataStore:	fs,
+		puts:      make(map[string][]byte),
+		deletes:   make(map[string]struct{}),
+		dataStore: fs,
 	}, nil
 }
 
@@ -278,11 +278,10 @@ func (fs *FlatFileDataStore) Batch() (Batch, error){
 *****************************************************************/
 
 type flatFileBatch struct {
-	puts    	map[string][]byte
-	deletes 	map[string]struct{}
-	dataStore	*FlatFileDataStore
+	puts      map[string][]byte
+	deletes   map[string]struct{}
+	dataStore *FlatFileDataStore
 }
-
 
 func (fsb *flatFileBatch) Put(key string, value []byte) error {
 	fsb.puts[key] = value
@@ -295,7 +294,7 @@ func (fsb *flatFileBatch) Commit() error {
 	var errorNum int32 = 0
 
 	var wg sync.WaitGroup
-	for key, value := range fsb.puts{
+	for key, value := range fsb.puts {
 		wg.Add(1)
 		go fsb.dataStore.putAsync(key, value, &errorNum, &wg)
 	}
@@ -307,7 +306,7 @@ func (fsb *flatFileBatch) Commit() error {
 
 	wg.Wait()
 
-	if errorNum > 0{
+	if errorNum > 0 {
 		return ErrCommit
 	}
 

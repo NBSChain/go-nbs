@@ -14,9 +14,9 @@ import (
 
 func newLevelDB(opts *opt.Options) (DataStore, error) {
 
-	var path 	= utils.GetConfig().LevelDBDir
-	var err 	error
-	var dataBase 	*leveldb.DB
+	var path = utils.GetConfig().LevelDBDir
+	var err error
+	var dataBase *leveldb.DB
 
 	if path == "" {
 		dataBase, err = leveldb.Open(storage.NewMemStorage(), opts)
@@ -33,12 +33,13 @@ func newLevelDB(opts *opt.Options) (DataStore, error) {
 	}
 
 	dateStore := &levelDBDataStore{
-		dataBase:  	dataBase,
-		storePath: 	path,
+		dataBase:  dataBase,
+		storePath: path,
 	}
 
 	return dateStore, nil
 }
+
 /*****************************************************************
 *
 *		The functions below are implements of interface
@@ -67,8 +68,8 @@ func (d *levelDBDataStore) QueryNew(query Query) (Results, error) {
 				return Result{}, false
 			}
 
-			key 	:= string(iterator.Key())
-			entry 	:= Entry{Key: key}
+			key := string(iterator.Key())
+			entry := Entry{Key: key}
 
 			if !query.KeysOnly {
 				buf := make([]byte, len(iterator.Value()))
@@ -129,8 +130,8 @@ func (d *levelDBDataStore) runQuery(worker goprocess.Process, resultBuilder *Res
 			break
 		}
 
-		key 	:= string(iterator.Key())
-		entry 	:= Entry{Key: key}
+		key := string(iterator.Key())
+		entry := Entry{Key: key}
 
 		if !resultBuilder.Query.KeysOnly {
 			buf := make([]byte, len(iterator.Value()))
@@ -189,8 +190,8 @@ func (d *levelDBDataStore) IsThreadSafe() {}
 *
 *****************************************************************/
 type levelDBDataStore struct {
-	dataBase  	*leveldb.DB
-	storePath 	string
+	dataBase  *leveldb.DB
+	storePath string
 }
 
 func (d *levelDBDataStore) Put(key string, value []byte) (err error) {
@@ -231,10 +232,11 @@ func (d *levelDBDataStore) Query(query Query) (Results, error) {
 func (d *levelDBDataStore) Batch() (Batch, error) {
 
 	return &levelDBBatch{
-		batch:    	new(leveldb.Batch),
-		database: 	d.dataBase,
+		batch:    new(leveldb.Batch),
+		database: d.dataBase,
 	}, nil
 }
+
 /*****************************************************************
 *
 *		Batch interface and implements.
@@ -242,8 +244,8 @@ func (d *levelDBDataStore) Batch() (Batch, error) {
 *****************************************************************/
 
 type levelDBBatch struct {
-	batch    	*leveldb.Batch
-	database 	*leveldb.DB
+	batch    *leveldb.Batch
+	database *leveldb.DB
 }
 
 func (b *levelDBBatch) Put(key string, value []byte) error {

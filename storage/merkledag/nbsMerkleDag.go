@@ -11,12 +11,12 @@ import (
 	"sync"
 )
 
-var instance 			*NbsDAGService
-var once 			sync.Once
-var parentContext 		context.Context
-var logger 			= utils.GetLogInstance()
+var instance *NbsDAGService
+var once sync.Once
+var parentContext context.Context
+var logger = utils.GetLogInstance()
 
-func init(){
+func init() {
 	//TODO:: try to support multi protocol buffer coder.
 	ipld.Register(cid.DagProtobuf, ipld.DecodeProtoBufBlock)
 }
@@ -24,14 +24,14 @@ func init(){
 //Can only process Block data right now.
 func GetDagInstance() DAGService {
 	once.Do(func() {
-		parentContext 	= context.Background()
+		parentContext = context.Background()
 
-		router, err 	:= newNbsDagService()
+		router, err := newNbsDagService()
 		if err != nil {
 			panic(err)
 		}
 
-		logger.Info("dag service start to run......\n")
+		logger.Info("dag service start to run......")
 		instance = router
 	})
 
@@ -39,9 +39,9 @@ func GetDagInstance() DAGService {
 }
 
 type NbsDAGService struct {
-	rehash     	bool
-	checkFirst 	bool
-	dataStore	dataStore.DataStore
+	rehash     bool
+	checkFirst bool
+	dataStore  dataStore.DataStore
 }
 
 func newNbsDagService() (*NbsDAGService, error) {
@@ -51,15 +51,15 @@ func newNbsDagService() (*NbsDAGService, error) {
 	cachedDataStore := dataStore.NewBloomDataStore(ds)
 
 	return &NbsDAGService{
-		checkFirst: 	true,
-		rehash:     	false,
-		dataStore:	cachedDataStore,
+		checkFirst: true,
+		rehash:     false,
+		dataStore:  cachedDataStore,
 	}, nil
 }
 
 func (service *NbsDAGService) Has(c *cid.Cid) bool {
 
-	keyCoded := cid.NewKeyFromBinary( c.Bytes())
+	keyCoded := cid.NewKeyFromBinary(c.Bytes())
 
 	ok, _ := service.dataStore.Has(keyCoded)
 
@@ -82,9 +82,9 @@ func (service *NbsDAGService) Get(cidObj *cid.Cid) (ipld.DagNode, error) {
 
 	data, err := service.dataStore.Get(key)
 
-	if err == dataStore.ErrNotFound{
+	if err == dataStore.ErrNotFound {
 		return bitswap.GetSwapInstance().GetDagNode(cidObj)
-	}else if err != nil{
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -95,10 +95,9 @@ func (service *NbsDAGService) GetMany([]*cid.Cid) <-chan *ipld.DagNode {
 	return nil
 }
 
-
 func (service *NbsDAGService) Add(node ipld.DagNode) error {
 
-	if node == nil{
+	if node == nil {
 		return errors.New("dag node is nil. ")
 	}
 
@@ -108,24 +107,23 @@ func (service *NbsDAGService) Add(node ipld.DagNode) error {
 		return err
 	}
 
-	if service.checkFirst && service.Has(cidObj){
+	if service.checkFirst && service.Has(cidObj) {
 		return nil
 	}
 
 	key := cid.CovertCidToDataStoreKey(cidObj)
-	if err := service.dataStore.Put(key, node.RawData()); err != nil{
+	if err := service.dataStore.Put(key, node.RawData()); err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().SaveToNetPeer(map[string]ipld.DagNode{key:node}); err != nil{
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(map[string]ipld.DagNode{key: node}); err != nil {
 		logger.Error(err)
 		return err
 	}
 
 	return nil
 }
-
 
 func (service *NbsDAGService) Remove(*cid.Cid) error {
 	return nil
@@ -133,17 +131,17 @@ func (service *NbsDAGService) Remove(*cid.Cid) error {
 
 func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 
-	if len(nodeArr) == 0{
+	if len(nodeArr) == 0 {
 		return nil
 	}
 
-	toPut 		:= make(map[string]ipld.DagNode)
-	dataBatch, err 	:= service.dataStore.Batch()
-	if err != nil{
+	toPut := make(map[string]ipld.DagNode)
+	dataBatch, err := service.dataStore.Batch()
+	if err != nil {
 		return err
 	}
 
-	for _, node := range nodeArr{
+	for _, node := range nodeArr {
 
 		cidObj := node.Cid()
 		if err := cid.ValidateCid(cidObj); err != nil {
@@ -151,10 +149,10 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		}
 
 		if !service.checkFirst ||
-			(service.checkFirst && !service.Has(cidObj)){
+			(service.checkFirst && !service.Has(cidObj)) {
 
 			key := cid.CovertCidToDataStoreKey(cidObj)
-			if err := dataBatch.Put(key, node.RawData()); err != nil{
+			if err := dataBatch.Put(key, node.RawData()); err != nil {
 				return err
 			}
 
@@ -162,11 +160,11 @@ func (service *NbsDAGService) AddMany(nodeArr []ipld.DagNode) error {
 		}
 	}
 
-	if err := dataBatch.Commit(); err != nil{
+	if err := dataBatch.Commit(); err != nil {
 		return err
 	}
 
-	if err := bitswap.GetSwapInstance().SaveToNetPeer(toPut); err != nil{
+	if err := bitswap.GetSwapInstance().SaveToNetPeer(toPut); err != nil {
 		logger.Error(err)
 	}
 

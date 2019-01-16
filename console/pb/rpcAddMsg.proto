@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.nbs.console.pb";
+option java_outer_classname = "RpcAddMessage";
+
+package pb;
+
+enum FileType {
+    FILE        = 0;
+    LARGEFILE   = 1;
+    DIRECTORY   = 2;
+    SYSTEMLINK  = 3;
+}
+
+service AddTask {
+
+    rpc AddFile (AddRequest) returns (AddResponse) {}
+
+    rpc TransLargeFile(stream FileChunk) returns (AddResponse) {}
+}
+
+message FileChunk{
+    bytes   content = 1;
+}
+
+message AddRequest{
+    string      fileName        = 1;
+    string      fullPath        = 2;
+    int64       fileSize        = 3;
+    FileType    fileType        = 4;
+    int32       splitterSize    = 5;
+    bytes       fileData        = 6;
+}
+
+message AddResponse {
+    string  message     = 1;
+    string  sessionId   = 2;
+    string  name        = 3;
+    string  hash        = 4;
+    int64   bytes       = 5;
+    string  size        = 6;
+}

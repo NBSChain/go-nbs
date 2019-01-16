@@ -2,13 +2,21 @@ package application
 
 import (
 	"context"
-	"github.com/NBSChain/go-nbs/storage/application/rpcService"
+	"github.com/NBSChain/go-nbs/storage/bitswap"
+	"github.com/NBSChain/go-nbs/storage/merkledag"
+	"github.com/NBSChain/go-nbs/storage/network"
+	"github.com/NBSChain/go-nbs/storage/routing"
+	"github.com/NBSChain/go-nbs/thirdParty/account"
+	"github.com/NBSChain/go-nbs/thirdParty/gossip"
+	"github.com/NBSChain/go-nbs/utils"
 	"sync"
 )
 
+var logger = utils.GetLogInstance()
+
 type NbsApplication struct {
 	context context.Context
-	node    StorageNode
+	nodeId  string
 }
 
 var instance *NbsApplication
@@ -22,7 +30,8 @@ func GetInstance() Application {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("--->Create application to run......\n")
+
+		logger.Info("--->Create application to run......")
 
 		instance = app
 	})
@@ -32,19 +41,42 @@ func GetInstance() Application {
 
 func newApplication() (*NbsApplication, error) {
 
+	acc := account.GetAccountInstance()
+
 	return &NbsApplication{
 		context: context.Background(),
-		node:    NewNode(),
+		nodeId:  acc.GetPeerID(),
 	}, nil
+}
+
+func (app *NbsApplication) GetNodeId() string {
+	return app.nodeId
 }
 
 func (app *NbsApplication) Start() error {
 
 	logger.Info("Application starting......")
 
-	instance.node.Online()
+	merkledag.GetDagInstance()
 
-	rpcService.StartCmdService()
+	bitswap.GetSwapInstance()
+
+	routing.GetInstance()
+
+	network.GetInstance()
+
+	gossip.GetGossipInstance()
+
+	return nil
+}
+
+func (app *NbsApplication) ReloadForNewAccount() error {
+
+	app.nodeId = account.GetAccountInstance().GetPeerID()
+
+	if err := network.GetInstance().StartUp(app.nodeId); err != nil {
+		return err
+	}
 
 	return nil
 }

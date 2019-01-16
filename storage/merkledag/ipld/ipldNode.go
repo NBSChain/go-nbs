@@ -21,10 +21,10 @@ type Resolver interface {
 }
 
 type Block interface {
-	Data()		[]byte
-	RawData() 	[]byte
-	Cid() 		*cid.Cid
-	String() 	string
+	Data() []byte
+	RawData() []byte
+	Cid() *cid.Cid
+	String() string
 }
 
 type DagNode interface {
@@ -277,7 +277,6 @@ func NewNode() *ProtoDagNode {
 		linkCache: make(map[string]int),
 	}
 }
-
 
 func (n *ProtoDagNode) unmarshal(encoded []byte) error {
 	var pbn pb.PBNode

@@ -3,36 +3,36 @@ package dataStore
 import "github.com/jbenet/goprocess"
 
 type Entry struct {
-	Key   	string
-	Value 	[]byte
+	Key   string
+	Value []byte
 }
 
 type Result struct {
-	entry	Entry
-	Error 	error
+	entry Entry
+	Error error
 }
 type Query struct {
-	Prefix   	string
-	Filters  	[]Filter
-	Orders   	[]Order
-	Limit    	int
-	Offset   	int
-	KeysOnly 	bool
+	Prefix   string
+	Filters  []Filter
+	Orders   []Order
+	Limit    int
+	Offset   int
+	KeysOnly bool
 }
 
 type Results interface {
-	Query() 	Query
-	Next() 		<-chan Result
-	NextSync() 	(Result, bool)
-	Rest() 		([]Entry, error)
-	Close() 	error
-	Process() 	goprocess.Process
+	Query() Query
+	Next() <-chan Result
+	NextSync() (Result, bool)
+	Rest() ([]Entry, error)
+	Close() error
+	Process() goprocess.Process
 }
 
 type results struct {
-	query   	Query
-	process 	goprocess.Process
-	result  	<-chan Result
+	query   Query
+	process goprocess.Process
+	result  <-chan Result
 }
 
 func (r *results) Next() <-chan Result {
@@ -70,9 +70,9 @@ func (r *results) Query() Query {
 }
 
 type ResultBuilder struct {
-	Query   	Query
-	Process 	goprocess.Process
-	Output  	chan Result
+	Query   Query
+	Process goprocess.Process
+	Output  chan Result
 }
 
 //TODO:: Refactoring result builder.
@@ -84,8 +84,8 @@ func (rb *ResultBuilder) Results() Results {
 	}
 }
 
-const NormalBufSize 	= 1
-const KeysOnlyBufSize 	= 128
+const NormalBufSize = 1
+const KeysOnlyBufSize = 128
 
 func NewResultBuilder(query Query) *ResultBuilder {
 
@@ -174,9 +174,9 @@ func ResultsFromIterator(query Query, iterator Iterator) Results {
 		iterator.Close = noopClose
 	}
 	return &resultsIterator{
-		query: 	query,
-		next:  	iterator.Next,
-		close: 	iterator.Close,
+		query: query,
+		next:  iterator.Next,
+		close: iterator.Close,
 	}
 }
 
