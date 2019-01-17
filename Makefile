@@ -18,8 +18,6 @@ EXENAME := nbs$(EXTEND)
 # enable second expansion
 .SECONDEXPANSION:
 
-	echo $(PLATFORM)
-
 all: pbs build
 
 build:
