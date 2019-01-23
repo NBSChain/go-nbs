@@ -14,7 +14,7 @@ func (node *MemManager) DestroyNode() error {
 	lenIn := len(node.InputView)
 	lenOut := len(node.PartialView)
 
-	tempOut := make([]string, len(node.PartialView))
+	tempOut := make([]string, 0)
 	for nodeId, item := range node.PartialView {
 		tempOut = append(tempOut, nodeId)
 		item.outConn.Close()
