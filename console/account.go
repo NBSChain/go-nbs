@@ -42,7 +42,16 @@ func init() {
 }
 
 func accountAction(cmd *cobra.Command, args []string) {
-	fmt.Println("I'm ok!")
+	request := &pb.AccountRequest{}
+
+	conn := DialToCmdService()
+	defer conn.Close()
+
+	client := pb.NewAccountTaskClient(conn.c)
+
+	response, err := client.Account(conn.ctx, request)
+
+	logger.Info(response, err)
 }
 
 func unlockAccount(cmd *cobra.Command, args []string) {
