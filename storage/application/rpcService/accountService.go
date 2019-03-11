@@ -47,3 +47,11 @@ func (service *accountService) CreateAccount(ctx context.Context,
 		Message: "Create account(" + accId + ") success!",
 	}, nil
 }
+
+func (service *accountService) Account(context.Context, *pb.AccountRequest) (*pb.AccountResponse, error) {
+	id := account.GetAccountInstance().GetPeerID()
+
+	return &pb.AccountResponse{
+		Account: id,
+	}, nil
+}

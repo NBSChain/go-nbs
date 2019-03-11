@@ -18,16 +18,11 @@ EXENAME := nbs$(EXTEND)
 # enable second expansion
 .SECONDEXPANSION:
 
-	echo $(PLATFORM)
-
 all: pbs build
 
 build:
 	go build -race -o $(EXENAME)
 	mv $(EXENAME) $(INCLUDE)/bin/
-
-deps:
-	go get -u -d -v github.com/libp2p/go-libp2p/...
 
 console := console/pb
 application := storage/application/pb

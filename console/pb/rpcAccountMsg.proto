@@ -7,12 +7,20 @@ option java_outer_classname = "RpcAccountMessage";
 package pb;
 
 service AccountTask {
-
+    rpc Account (AccountRequest) returns (AccountResponse) {}
     rpc AccountUnlock (AccountUnlockRequest) returns (AccountUnlockResponse) {}
     rpc CreateAccount (CreateAccountRequest) returns (CreateAccountResponse) {}
 }
 message AccountUnlockRequest{
     string password = 1;
+}
+
+message AccountRequest{
+}
+
+
+message AccountResponse{
+    string account = 1;
 }
 
 message AccountUnlockResponse {
