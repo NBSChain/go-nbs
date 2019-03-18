@@ -13,6 +13,8 @@ else
 	EXTEND	:=
 endif
 
+include CygwinMF.mk
+
 EXENAME := nbs$(EXTEND)
 
 # enable second expansion
