@@ -1,7 +1,10 @@
 SHELL=PATH='$(PATH)' /bin/sh
 
-PLATFORM := $(shell uname -o)
-
+ifeq ($(OS),"")
+    PLATFORM := $(shell uname -o)
+else
+    PLATFORM := $(shell uname -s)
+endif
 
 EXTEND := .exe
 ifeq ($(PLATFORM), Msys)
@@ -10,6 +13,11 @@ else ifeq ($(PLATFORM), Cygwin)
     INCLUDE := ${shell echo "$(GOPATH)"|sed -e 's/\\/\//g'}
 else
 	INCLUDE := $(GOPATH)
+	INCLUDESRC := ${shell echo "$(GOPATH)"|sed -e 's/:/\/src:/g'}
+	INCLUDEBIN := ${shell echo "$(GOPATH)"|sed -e 's/:/\/bin:/g'}
+	INCLUDESRC := $(INCLUDESRC)/src
+	INCLUDEBIN := $(INCLUDEBIN)/bin
+    FIRSTBIN:=${shell echo "$(INCLUDEBIN)"|cut -d':' -f1}
 	EXTEND	:=
 endif
 
@@ -24,7 +32,7 @@ all: pbs build
 
 build:
 	go build -race -o $(EXENAME)
-	mv $(EXENAME) $(INCLUDE)/bin/
+	mv $(EXENAME) $(FIRSTBIN)
 
 console := console/pb
 application := storage/application/pb
@@ -41,10 +49,10 @@ pbs:
 	protoc -I=$(bitswap) 		--go_out=plugins=grpc:${bitswap} 		${bitswap}/*.proto
 	protoc -I=$(network) 		--go_out=plugins=grpc:${network} 		${network}/*.proto
 	protoc -I=$(account) 		--go_out=plugins=grpc:${account} 		${account}/*.proto
-	protoc -I=${gossip} -I=$(INCLUDE)/src   --go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
+	protoc -I=${gossip} -I=$(INCLUDESRC)   --go_out=plugins=grpc:${gossip} 		${gossip}/*.proto
 
 clean:
-	rm -rf $(INCLUDE)/bin/nbs
+	rm -rf $(FIRSTBIN)/nbs
 
 test:
 	go test -v ./storage/application/rpcService/
